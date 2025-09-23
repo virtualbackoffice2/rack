@@ -16,7 +16,7 @@
     th,td{border:1px solid #e5e5e5;padding:8px;text-align:left}
     th.sortable{cursor:pointer}
     tr.offline{background:#ffeef0} /* light pink */
-    tr.ticket{background:#ffe5e5} /* more red tint for tickets */
+    tr.ticket{background:#ff9999} /* more red tint for tickets */
     .spinner-overlay{position:fixed;inset:0;background:rgba(255,255,255,0.7);display:none;align-items:center;justify-content:center;z-index:9999}
     .spinner{width:64px;height:64px;border-radius:50%;border:8px solid #eee;border-top-color:#666;animation:spin 1s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
@@ -34,7 +34,6 @@
 </head>
 <body>
   <h1>Complain Manager</h1>
-
   <div class="top-row">
     <div class="controls">
       <button id="btnComplains">A - Complains</button>
@@ -43,30 +42,23 @@
       <button id="btnDownloadCsv">D - Download CSV</button>
       <button id="btnScreenshotWhatsapp">E - Screenshot & share to WhatsApp</button>
     </div>
-
-    <div style="margin-left:10px">Selected count: <span id="selectedCount">0</span></div>
+    <div style="margin-left:10px">User count: <span id="userCount">0</span></div>
   </div>
-
   <div class="filters" style="margin-top:12px">
     <label>Window: <select id="selWindow"><option value="">-- All --</option></select></label>
     <label>PON: <select id="selPon"><option value="">-- All --</option></select></label>
-
     <label>User ID: <input id="searchUser" placeholder="User ID (Users)"></label>
     <label>Mobile no: <input id="searchMobile" placeholder="Number or Last called no"></label>
     <label>Name: <input id="searchName" placeholder="Name"></label>
     <label>Mac/Serial: <input id="searchMac" placeholder="MAC or Serial"></label>
     <label>Time filter (Drops): <select id="selTimeFilter"><option value="">--All--</option></select></label>
-    <button id="btnApplyFilters" class="small-btn">Apply</button>
-    <button id="btnClearFilters" class="small-btn">Clear</button>
   </div>
-
   <div id="tableWrap">
     <table id="dataTable">
       <thead>
         <tr>
-          <th><input type="checkbox" id="chkAll"></th>
           <th class="sortable" data-key="NMID">PON No ▲▼</th>
-          <th class="sortable" data-key="Users">User ID</th>
+          <th class="sortable" data-key="Users">User ID ▲▼</th>
           <th>Mobile No</th>
           <th>Name</th>
           <th>Mac / Serial</th>
@@ -80,29 +72,22 @@
       <tbody></tbody>
     </table>
   </div>
-
   <div class="spinner-overlay" id="spinnerOverlay"><div class="spinner"></div></div>
-
   <script>
   // --- CONFIG: update these to your deployed GAS endpoint & token ---
   const GAS_URL = "https://script.google.com/macros/s/AKfycbz-FZM6fwvv0ruaSv-PbEG8sHNOmldJn6kXtRY6e7NZ9YlN3TJ5Oe9ECMwmGBTK-LMTnA/exec";
   const TOKEN = "abcd1234";
   // ---------------------------------------------------------------
-
   let rawRows = []; // rows from GAS
   let filtered = []; // currently loaded rows
-  let selected = new Set();
   let currentSort = { key: null, asc: true };
-
   const spinner = document.getElementById('spinnerOverlay');
   const tbody = document.querySelector('#dataTable tbody');
   const selWindow = document.getElementById('selWindow');
   const selPon = document.getElementById('selPon');
   const selTimeFilter = document.getElementById('selTimeFilter');
-
   function showSpinner() { spinner.style.display = 'flex'; document.body.classList.add('disabled'); }
   function hideSpinner() { spinner.style.display = 'none'; document.body.classList.remove('disabled'); }
-
   // -----------------------------
   // JSONP GET helper (avoids CORS issues for reads)
   // -----------------------------
@@ -114,31 +99,25 @@
         cleanup();
         resolve(data);
       };
-
       const script = document.createElement('script');
       const sep = url.indexOf('?') === -1 ? '?' : '&';
       script.src = url + sep + 'callback=' + callbackName + '&_=' + Date.now();
       script.async = true;
-
       let timedOut = false;
       const timer = setTimeout(() => {
         timedOut = true;
         cleanup();
         reject(new Error('JSONP request timed out'));
       }, timeoutMs);
-
       function cleanup(){
         clearTimeout(timer);
         try{ delete window[callbackName]; } catch(e){ window[callbackName] = undefined; }
         if(script.parentNode) script.parentNode.removeChild(script);
       }
-
       script.onerror = function(e){ if(timedOut) return; cleanup(); reject(new Error('JSONP script error')); };
-
       document.head.appendChild(script);
     });
   }
-
   function fetchData() {
     showSpinner();
     // Use JSONP to avoid CORS failures when calling the Apps Script webapp (doGet supports callback param)
@@ -161,7 +140,6 @@
       });
     }).finally(()=>hideSpinner());
   }
-
   // -----------------------------
   // POST helper: try normal POST first; if CORS blocks, fall back to a no-cors fire-and-forget POST
   // This preserves functionality in most environments. If you need a guaranteed response body, add CORS headers server-side.
@@ -169,7 +147,6 @@
   function postToGAS(obj){
     const url = GAS_URL + '?token=' + encodeURIComponent(TOKEN);
     const json = JSON.stringify(obj);
-
     // Try a standard POST (this may fail with TypeError if server doesn't allow CORS)
     return fetch(url, {
       method: 'POST',
@@ -191,7 +168,6 @@
         .catch(e => ({ error: e && e.message ? e.message : String(e) }));
     });
   }
-
   function populateWindowPon(){
     const windows = new Set();
     const ponsForWindow = {};
@@ -209,14 +185,12 @@
     // set PON options to all by default
     fillPonOptions('');
   }
-
   function fillPonOptions(windowName){
     const map = selWindow._ponsMap || {};
     const set = windowName ? (map[windowName]||new Set()) : new Set(Object.values(map).flatMap(s=>Array.from(s)));
     const opts = Array.from(set).sort().map(p=>`<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
     selPon.innerHTML = '<option value="">-- All --</option>' + opts;
   }
-
   function applyQuickFilterOffline(){
     // show rows where Downs (col T) has any value
     filtered = rawRows.filter(r => {
@@ -226,7 +200,6 @@
     renderTable();
     populateTimeFilter();
   }
-
   function applyFilterComplains(){
     filtered = rawRows.filter(r => {
       const val = (r['Ticket'] || r['X'] || '').toString().trim();
@@ -235,7 +208,6 @@
     renderTable();
     populateTimeFilter();
   }
-
   function applyFilterDrops(){
     filtered = rawRows.filter(r => {
       const val = (r['Drops'] || r['AB'] || '').toString().trim();
@@ -244,7 +216,6 @@
     renderTable();
     populateTimeFilter();
   }
-
   function applyAllFilters(){
     const win = selWindow.value;
     const pon = selPon.value;
@@ -253,31 +224,26 @@
     const name = document.getElementById('searchName').value.trim().toLowerCase();
     const mac = document.getElementById('searchMac').value.trim().toLowerCase();
     const timeSel = selTimeFilter.value;
-
     filtered = rawRows.filter(r=>{
       if(win){ const v = (r['Window']||r['window']||'').toString(); if(v!==win) return false }
       if(pon){ const v = (r['NMID']||r['C']||'').toString(); if(v!==pon) return false }
-      if(userId){ const v = (r['Users']||r['N']||'').toString().toLowerCase(); if(!v.includes(userId)) return false }
-      if(mobile){ const v1 = (r['Last called no']||r['AC']||'').toString().toLowerCase(); const v2 = (r['Number']||r['P']||'').toString().toLowerCase(); if(!v1.includes(mobile) && !v2.includes(mobile)) return false }
-      if(name){ const v = (r['Name']||r['O']||'').toString().toLowerCase(); if(!v.includes(name)) return false }
-      if(mac){ const v1 = (r['MAC']||r['U']||'').toString().toLowerCase(); const v2 = (r['Serial']||r['V']||'').toString().toLowerCase(); if(!v1.includes(mac) && !v2.includes(mac)) return false }
+      if(userId && userId.length >= 3){ const v = (r['Users']||r['N']||'').toString().toLowerCase(); if(!v.includes(userId)) return false }
+      if(mobile && mobile.length >= 3){ const v1 = (r['Last called no']||r['AC']||'').toString().toLowerCase(); const v2 = (r['Number']||r['P']||'').toString().toLowerCase(); if(!v1.includes(mobile) && !v2.includes(mobile)) return false }
+      if(name && name.length >= 3){ const v = (r['Name']||r['O']||'').toString().toLowerCase(); if(!v.includes(name)) return false }
+      if(mac && mac.length >= 3){ const v1 = (r['MAC']||r['U']||'').toString().toLowerCase(); const v2 = (r['Serial']||r['V']||'').toString().toLowerCase(); if(!v1.includes(mac) && !v2.includes(mac)) return false }
       if(timeSel){ const v = (r['Drops']||r['AB']||'').toString(); if(v!==timeSel) return false }
       return true;
     });
     renderTable();
   }
-
   function populateTimeFilter(){
     const times = new Set();
     filtered.forEach(r=>{ const v = (r['Drops']||r['AB']||'').toString(); if(v) times.add(v); });
     selTimeFilter.innerHTML = '<option value="">--All--</option>' + Array.from(times).sort().map(t=>`<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
   }
-
   function renderTable(){
     tbody.innerHTML = '';
-    selected.clear();
-    document.getElementById('selectedCount').innerText = '0';
-
+    document.getElementById('userCount').innerText = filtered.length;
     let rowsToRender = filtered.slice();
     // sorting if set
     if(currentSort.key){
@@ -289,14 +255,12 @@
         return 0;
       });
     }
-
     rowsToRender.forEach((r, idx)=>{
       const tr = document.createElement('tr');
       const isOffline = (r['Downs']||r['T']||'').toString().trim() !== '';
       const isTicket = (r['Ticket']||r['X']||'').toString().trim() !== '';
       if(isOffline) tr.classList.add('offline');
       if(isTicket) tr.classList.add('ticket');
-
       const userId = r['Users']||r['N']||'';
       const pon = r['NMID']||r['C']||'';
       const lastCalled = (r['Last called no']||r['AC']||'').toString().trim();
@@ -304,14 +268,12 @@
       const mobile = lastCalled || number;
       const name = r['Name']||r['O']||'';
       const mac = r['MAC']||r['U']||'';
-      const serial = r['Serial']||r['V']||'';
+      const serial = r['Serial'] ||r['V']||'';
       const drops = r['Drops']||r['AB']||'';
       const remark = r['Remarks']||r['Y']||r['remark']||r['Remark']||'';
       const location = r['Location']||r['Q']||'';
       const procare = r['User status']||r['AF']||'';
-
       tr.innerHTML = `
-        <td><input type="checkbox" class="row-chk" data-uid="${escapeHtml(userId)}"></td>
         <td>${escapeHtml(pon)}</td>
         <td>${escapeHtml(userId)}</td>
         <td>${escapeHtml(mobile)}</td>
@@ -326,49 +288,20 @@
         <td>${escapeHtml(location)}</td>
         <td>${escapeHtml(procare)}</td>
       `;
-
       tbody.appendChild(tr);
     });
-
     // attach events
-    document.querySelectorAll('.row-chk').forEach(el=>el.addEventListener('change', onRowCheck));
-    document.getElementById('chkAll').checked = false;
     document.querySelectorAll('.mark-btn').forEach(b=>b.addEventListener('click', onMarkClick));
     document.querySelectorAll('.remove-btn').forEach(b=>b.addEventListener('click', onRemoveClick));
     document.querySelectorAll('.remark-input').forEach(i=>i.addEventListener('change', onRemarkChange));
   }
-
   function keyOrAlt(obj,key){ // helper for varying header names
     const map = { 'NMID':'C','Users':'N','Drops':'AB' };
     return map[key] || key;
   }
-
-  function onRowCheck(e){
-    const uid = e.target.dataset.uid;
-    if(e.target.checked) selected.add(uid); else selected.delete(uid);
-    document.getElementById('selectedCount').innerText = selected.size;
-  }
-
-  document.getElementById('chkAll').addEventListener('change', function(){
-    const checked = this.checked;
-    document.querySelectorAll('.row-chk').forEach(ch=>{ ch.checked = checked; const uid = ch.dataset.uid; if(checked) selected.add(uid); else selected.delete(uid); });
-    document.getElementById('selectedCount').innerText = selected.size;
-  });
-
-  document.getElementById('btnComplains').addEventListener('click', ()=>{ showSpinner(); setTimeout(()=>{ applyFilterComplains(); hideSpinner(); }, 300); });
-  document.getElementById('btnOffline').addEventListener('click', ()=>{ showSpinner(); setTimeout(()=>{ applyQuickFilterOffline(); hideSpinner(); }, 300); });
-  document.getElementById('btnDrops').addEventListener('click', ()=>{ showSpinner(); setTimeout(()=>{ applyFilterDrops(); hideSpinner(); }, 300); });
-
-  document.getElementById('btnApplyFilters').addEventListener('click', applyAllFilters);
-  document.getElementById('btnClearFilters').addEventListener('click', ()=>{ document.getElementById('searchUser').value=''; document.getElementById('searchMobile').value=''; document.getElementById('searchName').value=''; document.getElementById('searchMac').value=''; selWindow.value=''; fillPonOptions(''); selPon.value=''; selTimeFilter.value=''; applyAllFilters(); });
-
-  selWindow.addEventListener('change', ()=>{ fillPonOptions(selWindow.value); });
-  selPon.addEventListener('change', ()=>{ /* optionally auto-apply */ });
-
   function onRemarkChange(e){
     // no auto-save here; saved when marking complain
   }
-
   function onMarkClick(e){
     const uid = e.target.dataset.uid;
     const remarkInput = document.querySelector(`.remark-input[data-uid=\"${cssEscape(uid)}\"]`);
@@ -387,7 +320,6 @@
       setTimeout(()=>{ rowEl.remove(); hideSpinner(); }, 5000); // keep page spinner for 5s then remove row and hide
     }).catch(err=>{ hideSpinner(); alert('Error: '+err.message); });
   }
-
   function onRemoveClick(e){
     const uid = e.target.dataset.uid;
     const payload = { id: uid, action: 'remove' };
@@ -399,7 +331,6 @@
       setTimeout(()=>{ rowEl.remove(); hideSpinner(); }, 5000);
     }).catch(err=>{ hideSpinner(); alert('Error: '+err.message); });
   }
-
   function formatTimestamp(d){
     // format: M/D/YYYY H:MM:SS like 9/24/2025 3:11:01
     const M = d.getMonth()+1;
@@ -410,7 +341,6 @@
     const s = String(d.getSeconds()).padStart(2,'0');
     return `${M}/${D}/${Y} ${H}:${m}:${s}`;
   }
-
   // CSV download
   document.getElementById('btnDownloadCsv').addEventListener('click', ()=>{
     const rows = Array.from(document.querySelectorAll('#dataTable tbody tr'));
@@ -418,23 +348,22 @@
     csv.push(['PON','UserID','Mobile','Name','Mac','Serial','Down time','Remark','Location','Procare'].join(','));
     rows.forEach(tr=>{
       const tds = tr.querySelectorAll('td');
-      const pon = tds[1].innerText.trim();
-      const uid = tds[2].innerText.trim();
-      const mobile = tds[3].innerText.trim();
-      const name = tds[4].innerText.trim();
-      const mac = tds[5].innerText.split('\n')[0].trim();
-      const serial = tds[5].querySelector('small') ? tds[5].querySelector('small').innerText.trim() : '';
-      const drops = tds[6].innerText.trim();
-      const remark = tds[7].querySelector('input') ? tds[7].querySelector('input').value.replace(/\n/g,' ') : '';
-      const location = tds[9].innerText.trim();
-      const procare = tds[10].innerText.trim();
+      const pon = tds[0].innerText.trim();
+      const uid = tds[1].innerText.trim();
+      const mobile = tds[2].innerText.trim();
+      const name = tds[3].innerText.trim();
+      const mac = tds[4].innerText.split('\n')[0].trim();
+      const serial = tds[4].querySelector('small') ? tds[4].querySelector('small').innerText.trim() : '';
+      const drops = tds[5].innerText.trim();
+      const remark = tds[6].querySelector('input') ? tds[6].querySelector('input').value.replace(/\n/g,' ') : '';
+      const location = tds[8].innerText.trim();
+      const procare = tds[9].innerText.trim();
       csv.push([escapeCsv(pon),escapeCsv(uid),escapeCsv(mobile),escapeCsv(name),escapeCsv(mac),escapeCsv(serial),escapeCsv(drops),escapeCsv(remark),escapeCsv(location),escapeCsv(procare)].join(','));
     });
     const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = 'complains.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   });
-
   // Screenshot & WhatsApp
   document.getElementById('btnScreenshotWhatsapp').addEventListener('click', async ()=>{
     showSpinner();
@@ -453,7 +382,6 @@
           }
         }
       }catch(shareErr){ console.warn('Native share not available or failed:', shareErr); }
-
       // fallback: open image in new tab so user can save and share manually
       const w = window.open('about:blank','_blank');
       if(w){
@@ -464,7 +392,6 @@
     }catch(err){ console.error('Screenshot failed:', err); alert('Screenshot failed: '+err.message); }
     hideSpinner();
   });
-
   // Sorting toggles
   document.querySelectorAll('th.sortable').forEach(th=>{
     th.addEventListener('click', ()=>{
@@ -473,22 +400,28 @@
       renderTable();
     });
   });
-
   // helper utils
   function escapeHtml(s){ if(s==null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function cssEscape(s){ return String(s).replace(/(["'\\])/g,'\\$1'); }
   function escapeCsv(s){ if(s==null) return '""'; s = String(s).replace(/"/g,'""'); return '"'+s+'"'; }
-
   // initialize
   fetchData();
-
   // utility: populateTimeFilter after data loaded
   function populateTimeFilter(){
     const times = new Set();
     filtered.forEach(r=>{ const v = (r['Drops']||r['AB']||'').toString(); if(v) times.add(v); });
     selTimeFilter.innerHTML = '<option value="">--All--</option>' + Array.from(times).sort().map(t=>`<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
   }
-
+  document.getElementById('btnComplains').addEventListener('click', ()=>{ showSpinner(); setTimeout(()=>{ applyFilterComplains(); hideSpinner(); }, 300); });
+  document.getElementById('btnOffline').addEventListener('click', ()=>{ showSpinner(); setTimeout(()=>{ applyQuickFilterOffline(); hideSpinner(); }, 300); });
+  document.getElementById('btnDrops').addEventListener('click', ()=>{ showSpinner(); setTimeout(()=>{ applyFilterDrops(); hideSpinner(); }, 300); });
+  selWindow.addEventListener('change', ()=>{ fillPonOptions(selWindow.value); applyAllFilters(); });
+  selPon.addEventListener('change', applyAllFilters);
+  selTimeFilter.addEventListener('change', applyAllFilters);
+  document.getElementById('searchUser').addEventListener('input', ()=>{ if(document.getElementById('searchUser').value.length >= 3) applyAllFilters(); });
+  document.getElementById('searchMobile').addEventListener('input', ()=>{ if(document.getElementById('searchMobile').value.length >= 3) applyAllFilters(); });
+  document.getElementById('searchName').addEventListener('input', ()=>{ if(document.getElementById('searchName').value.length >= 3) applyAllFilters(); });
+  document.getElementById('searchMac').addEventListener('input', ()=>{ if(document.getElementById('searchMac').value.length >= 3) applyAllFilters(); });
   </script>
 </body>
 </html>
