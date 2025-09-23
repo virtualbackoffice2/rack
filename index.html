@@ -12,12 +12,9 @@ h2 { margin-bottom: 12px; }
 #matrixTable th, #matrixTable td { border: 1px solid #ccc; padding: 4px 8px; text-align: center; }
 #matrixTable th { background: #eee; position: sticky; top: 0; z-index: 2; }
 
-/* clickable cells */
-.clickable {
-  cursor: pointer;
-  color: blue;
-  text-decoration: underline;
-}
+.clickable { cursor: pointer; color: blue; text-decoration: underline; }
+.onStatus { background: #c6f6c6; font-weight: bold; }
+.offStatus { background: #f6c6c6; font-weight: bold; }
 
 /* Modal styles */
 #userModal {
@@ -54,14 +51,15 @@ h2 { margin-bottom: 12px; }
 <table id="matrixTable">
 <tr>
   <th></th>
-  <th>Pon1</th><th>Pon2</th><th>Pon3</th><th>Pon4</th><th>Pon5</th><th>Pon6</th><th>Pon7</th><th>Pon8</th>
-  <th>Pon9</th><th>Pon10</th><th>Pon11</th><th>Pon12</th><th>Pon13</th><th>Pon14</th><th>Pon15</th><th>Pon16</th>
+  <th>Pon1</th><th>Pon2</th><th>Pon3</th><th>Pon4</th>
+  <th>Pon5</th><th>Pon6</th><th>Pon7</th><th>Pon8</th>
+  <th colspan="8"></th> <!-- Pon9-16 removed -->
   <th>Total</th>
 </tr>
 
 <!-- Main user counts -->
 <tr>
-  <th rowspan="3">O1I5</th>
+  <th rowspan="4">O1I5</th>
   <td id="pon1" class="clickable">0</td>
   <td id="pon2" class="clickable">0</td>
   <td id="pon3" class="clickable">0</td>
@@ -70,14 +68,7 @@ h2 { margin-bottom: 12px; }
   <td id="pon6" class="clickable">0</td>
   <td id="pon7" class="clickable">0</td>
   <td id="pon8" class="clickable">0</td>
-  <td id="pon9" class="clickable">0</td>
-  <td id="pon10" class="clickable">0</td>
-  <td id="pon11" class="clickable">0</td>
-  <td id="pon12" class="clickable">0</td>
-  <td id="pon13" class="clickable">0</td>
-  <td id="pon14" class="clickable">0</td>
-  <td id="pon15" class="clickable">0</td>
-  <td id="pon16" class="clickable">0</td>
+  <td colspan="8"></td>
   <td id="oltTotal">0</td>
 </tr>
 
@@ -91,14 +82,7 @@ h2 { margin-bottom: 12px; }
   <td id="off6" class="clickable">0</td>
   <td id="off7" class="clickable">0</td>
   <td id="off8" class="clickable">0</td>
-  <td id="off9" class="clickable">0</td>
-  <td id="off10" class="clickable">0</td>
-  <td id="off11" class="clickable">0</td>
-  <td id="off12" class="clickable">0</td>
-  <td id="off13" class="clickable">0</td>
-  <td id="off14" class="clickable">0</td>
-  <td id="off15" class="clickable">0</td>
-  <td id="off16" class="clickable">0</td>
+  <td colspan="8"></td>
   <td id="oltOffTotal">0</td>
 </tr>
 
@@ -112,15 +96,21 @@ h2 { margin-bottom: 12px; }
   <td id="tick6" class="clickable">0</td>
   <td id="tick7" class="clickable">0</td>
   <td id="tick8" class="clickable">0</td>
-  <td id="tick9" class="clickable">0</td>
-  <td id="tick10" class="clickable">0</td>
-  <td id="tick11" class="clickable">0</td>
-  <td id="tick12" class="clickable">0</td>
-  <td id="tick13" class="clickable">0</td>
-  <td id="tick14" class="clickable">0</td>
-  <td id="tick15" class="clickable">0</td>
-  <td id="tick16" class="clickable">0</td>
+  <td colspan="8"></td>
   <td id="oltTickTotal">0</td>
+</tr>
+
+<!-- Status row -->
+<tr>
+  <td id="stat1">-</td>
+  <td id="stat2">-</td>
+  <td id="stat3">-</td>
+  <td id="stat4">-</td>
+  <td id="stat5">-</td>
+  <td id="stat6">-</td>
+  <td id="stat7">-</td>
+  <td id="stat8">-</td>
+  <td colspan="9"></td>
 </tr>
 
 </table>
@@ -139,8 +129,8 @@ h2 { margin-bottom: 12px; }
 const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz-FZM6fwvv0ruaSv-PbEG8sHNOmldJn6kXtRY6e7NZ9YlN3TJ5Oe9ECMwmGBTK-LMTnA/exec';
 const TOKEN = 'abcd1234';
 
-// Data storage
-let oltData = {}; // { "O1I5P1": {all:[], off:[], tick:[]} }
+let oltData = {}; // { "O1I5P1": {all:[], off:[], tick:[], drops:[]} }
+let dashboardA7 = null;
 
 async function loadData() {
   const url = WEB_APP_URL + '?token=' + encodeURIComponent(TOKEN);
@@ -151,21 +141,40 @@ async function loadData() {
     if (data.error) throw new Error(data.error);
 
     const rows = data.rows || data || [];
+    // Dashboard A7 value
+    dashboardA7 = rows.find(r => r['Sheet'] === 'Dashboard' && r['Cell'] === 'A7')?.['Value'] || null;
+
     let total = 0, offTotal = 0, tickTotal = 0;
 
-    for (let i=1; i<=16; i++) {
+    for (let i=1; i<=8; i++) {
       const nmid = 'O1I5P' + i;
       const filtered = rows.filter(r => r['NMID'] === nmid && r['Users']);
 
       const allUsers = filtered.map(r => r['Users']);
       const offUsers = filtered.filter(r => r['Downs']).map(r => r['Users']);
       const tickUsers = filtered.filter(r => r['Ticket']).map(r => r['Users']);
+      const dropTimes = filtered.map(r => r['Drops']).filter(Boolean);
 
-      oltData[nmid] = { all: allUsers, off: offUsers, tick: tickUsers };
+      oltData[nmid] = { all: allUsers, off: offUsers, tick: tickUsers, drops: dropTimes };
 
       document.getElementById('pon'+i).textContent = allUsers.length;
       document.getElementById('off'+i).textContent = offUsers.length;
       document.getElementById('tick'+i).textContent = tickUsers.length;
+
+      // Status calculation
+      let statusCell = document.getElementById('stat'+i);
+      if (dashboardA7) {
+        let isOn = dropTimes.some(t => t > dashboardA7);
+        if (isOn) {
+          statusCell.textContent = "ON";
+          statusCell.className = "onStatus";
+        } else {
+          statusCell.textContent = "OFF";
+          statusCell.className = "offStatus";
+        }
+      } else {
+        statusCell.textContent = "-";
+      }
 
       total += allUsers.length;
       offTotal += offUsers.length;
@@ -181,7 +190,7 @@ async function loadData() {
   }
 }
 
-// modal function
+// Modal
 function showUsers(type, nmid) {
   let title = "User IDs";
   if (type==="off") title = "Offline Users";
@@ -209,8 +218,8 @@ function closeModal() {
   document.getElementById('userModal').style.display = 'none';
 }
 
-// attach listeners
-for (let i=1; i<=16; i++) {
+// listeners
+for (let i=1; i<=8; i++) {
   document.getElementById('pon'+i).addEventListener('click', () => showUsers('all','O1I5P'+i));
   document.getElementById('off'+i).addEventListener('click', () => showUsers('off','O1I5P'+i));
   document.getElementById('tick'+i).addEventListener('click', () => showUsers('tick','O1I5P'+i));
