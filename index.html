@@ -12,6 +12,13 @@ h2 { margin-bottom: 12px; }
 #matrixTable th, #matrixTable td { border: 1px solid #ccc; padding: 4px 8px; text-align: center; }
 #matrixTable th { background: #eee; position: sticky; top: 0; z-index: 2; }
 
+/* clickable cells */
+.clickable {
+  cursor: pointer;
+  color: blue;
+  text-decoration: underline;
+}
+
 /* Modal styles */
 #userModal {
   display: none;
@@ -45,12 +52,33 @@ h2 { margin-bottom: 12px; }
 <h2>Merotra Network</h2>
 <div id="matrixHolder">
 <table id="matrixTable">
-<tr><th></th><th>Pon1</th><th>Pon2</th><th>Pon3</th><th>Pon4</th><th>Pon5</th><th>Pon6</th><th>Pon7</th><th>Pon8</th><th>Pon9</th><th>Pon10</th><th>Pon11</th><th>Pon12</th><th>Pon13</th><th>Pon14</th><th>Pon15</th><th>Pon16</th><th>Total</th></tr>
-<tr><th rowspan="4">O1I5</th><td id="ref1" style="cursor:pointer; color:blue; text-decoration:underline;">Ref1</td><td>Ref2</td><td>Ref3</td><td>Ref4</td><td>Ref5</td><td>Ref6</td><td>Ref7</td><td>Ref8</td><td>Ref9</td><td>Ref10</td><td>Ref11</td><td>Ref12</td><td>Ref13</td><td>Ref14</td><td>Ref15</td><td>Ref16</td><td>Ref17</td></tr>
-<tr><td>Ref18</td><td>Ref19</td><td>Ref20</td><td>Ref21</td><td>Ref22</td><td>Ref23</td><td>Ref24</td><td>Ref25</td><td>Ref26</td><td>Ref27</td><td>Ref28</td><td>Ref29</td><td>Ref30</td><td>Ref31</td><td>Ref32</td><td>Ref33</td><td>Ref34</td></tr>
-<tr><td>Ref35</td><td>Ref36</td><td>Ref37</td><td>Ref38</td><td>Ref39</td><td>Ref40</td><td>Ref41</td><td>Ref42</td><td>Ref43</td><td>Ref44</td><td>Ref45</td><td>Ref46</td><td>Ref47</td><td>Ref48</td><td>Ref49</td><td>Ref50</td><td>Ref51</td></tr>
-<tr><td>Ref52</td><td>Ref53</td><td>Ref54</td><td>Ref55</td><td>Ref56</td><td>Ref57</td><td>Ref58</td><td>Ref59</td><td>Ref60</td><td>Ref61</td><td>Ref62</td><td>Ref63</td><td>Ref64</td><td>Ref65</td><td>Ref66</td><td>Ref67</td><td>Ref68</td></tr>
-<!-- baki table same hi rakha hai -->
+<tr>
+  <th></th>
+  <th>Pon1</th><th>Pon2</th><th>Pon3</th><th>Pon4</th><th>Pon5</th><th>Pon6</th><th>Pon7</th><th>Pon8</th>
+  <th>Pon9</th><th>Pon10</th><th>Pon11</th><th>Pon12</th><th>Pon13</th><th>Pon14</th><th>Pon15</th><th>Pon16</th>
+  <th>Total</th>
+</tr>
+<tr>
+  <th rowspan="4">O1I5</th>
+  <td id="pon1" class="clickable">0</td>
+  <td id="pon2" class="clickable">0</td>
+  <td id="pon3" class="clickable">0</td>
+  <td id="pon4" class="clickable">0</td>
+  <td id="pon5" class="clickable">0</td>
+  <td id="pon6" class="clickable">0</td>
+  <td id="pon7" class="clickable">0</td>
+  <td id="pon8" class="clickable">0</td>
+  <td id="pon9" class="clickable">0</td>
+  <td id="pon10" class="clickable">0</td>
+  <td id="pon11" class="clickable">0</td>
+  <td id="pon12" class="clickable">0</td>
+  <td id="pon13" class="clickable">0</td>
+  <td id="pon14" class="clickable">0</td>
+  <td id="pon15" class="clickable">0</td>
+  <td id="pon16" class="clickable">0</td>
+  <td id="oltTotal">0</td>
+</tr>
+<!-- बाकी table same ही रहेगा -->
 </table>
 </div>
 
@@ -67,37 +95,43 @@ h2 { margin-bottom: 12px; }
 const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz-FZM6fwvv0ruaSv-PbEG8sHNOmldJn6kXtRY6e7NZ9YlN3TJ5Oe9ECMwmGBTK-LMTnA/exec';
 const TOKEN = 'abcd1234';
 
-let o1i5p1Users = []; // store users for popup
+let oltData = {}; // { "O1I5P1": [users], "O1I5P2": [users], ... }
 
+// load data
 async function loadData() {
   const url = WEB_APP_URL + '?token=' + encodeURIComponent(TOKEN);
   try {
     const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error('Network response was not ok: ' + response.statusText);
-    }
+    if (!response.ok) throw new Error('Network response was not ok: ' + response.statusText);
     const data = await response.json();
     if (data.error) throw new Error(data.error);
 
     const rows = data.rows || data || [];
-    // Filter only for NMID = "O1I5P1"
-    const filteredRows = rows.filter(row => row['NMID'] === 'O1I5P1' && row['Users']);
-    
-    o1i5p1Users = filteredRows.map(r => r['Users']); // store for popup
-    
-    document.getElementById('ref1').textContent = filteredRows.length;
-  } catch (error) {
-    console.error('Fetch error:', error);
-    document.getElementById('ref1').textContent = 'Error';
+    let total = 0;
+
+    for (let i=1; i<=16; i++) {
+      const nmid = 'O1I5P' + i;
+      const filtered = rows.filter(r => r['NMID'] === nmid && r['Users']);
+      oltData[nmid] = filtered.map(r => r['Users']);
+      const count = oltData[nmid].length;
+      document.getElementById('pon'+i).textContent = count;
+      total += count;
+    }
+
+    document.getElementById('oltTotal').textContent = total;
+
+  } catch (err) {
+    console.error('Fetch error:', err);
   }
 }
 
-// show modal with user IDs
-document.getElementById('ref1').addEventListener('click', () => {
+// modal functions
+function showUsers(nmid) {
+  const users = oltData[nmid] || [];
   const list = document.getElementById('userList');
   list.innerHTML = '';
-  if (o1i5p1Users.length > 0) {
-    o1i5p1Users.forEach(u => {
+  if (users.length > 0) {
+    users.forEach(u => {
       const li = document.createElement('li');
       li.textContent = u;
       list.appendChild(li);
@@ -108,10 +142,16 @@ document.getElementById('ref1').addEventListener('click', () => {
     list.appendChild(li);
   }
   document.getElementById('userModal').style.display = 'block';
-});
-
+}
 function closeModal() {
   document.getElementById('userModal').style.display = 'none';
+}
+
+// attach click listeners
+for (let i=1; i<=16; i++) {
+  document.getElementById('pon'+i).addEventListener('click', () => {
+    showUsers('O1I5P'+i);
+  });
 }
 
 window.addEventListener('load', loadData);
