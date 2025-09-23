@@ -308,11 +308,14 @@
     postToGAS(payload).then(resp => {
       if (resp.success) {
         alert('Complain marked successfully!');
-        fetchData(); // Sync data in real-time
+        // Update the specific row or refetch data
         const rowEl = e.target.closest('tr');
         rowEl.style.transition = 'opacity 1.2s ease, height 1.2s ease';
         rowEl.style.opacity = '0';
-        setTimeout(() => rowEl.remove(), 1200); // Remove after fade
+        setTimeout(() => {
+          rowEl.remove();
+          fetchData(); // Refetch to sync the table
+        }, 1200);
       } else {
         alert('Failed to mark complain: ' + (resp.error || 'Unknown error'));
       }
@@ -327,11 +330,14 @@
     postToGAS(payload).then(resp => {
       if (resp.success) {
         alert('Complain removed successfully!');
-        fetchData(); // Sync data in real-time
+        // Update the specific row or refetch data
         const rowEl = e.target.closest('tr');
         rowEl.style.transition = 'opacity 1.2s ease, height 1.2s ease';
         rowEl.style.opacity = '0';
-        setTimeout(() => rowEl.remove(), 1200); // Remove after fade
+        setTimeout(() => {
+          rowEl.remove();
+          fetchData(); // Refetch to sync the table
+        }, 1200);
       } else {
         alert('Failed to remove complain: ' + (resp.error || 'Unknown error'));
       }
