@@ -42,11 +42,17 @@ h2 { margin-bottom: 12px; }
   color: #555;
 }
 .closeBtn:hover { color: red; }
+
+#dashboardThreshold {
+  margin-bottom: 12px;
+  font-weight: bold;
+}
 </style>
 </head>
 <body>
 
 <h2>Merotra Network</h2>
+<div id="dashboardThreshold">Threshold (Dashboard!A7): <span id="thresholdValue">-</span></div>
 <div id="matrixHolder">
 <table id="matrixTable">
 <tr>
@@ -141,7 +147,10 @@ async function loadData() {
     if (data.error) throw new Error(data.error);
 
     const rows = data.rows || [];
-    dashboardA7 = data.dashboardA7 || null;
+    // Fetch Dashboard!A7 value
+    const dashboardCell = rows.find(r => r['Sheet'] === 'Dashboard' && r['Cell'] === 'A7');
+    dashboardA7 = dashboardCell ? Number(dashboardCell['Value']) : null;
+    document.getElementById('thresholdValue').textContent = dashboardA7 !== null ? dashboardA7 : '-';
 
     let total = 0, offTotal = 0, tickTotal = 0;
 
@@ -152,7 +161,7 @@ async function loadData() {
       const allUsers = filtered.map(r => r['Users']);
       const offUsers = filtered.filter(r => r['Downs']).map(r => r['Users']);
       const tickUsers = filtered.filter(r => r['Ticket']).map(r => r['Users']);
-      // Drops: only non-empty timestamps are considered
+      // Drops: consider only non-empty timestamps
       const dropTimes = filtered.map(r => r['Drops']).filter(v => v && v !== '');
 
       oltData[nmid] = { all: allUsers, off: offUsers, tick: tickUsers, drops: dropTimes };
@@ -164,7 +173,7 @@ async function loadData() {
       // Status calculation
       let statusCell = document.getElementById('stat'+i);
       if (dashboardA7 !== null) {
-        let isOn = dropTimes.length >= Number(dashboardA7);
+        let isOn = dropTimes.length >= dashboardA7;
         if (isOn) {
           statusCell.textContent = "ON";
           statusCell.className = "onStatus";
