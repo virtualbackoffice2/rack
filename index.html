@@ -1,0 +1,172 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TheMaster Sheet Data Table</title>
+
+  <!-- Tabulator CSS -->
+  <link href="https://unpkg.com/tabulator-tables@5.5.3/dist/css/tabulator.min.css" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .topbar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .card {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      background: #fafafa;
+    }
+    #counts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .count-panel {
+      width: 300px;
+      max-height: 300px;
+      overflow: auto;
+      padding: 8px;
+      border: 1px solid #eee;
+      border-radius: 6px;
+      background: #fff;
+    }
+    h3 {
+      margin: 6px 0;
+      font-size: 16px;
+    }
+    #table-holder {
+      margin-top: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="card"><strong>Total rows:</strong> <span id="totalRows">—</span></div>
+    <div class="card"><strong>Unique Users:</strong> <span id="uniqueUsers">—</span></div>
+    <div class="card"><strong>Last update:</strong> <span id="lastUpdate">—</span></div>
+  </div>
+
+  <div id="counts"></div>
+
+  <div id="table-holder">
+    <div id="table"></div>
+  </div>
+
+  <!-- Tabulator JS -->
+  <script src="https://unpkg.com/tabulator-tables@5.5.3/dist/js/tabulator.min.js"></script>
+
+  <script>
+    // ====== CONFIG — ये बदलना नहीं है ======
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz-FZM6fwvv0ruaSv-PbEG8sHNOmldJn6kXtRY6e7NZ9YlN3TJ5Oe9ECMwmGBTK-LMTnA/exec';
+    const TOKEN = 'abcd1234';
+    // =====================================
+
+    function handleSheetData(data) {
+      if (!data || data.error) {
+        alert('Error fetching data: ' + (data && data.error ? data.error : 'unknown'));
+        return;
+      }
+      const rows = data.rows || [];
+      document.getElementById('totalRows').innerText = rows.length;
+      
+      // Unique Users count
+      const usersCol = 'Users';
+      const userSet = new Set(rows.map(r => r[usersCol] ? String(r[usersCol]).trim() : '').filter(x => x));
+      document.getElementById('uniqueUsers').innerText = userSet.size;
+      
+      document.getElementById('lastUpdate').innerText = new Date().toLocaleString();
+
+      // Headers from the first row
+      const headers = rows.length ? Object.keys(rows[0]) : [];
+      
+      // Build counts per header
+      const counts = {};
+      headers.forEach(h => counts[h] = {});
+      rows.forEach(r => {
+        headers.forEach(h => {
+          const v = (r[h] === null || r[h] === undefined) ? '' : String(r[h]);
+          counts[h][v] = (counts[h][v] || 0) + 1;
+        });
+      });
+
+      // Render count panels (top items)
+      const countsHolder = document.getElementById('counts');
+      countsHolder.innerHTML = '';
+      headers.forEach(h => {
+        const map = counts[h];
+        const arr = Object.keys(map).map(k => ({ v: k, c: map[k] })).sort((a, b) => b.c - a.c);
+        const top = arr.slice(0, 15); // top 15 values
+        const panel = document.createElement('div');
+        panel.className = 'count-panel';
+        const title = document.createElement('h3');
+        title.innerText = h;
+        panel.appendChild(title);
+        const ul = document.createElement('ul');
+        ul.style.paddingLeft = '16px';
+        top.forEach(item => {
+          const li = document.createElement('li');
+          li.innerText = `${item.v === '' ? '[empty]' : item.v} — ${item.c}`;
+          ul.appendChild(li);
+        });
+        panel.appendChild(ul);
+        countsHolder.appendChild(panel);
+      });
+
+      // Prepare Tabulator table
+      const colDefs = headers.map((h, i) => ({
+        title: h,
+        field: 'c' + i,
+        headerFilter: 'input',
+        hozAlign: 'left',
+        headerSort: true,
+        widthGrow: 1
+      }));
+      const tableData = rows.map(r => {
+        const out = {};
+        headers.forEach((h, i) => {
+          out['c' + i] = r[h];
+        });
+        return out;
+      });
+
+      if (window.myTabulator) {
+        window.myTabulator.replaceData(tableData);
+      } else {
+        window.myTabulator = new Tabulator('#table', {
+          data: tableData,
+          layout: "fitDataStretch",
+          height: "600px",
+          columns: colDefs,
+          pagination: "local",
+          paginationSize: 50,
+          movableColumns: true,
+          resizableRows: true,
+          placeholder: "No Data Available"
+        });
+      }
+    }
+
+    function loadData() {
+      const script = document.createElement('script');
+      const url = WEB_APP_URL + '?token=' + encodeURIComponent(TOKEN) + '&callback=handleSheetData';
+      script.src = url;
+      script.onerror = function() {
+        alert('Failed to load data. Check WEB_APP_URL and TOKEN in the HTML config.');
+      };
+      document.body.appendChild(script);
+    }
+
+    window.addEventListener('load', loadData);
+  </script>
+</body>
+</html>
