@@ -372,10 +372,10 @@ async function loadData() {
         if (dashboardA7 !== null && !isNaN(dashboardA7)) {
           let isOn = dropCount < dashboardA7;
           if (isOn) {
-            statusCell.textContent = "📗✔️";
+            statusCell.textContent = "📗";
             statusCell.className = "onStatus";
           } else {
-            statusCell.textContent = "🔴❌";
+            statusCell.textContent = "🔴";
             statusCell.className = "offStatus";
           }
         } else {
