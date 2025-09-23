@@ -1,4 +1,3 @@
-```html
 <!doctype html>
 <html>
 <head>
@@ -6,252 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Merotra Network Table</title>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<style>
-body {
-  font-family: 'Roboto', sans-serif;
-  margin: 0;
-  padding: 20px;
-  background-color: #f4f6f8;
-  color: #333;
-}
-h2 {
-  text-align: center;
-  color: #2c3e50;
-  margin-bottom: 20px;
-  font-weight: 700;
-}
-#matrixHolder {
-  overflow-x: auto;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  border-radius: 8px;
-  background: white;
-}
-#matrixTable {
-  border-collapse: collapse;
-  width: 100%;
-}
-#matrixTable th, #matrixTable td {
-  border: 1px solid #ddd;
-  padding: 12px;
-  text-align: center;
-  font-size: 16px; /* Made larger for numbers */
-}
-#matrixTable th {
-  background-color: #3498db;
-  color: white;
-  font-weight: 500;
-  position: sticky;
-  top: 0;
-  z-index: 2;
-}
-.olt-name {
-  font-weight: bold; /* Added weight to OLT names */
-  font-size: 16px; /* Slightly larger */
-}
-.clickable {
-  cursor: pointer;
-  transition: color 0.2s;
-  /* Removed underline and blue color */
-}
-.clickable:hover {
-  color: #1a5276;
-}
-.onStatus {
-  background-color: #27ae60;
-  color: white;
-  font-weight: bold;
-  border-radius: 4px;
-}
-.offStatus {
-  background-color: #e74c3c;
-  color: white;
-  font-weight: bold;
-  border-radius: 4px;
-}
-.separator {
-  background-color: #ecf0f1;
-  font-weight: bold;
-  color: #7f8c8d;
-}
-.separator th {
-  padding: 10px;
-}
-/* Modal styles */
-#userModal {
-  display: none;
-  position: fixed;
-  z-index: 10;
-  left: 0; top: 0;
-  width: 100%; height: 100%;
-  background: rgba(0,0,0,0.5);
-  justify-content: center;
-  align-items: center;
-}
-#userModalContent {
-  background: #fff;
-  padding: 20px;
-  border-radius: 12px;
-  width: 90%;
-  max-width: 800px;
-  max-height: 80%;
-  overflow-y: auto;
-  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-  animation: fadeIn 0.3s;
-}
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-#userModalContent h3 {
-  margin-top: 0;
-  color: #2c3e50;
-  font-weight: 500;
-}
-#modalSubTitle {
-  font-size: 14px;
-  color: #7f8c8d;
-  margin-bottom: 15px;
-}
-.closeBtn {
-  float: right;
-  cursor: pointer;
-  font-weight: bold;
-  color: #bdc3c7;
-  font-size: 24px;
-  transition: color 0.2s;
-}
-.closeBtn:hover { color: #e74c3c; }
-#modalButtons {
-  display: flex;
-  justify-content: center;
-  margin-top: 20px;
-}
-#modalButtons button {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background 0.2s;
-}
-#modalButtons button:first-child {
-  background: #3498db;
-  color: white;
-}
-#modalButtons button:first-child:hover {
-  background: #2980b9;
-}
-#modalButtons button:last-child {
-  background: #27ae60;
-  color: white;
-}
-#modalButtons button:last-child:hover {
-  background: #219a52;
-}
-#userDetails table {
-  width: 100%;
-  border-collapse: collapse;
-}
-#userDetails th, #userDetails td {
-  border: 1px solid #ecf0f1;
-  padding: 10px;
-  text-align: left;
-  font-size: 13px;
-}
-#userDetails th {
-  background-color: #f9f9f9;
-  font-weight: 500;
-}
-.pink { background-color: #ffebee; }
-.red { background-color: #ef5350; color: white; }
-.blink { animation: blink 1s infinite; }
-/* Loading Overlay */
-#loadingOverlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(255,255,255,0.9);
-  z-index: 1000;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-}
-#loadingOverlay .spinner {
-  border: 5px solid #f3f3f3;
-  border-top: 5px solid #3498db;
-  border-radius: 50%;
-  width: 50px;
-  height: 50px;
-  animation: spin 0.5s linear infinite; /* Increased speed for fast feel */
-  box-shadow: 0 0 10px rgba(52, 152, 219, 0.5); /* Added glow for stylish look */
-}
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-#loadingOverlay p {
-  margin-top: 10px;
-  color: #7f8c8d;
-  font-size: 14px;
-}
-/* Toast styles */
-#toast {
-  display: none;
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: #e74c3c;
-  color: white;
-  padding: 15px 30px;
-  border-radius: 8px;
-  z-index: 100;
-  font-size: 16px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-}
-#toast.show {
-  display: block;
-  animation: fadeOut 3s forwards;
-}
-@keyframes fadeOut {
-  0% { opacity: 1; }
-  80% { opacity: 1; }
-  100% { opacity: 0; }
-}
-/* Responsive Design */
-@media (max-width: 768px) {
-  #matrixHolder {
-    overflow-x: auto;
-  }
-  #userModalContent {
-    width: 95%;
-    padding: 15px;
-  }
-  #modalButtons {
-    flex-direction: column;
-  }
-  #modalButtons button {
-    width: 100%;
-    margin-bottom: 10px;
-  }
-  #modalButtons button:last-child {
-    margin-bottom: 0;
-  }
-}
-/* Blink animation for status dots */
-.onStatus, .offStatus {
-  animation: blink 1s infinite; /* Added blink to both */
-}
-@keyframes blink {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
-}
-</style>
 </head>
 <body>
 <div id="loadingOverlay">
@@ -299,7 +54,7 @@ h2 {
   <td id="oltOffTotal-O1I5" class="clickable">⏳</td>
 </tr>
 <tr>
-  <th>Complains</th>
+  <th>Ticket</th>
   <td id="tick1-O1I5" class="clickable">⏳</td>
   <td id="tick2-O1I5" class="clickable">⏳</td>
   <td id="tick3-O1I5" class="clickable">⏳</td>
@@ -311,7 +66,7 @@ h2 {
   <td id="oltTickTotal-O1I5" class="clickable">⏳</td>
 </tr>
 <tr>
-  <th>Line Status</th>
+  <th>Line</th>
   <td id="stat1-O1I5">⏳</td>
   <td id="stat2-O1I5">⏳</td>
   <td id="stat3-O1I5">⏳</td>
@@ -349,7 +104,7 @@ h2 {
   <td id="oltOffTotal-O2I6" class="clickable">⏳</td>
 </tr>
 <tr>
-  <th>Complains</th>
+  <th>Ticket</th>
   <td id="tick1-O2I6" class="clickable">⏳</td>
   <td id="tick2-O2I6" class="clickable">⏳</td>
   <td id="tick3-O2I6" class="clickable">⏳</td>
@@ -361,7 +116,7 @@ h2 {
   <td id="oltTickTotal-O2I6" class="clickable">⏳</td>
 </tr>
 <tr>
-  <th>Line Status</th>
+  <th>Line</th>
   <td id="stat1-O2I6">⏳</td>
   <td id="stat2-O2I6">⏳</td>
   <td id="stat3-O2I6">⏳</td>
@@ -393,7 +148,7 @@ h2 {
   <td id="oltOffTotal-O3I7" class="clickable">⏳</td>
 </tr>
 <tr>
-  <th>Complains</th>
+  <th>Ticket</th>
   <td id="tick1-O3I7" class="clickable">⏳</td>
   <td id="tick2-O3I7" class="clickable">⏳</td>
   <td id="tick3-O3I7" class="clickable">⏳</td>
@@ -402,7 +157,7 @@ h2 {
   <td id="oltTickTotal-O3I7" class="clickable">⏳</td>
 </tr>
 <tr>
-  <th>Line Status</th>
+  <th>Line</th>
   <td id="stat1-O3I7">⏳</td>
   <td id="stat2-O3I7">⏳</td>
   <td id="stat3-O3I7">⏳</td>
@@ -435,7 +190,7 @@ h2 {
   <td id="oltOffTotal-O4I9" class="clickable">⏳</td>
 </tr>
 <tr>
-  <th>Complains</th>
+  <th>Ticket</th>
   <td id="tick1-O4I9" class="clickable">⏳</td>
   <td id="tick2-O4I9" class="clickable">⏳</td>
   <td id="tick3-O4I9" class="clickable">⏳</td>
@@ -444,7 +199,7 @@ h2 {
   <td id="oltTickTotal-O4I9" class="clickable">⏳</td>
 </tr>
 <tr>
-  <th>Line Status</th>
+  <th>Line</th>
   <td id="stat1-O4I9">⏳</td>
   <td id="stat2-O4I9">⏳</td>
   <td id="stat3-O4I9">⏳</td>
@@ -483,7 +238,7 @@ h2 {
   <td id="oltOffTotal-O5I2" class="clickable">⏳</td>
 </tr>
 <tr>
-  <th>Complains</th>
+  <th>Ticket</th>
   <td id="tick1-O5I2" class="clickable">⏳</td>
   <td id="tick2-O5I2" class="clickable">⏳</td>
   <td id="tick3-O5I2" class="clickable">⏳</td>
@@ -495,7 +250,7 @@ h2 {
   <td id="oltTickTotal-O5I2" class="clickable">⏳</td>
 </tr>
 <tr>
-  <th>Line Status</th>
+  <th>Line</th>
   <td id="stat1-O5I2">⏳</td>
   <td id="stat2-O5I2">⏳</td>
   <td id="stat3-O5I2">⏳</td>
@@ -512,12 +267,12 @@ h2 {
 <div id="userModal">
   <div id="userModalContent">
     <span class="closeBtn" onclick="closeModal()">&times;</span>
+    <div id="modalButtons"></div>
     <div id="screenshotContent">
       <h3 id="modalTitle">Users Details</h3>
       <div id="modalSubTitle"></div>
       <div id="userDetails"></div>
     </div>
-    <div id="modalButtons"></div>
   </div>
 </div>
 <!-- Toast -->
@@ -525,6 +280,7 @@ h2 {
 <script>
 const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz-FZM6fwvv0ruaSv-PbEG8sHNOmldJn6kXtRY6e7NZ9YlN3TJ5Oe9ECMwmGBTK-LMTnA/exec';
 const TOKEN = 'abcd1234';
+const STATUS_LINK = 'https://script.google.com/macros/s/AKfycbx4y-2MDbT1aNzC1R2PvS041XL84Cqs0cbrZ0vIj2A/dev';
 let oltData = {};
 let dashboardA7 = null;
 async function loadData() {
@@ -563,11 +319,11 @@ async function loadData() {
         if (dashboardA7 !== null && !isNaN(dashboardA7)) {
           let isOn = dropCount < dashboardA7;
           if (isOn) {
-            statusCell.textContent = "📗✔️";
-            statusCell.className = "onStatus";
+            statusCell.innerHTML = `<a href="${STATUS_LINK}" target="_self">🟢</a>`;
+            statusCell.className = "onStatus clickable";
           } else {
-            statusCell.textContent = "🔴❌";
-            statusCell.className = "offStatus";
+            statusCell.innerHTML = `<a href="${STATUS_LINK}" target="_self">🔴</a>`;
+            statusCell.className = "offStatus clickable";
           }
         } else {
           statusCell.textContent = "-";
@@ -693,7 +449,7 @@ function attachEventListeners() {
 function showUsers(type, nmid, olt, pon) {
   let title = "Users Details";
   if (type === "off") title = "Offline Users Details";
-  if (type === "tick") title = "Complains Users Details";
+  if (type === "tick") title = "Ticket Users Details";
   document.getElementById('modalTitle').textContent = title;
   document.getElementById('modalSubTitle').textContent = `OLT: ${olt} PON: ${pon}`;
   const currentUsers = (oltData[nmid] && oltData[nmid][type]) || [];
@@ -720,7 +476,6 @@ function showUsers(type, nmid, olt, pon) {
   modalButtons.innerHTML = '';
   const downloadBtn = document.createElement('button');
   downloadBtn.textContent = 'Download CSV';
-  downloadBtn.style.marginRight = '10px';
   downloadBtn.onclick = () => {
     try {
       let csv = 'Sn,Name,Number,Location,Address,Power,Remarks\n';
@@ -783,13 +538,13 @@ function showUsers(type, nmid, olt, pon) {
     });
   };
   modalButtons.appendChild(shareBtn);
-  document.getElementById('userModal').style.display = 'block';
+  document.getElementById('userModal').style.display = 'flex';
 }
 // Modal for OLT totals
 function showOltUsers(type, olt, maxPon) {
   let title = "All Users Details";
   if (type === "off") title = "All Offline Users Details";
-  if (type === "tick") title = "All Complains Users Details";
+  if (type === "tick") title = "All Ticket Users Details";
   document.getElementById('modalTitle').textContent = title;
   document.getElementById('modalSubTitle').textContent = `OLT: ${olt}`;
   let currentUsers = [];
@@ -822,7 +577,6 @@ function showOltUsers(type, olt, maxPon) {
   modalButtons.innerHTML = '';
   const downloadBtn = document.createElement('button');
   downloadBtn.textContent = 'Download CSV';
-  downloadBtn.style.marginRight = '10px';
   downloadBtn.onclick = () => {
     try {
       let csv = 'Sn,Name,Number,Location,Address,Power,Remarks\n';
@@ -885,7 +639,7 @@ function showOltUsers(type, olt, maxPon) {
     });
   };
   modalButtons.appendChild(shareBtn);
-  document.getElementById('userModal').style.display = 'block';
+  document.getElementById('userModal').style.display = 'flex';
 }
 function closeModal() {
   document.getElementById('userModal').style.display = 'none';
@@ -894,4 +648,3 @@ window.addEventListener('load', loadData);
 </script>
 </body>
 </html>
-```
