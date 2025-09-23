@@ -146,11 +146,21 @@ function buildTableHTML(matrix, ponList){
   return html;
 }
 
-// Load data via JSONP
-function loadData(){
-  const script = document.createElement('script');
-  script.src = WEB_APP_URL + '?token=' + encodeURIComponent(TOKEN) + '&callback=handleSheetData';
-  document.body.appendChild(script);
+// Load data via fetch
+async function loadData(){
+  const url = WEB_APP_URL + '?token=' + encodeURIComponent(TOKEN);
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Network response was not ok: ' + response.statusText);
+    }
+    const data = await response.json();
+    handleSheetData(data);
+  } catch (error) {
+    console.error('Fetch error:', error);
+    // Optional: Display error in UI
+    document.getElementById('matrixHolder').innerHTML = '<p>Error loading data: ' + error.message + '</p>';
+  }
 }
 
 function handleSheetData(data){
