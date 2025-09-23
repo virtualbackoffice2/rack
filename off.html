@@ -6,34 +6,8 @@
   <title>Complain Manager</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="styles.css">
-  <style>
-    /* Minimal inline styles required for functionality (styling will be moved to styles.css later) */
-    body{font-family:system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;margin:18px}
-    h1{font-size:24px;margin-bottom:10px}
-    .controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-    button{padding:8px 10px;border:1px solid #ccc;background:#f7f7f7;border-radius:6px;cursor:pointer}
-    select,input{padding:6px;border:1px solid #ccc;border-radius:6px}
-    table{width:100%;border-collapse:collapse;margin-top:12px}
-    th,td{border:1px solid #e5e5e5;padding:8px;text-align:left}
-    th.sortable{cursor:pointer}
-    tr.offline{background:#ffeef0} /* light pink */
-    tr.ticket{background:#ff9999} /* more red tint for tickets */
-    .spinner-overlay{position:fixed;inset:0;background:rgba(255,255,255,0.7);display:none;align-items:center;justify-content:center;z-index:9999}
-    .spinner{width:64px;height:64px;border-radius:50%;border:8px solid #eee;border-top-color:#666;animation:spin 1s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .count-badge{font-weight:600;margin-left:8px}
-    .small-btn{padding:6px 8px;font-size:13px}
-    .fade-out{transition:opacity 0.8s ease,height 0.8s ease;margin:0;padding:0}
-    .remark-input{width:95%}
-    .icon-btn{border:none;background:transparent;cursor:pointer;font-size:16px;margin-left:6px}
-    .top-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-    .filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .disabled{opacity:0.6;pointer-events:none}
-    .mark-btn i { color: #28a745; } /* Green for mark */
-    .remove-btn i { color: #dc3545; } /* Red for remove */
-  </style>
-  <!-- html2canvas for screenshot functionality -->
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <!-- Optional: Add stylesoff.css for switching -->
+  <!-- <link rel="stylesheet" href="stylesoff.css" id="themeStyle"> -->
 </head>
 <body>
   <h1>Complain Manager</h1>
@@ -45,9 +19,9 @@
       <button id="btnDownloadCsv">D - Download CSV</button>
       <button id="btnScreenshotWhatsapp">E - Screenshot & share to WhatsApp</button>
     </div>
-    <div style="margin-left:10px">User count: <span id="userCount">0</span></div>
+    <div>User count: <span id="userCount">0</span></div>
   </div>
-  <div class="filters" style="margin-top:12px">
+  <div class="filters">
     <label>Window: <select id="selWindow"><option value="">-- All --</option></select></label>
     <label>PON: <select id="selPon"><option value="">-- All --</option></select></label>
     <label>User ID: <input id="searchUser" placeholder="User ID (Users)"></label>
@@ -75,7 +49,22 @@
       <tbody></tbody>
     </table>
   </div>
-  <div class="spinner-overlay" id="spinnerOverlay"><div class="spinner"></div></div>
+  <div id="spinnerOverlay"><div class="spinner"></div><p>Loading...</p></div>
+  <!-- Basic Modal Structure (Optional) -->
+  <div id="userModal">
+    <div id="userModalContent">
+      <span class="closeBtn">&times;</span>
+      <h3>User Details</h3>
+      <p id="modalSubTitle">Additional information</p>
+      <div id="modalButtons">
+        <button>Action 1</button>
+        <button>Action 2</button>
+      </div>
+      <div id="userDetails">
+        <!-- Dynamic content will go here -->
+      </div>
+    </div>
+  </div>
   <script>
   // --- CONFIG: update these to your deployed GAS endpoint & token ---
   const GAS_URL = "https://script.google.com/macros/s/AKfycbz-FZM6fwvv0ruaSv-PbEG8sHNOmldJn6kXtRY6e7NZ9YlN3TJ5Oe9ECMwmGBTK-LMTnA/exec";
