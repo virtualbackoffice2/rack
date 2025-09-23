@@ -1,0 +1,189 @@
+/* stylesoff.css */
+body {
+  font-family: 'Roboto', sans-serif;
+  margin: 0;
+  padding: 20px;
+  background-color: #ffffff;
+  color: #333;
+}
+
+h1 {
+  text-align: center;
+  color: #2c3e50;
+  margin-bottom: 20px;
+  font-weight: 700;
+  font-size: 24px;
+}
+
+#tableWrap {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+#dataTable {
+  border-collapse: collapse;
+  width: 100%;
+  background: #ffffff;
+}
+
+#dataTable th,
+#dataTable td {
+  border: 1px solid #e0e4e8;
+  padding: 14px;
+  text-align: center;
+  font-size: 18px;
+}
+
+#dataTable th {
+  background-color: #3498db;
+  color: white;
+  font-weight: 500;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+#dataTable th.sortable {
+  cursor: pointer;
+}
+
+#dataTable tr:hover td {
+  background: #f8fafc;
+}
+
+tr.offline {
+  background-color: #ffebee;
+}
+
+tr.ticket {
+  background-color: #ef5350;
+  color: white;
+}
+
+.olt-name {
+  font-weight: 700;
+  font-size: 18px;
+  color: #2c3e50;
+}
+
+.mark-btn i {
+  color: #27ae60;
+}
+
+.remove-btn i {
+  color: #e74c3c;
+}
+
+.mark-btn,
+.remove-btn {
+  border: none;
+  background: transparent;
+  padding: 6px 8px;
+  font-size: 13px;
+  margin-left: 6px;
+}
+
+.remark-input {
+  width: 95%;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.top-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.controls button,
+.filters select,
+.filters input {
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  background: #f7f7f7;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.filters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.count-badge {
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.fade-out {
+  transition: opacity 0.8s ease, height 0.8s ease;
+  margin: 0;
+  padding: 0;
+}
+
+/* Spinner Overlay */
+#spinnerOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255,255,255,0.9);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+#spinnerOverlay .spinner {
+  border: 8px solid #f3f3f3;
+  border-top: 8px solid #3498db;
+  border-radius: 50%;
+  width: 70px;
+  height: 70px;
+  animation: spin 0.3s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  #tableWrap {
+    overflow-x: auto;
+  }
+  #dataTable th,
+  #dataTable td {
+    font-size: 14px;
+    padding: 10px;
+  }
+  .top-row,
+  .filters {
+    flex-direction: column;
+  }
+  .controls button,
+  .filters select,
+  .filters input {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  .top-row div {
+    margin-left: 0;
+  }
+}
