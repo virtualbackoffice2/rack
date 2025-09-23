@@ -172,7 +172,7 @@ async function loadData() {
       let statusCell = document.getElementById('stat'+i);
       let dropCount = dropTimes.length;
       if (dashboardA7 !== null) {
-        let isOn = dropCount >= dashboardA7;
+        let isOn = dropCount < dashboardA7;
         if (isOn) {
           statusCell.textContent = "ON (" + dropCount + ")";
           statusCell.className = "onStatus";
