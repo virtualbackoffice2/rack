@@ -11,22 +11,22 @@
   <h1>Complain Manager</h1>
   <div class="top-row">
     <div class="controls">
-      <button id="btnComplains">A - Complains</button>
-      <button id="btnOffline">B - Offline users</button>
-      <button id="btnDrops">C - Drop users</button>
-      <button id="btnDownloadCsv">D - Download CSV</button>
-      <button id="btnScreenshotWhatsapp">E - Screenshot & Share</button>
+      <button id="btnComplains">Complains</button>
+      <button id="btnOffline">Offline</button>
+      <button id="btnDrops">Drops</button>
+      <button id="btnDownloadCsv">CSV</button>
+      <button id="btnScreenshotWhatsapp">Screenshot</button>
     </div>
     <div>User count: <span id="userCount">0</span></div>
   </div>
   <div class="filters">
-    <label>Window: <select id="selWindow"><option value="">Select Window</option></select></label>
-    <label>PON: <select id="selPon"><option value="">Select PON</option></select></label>
-    <label>User ID: <input id="searchUser" placeholder="Enter User ID"></label>
-    <label>Mobile no: <input id="searchMobile" placeholder="Enter Mobile No"></label>
-    <label>Name: <input id="searchName" placeholder="Enter Name"></label>
-    <label>Mac/Serial: <input id="searchMac" placeholder="Enter Mac/Serial"></label>
-    <label>Time filter: <select id="selTimeFilter"><option value="">Select Time</option></select></label>
+    <select id="selWindow" placeholder="Select Window"></select>
+    <select id="selPon" placeholder="Select PON"></select>
+    <input id="searchUser" placeholder="Enter User ID">
+    <input id="searchMobile" placeholder="Enter Mobile No">
+    <input id="searchName" placeholder="Enter Name">
+    <input id="searchMac" placeholder="Enter Mac/Serial">
+    <select id="selTimeFilter" placeholder="Select Time"></select>
   </div>
   <div id="tableWrap">
     <table id="dataTable">
@@ -208,7 +208,10 @@
   }
   function populateTimeFilter() {
     const times = new Set();
-    filtered.forEach(r => { const v = (r['Drops'] || r['AB'] || '').toString(); if (v) times.add(v); });
+    filtered.forEach(r => {
+      const v = (r['Drops'] || r['AB'] || '').toString();
+      if (v) times.add(v);
+    });
     selTimeFilter.innerHTML = '<option value="">Select Time</option>' + Array.from(times).sort().map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
   }
   function renderTable() {
