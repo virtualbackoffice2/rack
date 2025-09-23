@@ -58,8 +58,10 @@ h2 { margin-bottom: 12px; }
   <th>Pon9</th><th>Pon10</th><th>Pon11</th><th>Pon12</th><th>Pon13</th><th>Pon14</th><th>Pon15</th><th>Pon16</th>
   <th>Total</th>
 </tr>
+
+<!-- Main user counts -->
 <tr>
-  <th rowspan="4">O1I5</th>
+  <th rowspan="3">O1I5</th>
   <td id="pon1" class="clickable">0</td>
   <td id="pon2" class="clickable">0</td>
   <td id="pon3" class="clickable">0</td>
@@ -78,7 +80,49 @@ h2 { margin-bottom: 12px; }
   <td id="pon16" class="clickable">0</td>
   <td id="oltTotal">0</td>
 </tr>
-<!-- बाकी table same ही रहेगा -->
+
+<!-- Offline counts -->
+<tr>
+  <td id="off1" class="clickable">0</td>
+  <td id="off2" class="clickable">0</td>
+  <td id="off3" class="clickable">0</td>
+  <td id="off4" class="clickable">0</td>
+  <td id="off5" class="clickable">0</td>
+  <td id="off6" class="clickable">0</td>
+  <td id="off7" class="clickable">0</td>
+  <td id="off8" class="clickable">0</td>
+  <td id="off9" class="clickable">0</td>
+  <td id="off10" class="clickable">0</td>
+  <td id="off11" class="clickable">0</td>
+  <td id="off12" class="clickable">0</td>
+  <td id="off13" class="clickable">0</td>
+  <td id="off14" class="clickable">0</td>
+  <td id="off15" class="clickable">0</td>
+  <td id="off16" class="clickable">0</td>
+  <td id="oltOffTotal">0</td>
+</tr>
+
+<!-- Ticket counts -->
+<tr>
+  <td id="tick1" class="clickable">0</td>
+  <td id="tick2" class="clickable">0</td>
+  <td id="tick3" class="clickable">0</td>
+  <td id="tick4" class="clickable">0</td>
+  <td id="tick5" class="clickable">0</td>
+  <td id="tick6" class="clickable">0</td>
+  <td id="tick7" class="clickable">0</td>
+  <td id="tick8" class="clickable">0</td>
+  <td id="tick9" class="clickable">0</td>
+  <td id="tick10" class="clickable">0</td>
+  <td id="tick11" class="clickable">0</td>
+  <td id="tick12" class="clickable">0</td>
+  <td id="tick13" class="clickable">0</td>
+  <td id="tick14" class="clickable">0</td>
+  <td id="tick15" class="clickable">0</td>
+  <td id="tick16" class="clickable">0</td>
+  <td id="oltTickTotal">0</td>
+</tr>
+
 </table>
 </div>
 
@@ -86,7 +130,7 @@ h2 { margin-bottom: 12px; }
 <div id="userModal">
   <div id="userModalContent">
     <span class="closeBtn" onclick="closeModal()">&times;</span>
-    <h3>User IDs</h3>
+    <h3 id="modalTitle">User IDs</h3>
     <ul id="userList"></ul>
   </div>
 </div>
@@ -95,9 +139,9 @@ h2 { margin-bottom: 12px; }
 const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz-FZM6fwvv0ruaSv-PbEG8sHNOmldJn6kXtRY6e7NZ9YlN3TJ5Oe9ECMwmGBTK-LMTnA/exec';
 const TOKEN = 'abcd1234';
 
-let oltData = {}; // { "O1I5P1": [users], "O1I5P2": [users], ... }
+// Data storage
+let oltData = {}; // { "O1I5P1": {all:[], off:[], tick:[]} }
 
-// load data
 async function loadData() {
   const url = WEB_APP_URL + '?token=' + encodeURIComponent(TOKEN);
   try {
@@ -107,27 +151,45 @@ async function loadData() {
     if (data.error) throw new Error(data.error);
 
     const rows = data.rows || data || [];
-    let total = 0;
+    let total = 0, offTotal = 0, tickTotal = 0;
 
     for (let i=1; i<=16; i++) {
       const nmid = 'O1I5P' + i;
       const filtered = rows.filter(r => r['NMID'] === nmid && r['Users']);
-      oltData[nmid] = filtered.map(r => r['Users']);
-      const count = oltData[nmid].length;
-      document.getElementById('pon'+i).textContent = count;
-      total += count;
+
+      const allUsers = filtered.map(r => r['Users']);
+      const offUsers = filtered.filter(r => r['Downs']).map(r => r['Users']);
+      const tickUsers = filtered.filter(r => r['Ticket']).map(r => r['Users']);
+
+      oltData[nmid] = { all: allUsers, off: offUsers, tick: tickUsers };
+
+      document.getElementById('pon'+i).textContent = allUsers.length;
+      document.getElementById('off'+i).textContent = offUsers.length;
+      document.getElementById('tick'+i).textContent = tickUsers.length;
+
+      total += allUsers.length;
+      offTotal += offUsers.length;
+      tickTotal += tickUsers.length;
     }
 
     document.getElementById('oltTotal').textContent = total;
+    document.getElementById('oltOffTotal').textContent = offTotal;
+    document.getElementById('oltTickTotal').textContent = tickTotal;
 
   } catch (err) {
     console.error('Fetch error:', err);
   }
 }
 
-// modal functions
-function showUsers(nmid) {
-  const users = oltData[nmid] || [];
+// modal function
+function showUsers(type, nmid) {
+  let title = "User IDs";
+  if (type==="off") title = "Offline Users";
+  if (type==="tick") title = "Ticket Users";
+
+  document.getElementById('modalTitle').textContent = title;
+
+  const users = (oltData[nmid] && oltData[nmid][type]) || [];
   const list = document.getElementById('userList');
   list.innerHTML = '';
   if (users.length > 0) {
@@ -147,11 +209,11 @@ function closeModal() {
   document.getElementById('userModal').style.display = 'none';
 }
 
-// attach click listeners
+// attach listeners
 for (let i=1; i<=16; i++) {
-  document.getElementById('pon'+i).addEventListener('click', () => {
-    showUsers('O1I5P'+i);
-  });
+  document.getElementById('pon'+i).addEventListener('click', () => showUsers('all','O1I5P'+i));
+  document.getElementById('off'+i).addEventListener('click', () => showUsers('off','O1I5P'+i));
+  document.getElementById('tick'+i).addEventListener('click', () => showUsers('tick','O1I5P'+i));
 }
 
 window.addEventListener('load', loadData);
