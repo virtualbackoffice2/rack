@@ -147,7 +147,8 @@ async function loadData() {
     if (data.error) throw new Error(data.error);
 
     const rows = data.rows || [];
-    dashboardA7 = data.dashboardA7 !== null ? Number(data.dashboardA7) : null;
+    // Ensure dashboardA7 is correctly extracted from the response
+    dashboardA7 = data.dashboardA7 !== undefined && data.dashboardA7 !== null ? Number(data.dashboardA7) : null;
     document.getElementById('thresholdValue').textContent = dashboardA7 !== null ? dashboardA7 : '-';
 
     let total = 0, offTotal = 0, tickTotal = 0;
@@ -171,7 +172,7 @@ async function loadData() {
       // Status calculation
       let statusCell = document.getElementById('stat'+i);
       let dropCount = dropTimes.length;
-      if (dashboardA7 !== null) {
+      if (dashboardA7 !== null && !isNaN(dashboardA7)) {
         let isOn = dropCount < dashboardA7;
         if (isOn) {
           statusCell.textContent = "ON (" + dropCount + ")";
@@ -182,6 +183,7 @@ async function loadData() {
         }
       } else {
         statusCell.textContent = "- (" + dropCount + ")";
+        statusCell.className = "";
       }
 
       total += allUsers.length;
@@ -195,6 +197,7 @@ async function loadData() {
 
   } catch (err) {
     console.error('Fetch error:', err);
+    document.getElementById('thresholdValue').textContent = 'Error';
   }
 }
 
