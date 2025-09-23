@@ -53,7 +53,7 @@ h2 { margin-bottom: 12px; }
   <th></th>
   <th>Pon1</th><th>Pon2</th><th>Pon3</th><th>Pon4</th>
   <th>Pon5</th><th>Pon6</th><th>Pon7</th><th>Pon8</th>
-  <th colspan="8"></th> <!-- Pon9-16 removed -->
+  <th colspan="8"></th>
   <th>Total</th>
 </tr>
 
@@ -129,7 +129,7 @@ h2 { margin-bottom: 12px; }
 const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz-FZM6fwvv0ruaSv-PbEG8sHNOmldJn6kXtRY6e7NZ9YlN3TJ5Oe9ECMwmGBTK-LMTnA/exec';
 const TOKEN = 'abcd1234';
 
-let oltData = {}; // { "O1I5P1": {all:[], off:[], tick:[], drops:[]} }
+let oltData = {};
 let dashboardA7 = null;
 
 async function loadData() {
@@ -140,9 +140,8 @@ async function loadData() {
     const data = await response.json();
     if (data.error) throw new Error(data.error);
 
-    const rows = data.rows || data || [];
-    // Dashboard A7 value
-    dashboardA7 = rows.find(r => r['Sheet'] === 'Dashboard' && r['Cell'] === 'A7')?.['Value'] || null;
+    const rows = data.rows || [];
+    dashboardA7 = data.dashboardA7 || null;
 
     let total = 0, offTotal = 0, tickTotal = 0;
 
@@ -163,8 +162,8 @@ async function loadData() {
 
       // Status calculation
       let statusCell = document.getElementById('stat'+i);
-      if (dashboardA7) {
-        let isOn = dropTimes.some(t => t > dashboardA7);
+      if (dashboardA7 !== null) {
+        let isOn = dropTimes.length >= Number(dashboardA7);
         if (isOn) {
           statusCell.textContent = "ON";
           statusCell.className = "onStatus";
