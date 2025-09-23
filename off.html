@@ -94,7 +94,6 @@
   function jsonpGet(url, timeoutMs = 10000) {
     return new Promise((resolve, reject) => {
       const callbackName = '__onGAS_' + Math.random().toString(36).slice(2);
-      // attach callback to window
       window[callbackName] = function(data) {
         cleanup();
         resolve(data);
@@ -109,90 +108,86 @@
         cleanup();
         reject(new Error('JSONP request timed out'));
       }, timeoutMs);
-      function cleanup(){
+      function cleanup() {
         clearTimeout(timer);
-        try{ delete window[callbackName]; } catch(e){ window[callbackName] = undefined; }
-        if(script.parentNode) script.parentNode.removeChild(script);
+        try { delete window[callbackName]; } catch(e) { window[callbackName] = undefined; }
+        if (script.parentNode) script.parentNode.removeChild(script);
       }
-      script.onerror = function(e){ if(timedOut) return; cleanup(); reject(new Error('JSONP script error')); };
+      script.onerror = function(e) { if (timedOut) return; cleanup(); reject(new Error('JSONP script error')); };
       document.head.appendChild(script);
     });
   }
   function fetchData() {
     showSpinner();
-    // Use JSONP to avoid CORS failures when calling the Apps Script webapp (doGet supports callback param)
     const url = GAS_URL + '?token=' + encodeURIComponent(TOKEN);
     jsonpGet(url, 12000).then(data => {
       rawRows = data && data.rows ? data.rows : [];
       populateWindowPon();
-      // default: show all offline users
       applyQuickFilterOffline();
     }).catch(err => {
       console.error('Failed to fetch via JSONP:', err);
-      // as a last resort, try a normal fetch (may still fail due to CORS)
-      return fetch(url).then(r=>r.json()).then(data=>{
+      fetch(url).then(r => r.json()).then(data => {
         rawRows = data && data.rows ? data.rows : [];
         populateWindowPon();
         applyQuickFilterOffline();
-      }).catch(err2=>{
+      }).catch(err2 => {
         console.error('Fallback fetch failed:', err2);
         alert('Unable to load data from server (CORS or network error).\nSee console for details.');
       });
-    }).finally(()=>hideSpinner());
+    }).finally(() => hideSpinner());
   }
   // -----------------------------
-  // POST helper: try normal POST first; if CORS blocks, fall back to a no-cors fire-and-forget POST
-  // This preserves functionality in most environments. If you need a guaranteed response body, add CORS headers server-side.
+  // POST helper with improved error handling
   // -----------------------------
-  function postToGAS(obj){
+  function postToGAS(obj) {
     const url = GAS_URL + '?token=' + encodeURIComponent(TOKEN);
     const json = JSON.stringify(obj);
-    // Try a standard POST (this may fail with TypeError if server doesn't allow CORS)
+    showSpinner();
     return fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: json
     }).then(r => {
-      // If server responds normally, attempt to parse JSON; if parsing fails, still treat as success
-      if (r.ok) return r.json().catch(()=>({ success: true }));
-      throw new Error('Server responded with status ' + r.status);
+      if (!r.ok) throw new Error(`Server responded with status ${r.status}`);
+      return r.json();
+    }).then(resp => {
+      if (!resp.success) throw new Error('Server returned failure');
+      return resp;
     }).catch(err => {
-      console.warn('Standard POST failed (likely CORS). Falling back to no-cors fire-and-forget POST.', err);
-      // Fire-and-forget no-cors POST: the request will be sent but response will be opaque and unreadable.
+      console.error('POST error:', err);
       return fetch(url, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain' },
         body: json
       }).then(() => ({ success: true, fallback: true }))
-        .catch(e => ({ error: e && e.message ? e.message : String(e) }));
-    });
+        .catch(e => {
+          console.error('Fallback POST failed:', e);
+          throw e;
+        });
+    }).finally(() => hideSpinner());
   }
-  function populateWindowPon(){
+  function populateWindowPon() {
     const windows = new Set();
     const ponsForWindow = {};
     rawRows.forEach(r => {
       const win = r['Window'] || r['window'] || r['A'] || '';
       const pon = r['NMID'] || r['nmID'] || r['C'] || '';
       windows.add(win);
-      if(!ponsForWindow[win]) ponsForWindow[win] = new Set();
-      if(pon) ponsForWindow[win].add(pon);
+      if (!ponsForWindow[win]) ponsForWindow[win] = new Set();
+      if (pon) ponsForWindow[win].add(pon);
     });
-    // fill window
-    selWindow.innerHTML = '<option value="">-- All --</option>' + Array.from(windows).sort().map(w=>`<option value="${escapeHtml(w)}">${escapeHtml(w)}</option>`).join('');
-    // store pons map on element for later
+    selWindow.innerHTML = '<option value="">-- All --</option>' + Array.from(windows).sort().map(w => `<option value="${escapeHtml(w)}">${escapeHtml(w)}</option>`).join('');
     selWindow._ponsMap = ponsForWindow;
-    // set PON options to all by default
     fillPonOptions('');
   }
-  function fillPonOptions(windowName){
+  function fillPonOptions(windowName) {
     const map = selWindow._ponsMap || {};
-    const set = windowName ? (map[windowName]||new Set()) : new Set(Object.values(map).flatMap(s=>Array.from(s)));
-    const opts = Array.from(set).sort().map(p=>`<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+    const set = windowName ? (map[windowName] || new Set()) : new Set(Object.values(map).flatMap(s => Array.from(s)));
+    const opts = Array.from(set).sort().map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
     selPon.innerHTML = '<option value="">-- All --</option>' + opts;
   }
-  function applyQuickFilterOffline(){
-    // show rows where Downs (col T) has any value
+  function applyQuickFilterOffline() {
     filtered = rawRows.filter(r => {
       const val = (r['Downs'] || r['T'] || '').toString().trim();
       return val !== '';
@@ -200,7 +195,7 @@
     renderTable();
     populateTimeFilter();
   }
-  function applyFilterComplains(){
+  function applyFilterComplains() {
     filtered = rawRows.filter(r => {
       const val = (r['Ticket'] || r['X'] || '').toString().trim();
       return val !== '';
@@ -208,7 +203,7 @@
     renderTable();
     populateTimeFilter();
   }
-  function applyFilterDrops(){
+  function applyFilterDrops() {
     filtered = rawRows.filter(r => {
       const val = (r['Drops'] || r['AB'] || '').toString().trim();
       return val !== '';
@@ -216,7 +211,7 @@
     renderTable();
     populateTimeFilter();
   }
-  function applyAllFilters(){
+  function applyAllFilters() {
     const win = selWindow.value;
     const pon = selPon.value;
     const userId = document.getElementById('searchUser').value.trim().toLowerCase();
@@ -224,55 +219,54 @@
     const name = document.getElementById('searchName').value.trim().toLowerCase();
     const mac = document.getElementById('searchMac').value.trim().toLowerCase();
     const timeSel = selTimeFilter.value;
-    filtered = rawRows.filter(r=>{
-      if(win){ const v = (r['Window']||r['window']||'').toString(); if(v!==win) return false }
-      if(pon){ const v = (r['NMID']||r['C']||'').toString(); if(v!==pon) return false }
-      if(userId && userId.length >= 3){ const v = (r['Users']||r['N']||'').toString().toLowerCase(); if(!v.includes(userId)) return false }
-      if(mobile && mobile.length >= 3){ const v1 = (r['Last called no']||r['AC']||'').toString().toLowerCase(); const v2 = (r['Number']||r['P']||'').toString().toLowerCase(); if(!v1.includes(mobile) && !v2.includes(mobile)) return false }
-      if(name && name.length >= 3){ const v = (r['Name']||r['O']||'').toString().toLowerCase(); if(!v.includes(name)) return false }
-      if(mac && mac.length >= 3){ const v1 = (r['MAC']||r['U']||'').toString().toLowerCase(); const v2 = (r['Serial']||r['V']||'').toString().toLowerCase(); if(!v1.includes(mac) && !v2.includes(mac)) return false }
-      if(timeSel){ const v = (r['Drops']||r['AB']||'').toString(); if(v!==timeSel) return false }
+    filtered = rawRows.filter(r => {
+      if (win) { const v = (r['Window'] || r['window'] || '').toString(); if (v !== win) return false }
+      if (pon) { const v = (r['NMID'] || r['C'] || '').toString(); if (v !== pon) return false }
+      if (userId && userId.length >= 3) { const v = (r['Users'] || r['N'] || '').toString().toLowerCase(); if (!v.includes(userId)) return false }
+      if (mobile && mobile.length >= 3) { const v1 = (r['Last called no'] || r['AC'] || '').toString().toLowerCase(); const v2 = (r['Number'] || r['P'] || '').toString().toLowerCase(); if (!v1.includes(mobile) && !v2.includes(mobile)) return false }
+      if (name && name.length >= 3) { const v = (r['Name'] || r['O'] || '').toString().toLowerCase(); if (!v.includes(name)) return false }
+      if (mac && mac.length >= 3) { const v1 = (r['MAC'] || r['U'] || '').toString().toLowerCase(); const v2 = (r['Serial'] || r['V'] || '').toString().toLowerCase(); if (!v1.includes(mac) && !v2.includes(mac)) return false }
+      if (timeSel) { const v = (r['Drops'] || r['AB'] || '').toString(); if (v !== timeSel) return false }
       return true;
     });
     renderTable();
   }
-  function populateTimeFilter(){
+  function populateTimeFilter() {
     const times = new Set();
-    filtered.forEach(r=>{ const v = (r['Drops']||r['AB']||'').toString(); if(v) times.add(v); });
-    selTimeFilter.innerHTML = '<option value="">--All--</option>' + Array.from(times).sort().map(t=>`<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+    filtered.forEach(r => { const v = (r['Drops'] || r['AB'] || '').toString(); if (v) times.add(v); });
+    selTimeFilter.innerHTML = '<option value="">--All--</option>' + Array.from(times).sort().map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
   }
-  function renderTable(){
+  function renderTable() {
     tbody.innerHTML = '';
     document.getElementById('userCount').innerText = filtered.length;
     let rowsToRender = filtered.slice();
-    // sorting if set
-    if(currentSort.key){
-      rowsToRender.sort((a,b)=>{
-        const ka = (a[currentSort.key]||a[keyOrAlt(a,currentSort.key)]||'').toString();
-        const kb = (b[currentSort.key]||b[keyOrAlt(b,currentSort.key)]||'').toString();
-        if(ka<kb) return currentSort.asc? -1:1;
-        if(ka>kb) return currentSort.asc? 1:-1;
+    if (currentSort.key) {
+      rowsToRender.sort((a, b) => {
+        const ka = (a[currentSort.key] || a[keyOrAlt(a, currentSort.key)] || '').toString();
+        const kb = (b[currentSort.key] || b[keyOrAlt(b, currentSort.key)] || '').toString();
+        if (ka < kb) return currentSort.asc ? -1 : 1;
+        if (ka > kb) return currentSort.asc ? 1 : -1;
         return 0;
       });
     }
-    rowsToRender.forEach((r, idx)=>{
+    rowsToRender.forEach((r, idx) => {
       const tr = document.createElement('tr');
-      const isOffline = (r['Downs']||r['T']||'').toString().trim() !== '';
-      const isTicket = (r['Ticket']||r['X']||'').toString().trim() !== '';
-      if(isOffline) tr.classList.add('offline');
-      if(isTicket) tr.classList.add('ticket');
-      const userId = r['Users']||r['N']||'';
-      const pon = r['NMID']||r['C']||'';
-      const lastCalled = (r['Last called no']||r['AC']||'').toString().trim();
-      const number = (r['Number']||r['P']||'').toString().trim();
+      const isOffline = (r['Downs'] || r['T'] || '').toString().trim() !== '';
+      const isTicket = (r['Ticket'] || r['X'] || '').toString().trim() !== '';
+      if (isOffline) tr.classList.add('offline');
+      if (isTicket) tr.classList.add('ticket');
+      const userId = r['Users'] || r['N'] || '';
+      const pon = r['NMID'] || r['C'] || '';
+      const lastCalled = (r['Last called no'] || r['AC'] || '').toString().trim();
+      const number = (r['Number'] || r['P'] || '').toString().trim();
       const mobile = lastCalled || number;
-      const name = r['Name']||r['O']||'';
-      const mac = r['MAC']||r['U']||'';
-      const serial = r['Serial'] ||r['V']||'';
-      const drops = r['Drops']||r['AB']||'';
-      const remark = r['Remarks']||r['Y']||r['remark']||r['Remark']||'';
-      const location = r['Location']||r['Q']||'';
-      const procare = r['User status']||r['AF']||'';
+      const name = r['Name'] || r['O'] || '';
+      const mac = r['MAC'] || r['U'] || '';
+      const serial = r['Serial'] || r['V'] || '';
+      const drops = r['Drops'] || r['AB'] || '';
+      const remark = r['Remarks'] || r['Y'] || r['remark'] || r['Remark'] || '';
+      const location = r['Location'] || r['Q'] || '';
+      const procare = r['User status'] || r['AF'] || '';
       tr.innerHTML = `
         <td>${escapeHtml(pon)}</td>
         <td>${escapeHtml(userId)}</td>
@@ -290,63 +284,71 @@
       `;
       tbody.appendChild(tr);
     });
-    // attach events
-    document.querySelectorAll('.mark-btn').forEach(b=>b.addEventListener('click', onMarkClick));
-    document.querySelectorAll('.remove-btn').forEach(b=>b.addEventListener('click', onRemoveClick));
-    document.querySelectorAll('.remark-input').forEach(i=>i.addEventListener('change', onRemarkChange));
+    document.querySelectorAll('.mark-btn').forEach(b => b.addEventListener('click', onMarkClick));
+    document.querySelectorAll('.remove-btn').forEach(b => b.addEventListener('click', onRemoveClick));
+    document.querySelectorAll('.remark-input').forEach(i => i.addEventListener('change', onRemarkChange));
   }
-  function keyOrAlt(obj,key){ // helper for varying header names
-    const map = { 'NMID':'C','Users':'N','Drops':'AB' };
+  function keyOrAlt(obj, key) {
+    const map = { 'NMID': 'C', 'Users': 'N', 'Drops': 'AB' };
     return map[key] || key;
   }
-  function onRemarkChange(e){
-    // no auto-save here; saved when marking complain
+  function onRemarkChange(e) {
+    // No auto-save here; saved when marking complain
   }
-  function onMarkClick(e){
+  function onMarkClick(e) {
     const uid = e.target.dataset.uid;
-    const remarkInput = document.querySelector(`.remark-input[data-uid=\"${cssEscape(uid)}\"]`);
+    const remarkInput = document.querySelector(`.remark-input[data-uid="${cssEscape(uid)}"]`);
     const remark = remarkInput ? remarkInput.value : '';
     const ts = formatTimestamp(new Date());
-    // prepare payload
     const payload = { id: uid, action: 'mark', remark: remark, timestamp: ts };
-    // show 5s spinner and disable page
     showSpinner();
-    // call doPost
-    postToGAS(payload).then(resp=>{
-      // animate removal of the row slowly
-      const rowEl = e.target.closest('tr');
-      rowEl.style.transition = 'opacity 1.2s ease, height 1.2s ease';
-      rowEl.style.opacity = '0';
-      setTimeout(()=>{ rowEl.remove(); hideSpinner(); }, 5000); // keep page spinner for 5s then remove row and hide
-    }).catch(err=>{ hideSpinner(); alert('Error: '+err.message); });
+    postToGAS(payload).then(resp => {
+      if (resp.success) {
+        alert('Complain marked successfully!');
+        const rowEl = e.target.closest('tr');
+        rowEl.style.transition = 'opacity 1.2s ease, height 1.2s ease';
+        rowEl.style.opacity = '0';
+        setTimeout(() => rowEl.remove(), 1200); // Remove after fade
+      } else {
+        alert('Failed to mark complain: ' + (resp.error || 'Unknown error'));
+      }
+    }).catch(err => {
+      alert('Error marking complain: ' + err.message);
+    }).finally(() => hideSpinner());
   }
-  function onRemoveClick(e){
+  function onRemoveClick(e) {
     const uid = e.target.dataset.uid;
     const payload = { id: uid, action: 'remove' };
     showSpinner();
-    postToGAS(payload).then(()=>{
-      const rowEl = e.target.closest('tr');
-      rowEl.style.transition = 'opacity 1.2s ease, height 1.2s ease';
-      rowEl.style.opacity = '0';
-      setTimeout(()=>{ rowEl.remove(); hideSpinner(); }, 5000);
-    }).catch(err=>{ hideSpinner(); alert('Error: '+err.message); });
+    postToGAS(payload).then(resp => {
+      if (resp.success) {
+        alert('Complain removed successfully!');
+        const rowEl = e.target.closest('tr');
+        rowEl.style.transition = 'opacity 1.2s ease, height 1.2s ease';
+        rowEl.style.opacity = '0';
+        setTimeout(() => rowEl.remove(), 1200); // Remove after fade
+      } else {
+        alert('Failed to remove complain: ' + (resp.error || 'Unknown error'));
+      }
+    }).catch(err => {
+      alert('Error removing complain: ' + err.message);
+    }).finally(() => hideSpinner());
   }
-  function formatTimestamp(d){
-    // format: M/D/YYYY H:MM:SS like 9/24/2025 3:11:01
-    const M = d.getMonth()+1;
+  function formatTimestamp(d) {
+    const M = d.getMonth() + 1;
     const D = d.getDate();
     const Y = d.getFullYear();
     const H = d.getHours();
-    const m = String(d.getMinutes()).padStart(2,'0');
-    const s = String(d.getSeconds()).padStart(2,'0');
+    const m = String(d.getMinutes()).padStart(2, '0');
+    const s = String(d.getSeconds()).padStart(2, '0');
     return `${M}/${D}/${Y} ${H}:${m}:${s}`;
   }
   // CSV download
-  document.getElementById('btnDownloadCsv').addEventListener('click', ()=>{
+  document.getElementById('btnDownloadCsv').addEventListener('click', () => {
     const rows = Array.from(document.querySelectorAll('#dataTable tbody tr'));
     const csv = [];
-    csv.push(['PON','UserID','Mobile','Name','Mac','Serial','Down time','Remark','Location','Procare'].join(','));
-    rows.forEach(tr=>{
+    csv.push(['PON', 'UserID', 'Mobile', 'Name', 'Mac', 'Serial', 'Down time', 'Remark', 'Location', 'Procare'].join(','));
+    rows.forEach(tr => {
       const tds = tr.querySelectorAll('td');
       const pon = tds[0].innerText.trim();
       const uid = tds[1].innerText.trim();
@@ -355,73 +357,65 @@
       const mac = tds[4].innerText.split('\n')[0].trim();
       const serial = tds[4].querySelector('small') ? tds[4].querySelector('small').innerText.trim() : '';
       const drops = tds[5].innerText.trim();
-      const remark = tds[6].querySelector('input') ? tds[6].querySelector('input').value.replace(/\n/g,' ') : '';
+      const remark = tds[6].querySelector('input') ? tds[6].querySelector('input').value.replace(/\n/g, ' ') : '';
       const location = tds[8].innerText.trim();
       const procare = tds[9].innerText.trim();
-      csv.push([escapeCsv(pon),escapeCsv(uid),escapeCsv(mobile),escapeCsv(name),escapeCsv(mac),escapeCsv(serial),escapeCsv(drops),escapeCsv(remark),escapeCsv(location),escapeCsv(procare)].join(','));
+      csv.push([escapeCsv(pon), escapeCsv(uid), escapeCsv(mobile), escapeCsv(name), escapeCsv(mac), escapeCsv(serial), escapeCsv(drops), escapeCsv(remark), escapeCsv(location), escapeCsv(procare)].join(','));
     });
     const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = 'complains.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   });
   // Screenshot & WhatsApp
-  document.getElementById('btnScreenshotWhatsapp').addEventListener('click', async ()=>{
+  document.getElementById('btnScreenshotWhatsapp').addEventListener('click', async () => {
     showSpinner();
-    try{
+    try {
       const node = document.getElementById('tableWrap');
       const canvas = await html2canvas(node, { scale: 1 });
       const dataUrl = canvas.toDataURL('image/png');
-      // try native share (best-effort)
-      try{
-        if(navigator.canShare && typeof navigator.canShare === 'function'){
+      try {
+        if (navigator.canShare && typeof navigator.canShare === 'function') {
           const blob = await (await fetch(dataUrl)).blob();
-          if(navigator.canShare({ files: [new File([blob],'screenshot.png',{type:'image/png'})] })){
-            await navigator.share({ files: [new File([blob],'screenshot.png',{type:'image/png'})], text: 'Complain Manager screenshot' });
+          if (navigator.canShare({ files: [new File([blob], 'screenshot.png', { type: 'image/png' })] })) {
+            await navigator.share({ files: [new File([blob], 'screenshot.png', { type: 'image/png' })], text: 'Complain Manager screenshot' });
             hideSpinner();
             return;
           }
         }
-      }catch(shareErr){ console.warn('Native share not available or failed:', shareErr); }
-      // fallback: open image in new tab so user can save and share manually
-      const w = window.open('about:blank','_blank');
-      if(w){
+      } catch (shareErr) { console.warn('Native share not available or failed:', shareErr); }
+      const w = window.open('about:blank', '_blank');
+      if (w) {
         w.document.write(`<title>Screenshot</title><img src="${dataUrl}" style="max-width:100%"><p><a id=dl href="${dataUrl}" download="screenshot.png">Download image</a> - then share via WhatsApp Web or Mobile</p>`);
       } else {
         alert('Popup blocked. Please allow popups for this site to view the screenshot.');
       }
-    }catch(err){ console.error('Screenshot failed:', err); alert('Screenshot failed: '+err.message); }
+    } catch (err) { console.error('Screenshot failed:', err); alert('Screenshot failed: ' + err.message); }
     hideSpinner();
   });
   // Sorting toggles
-  document.querySelectorAll('th.sortable').forEach(th=>{
-    th.addEventListener('click', ()=>{
+  document.querySelectorAll('th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
       const key = th.dataset.key;
-      if(currentSort.key === key) currentSort.asc = !currentSort.asc; else { currentSort.key = key; currentSort.asc = true; }
+      if (currentSort.key === key) currentSort.asc = !currentSort.asc; else { currentSort.key = key; currentSort.asc = true; }
       renderTable();
     });
   });
-  // helper utils
-  function escapeHtml(s){ if(s==null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-  function cssEscape(s){ return String(s).replace(/(["'\\])/g,'\\$1'); }
-  function escapeCsv(s){ if(s==null) return '""'; s = String(s).replace(/"/g,'""'); return '"'+s+'"'; }
-  // initialize
+  // Helper utils
+  function escapeHtml(s) { if (s == null) return ''; return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function cssEscape(s) { return String(s).replace(/(["'\\])/g, '\\$1'); }
+  function escapeCsv(s) { if (s == null) return '""'; s = String(s).replace(/"/g, '""'); return '"' + s + '"'; }
+  // Initialize
   fetchData();
-  // utility: populateTimeFilter after data loaded
-  function populateTimeFilter(){
-    const times = new Set();
-    filtered.forEach(r=>{ const v = (r['Drops']||r['AB']||'').toString(); if(v) times.add(v); });
-    selTimeFilter.innerHTML = '<option value="">--All--</option>' + Array.from(times).sort().map(t=>`<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
-  }
-  document.getElementById('btnComplains').addEventListener('click', ()=>{ showSpinner(); setTimeout(()=>{ applyFilterComplains(); hideSpinner(); }, 300); });
-  document.getElementById('btnOffline').addEventListener('click', ()=>{ showSpinner(); setTimeout(()=>{ applyQuickFilterOffline(); hideSpinner(); }, 300); });
-  document.getElementById('btnDrops').addEventListener('click', ()=>{ showSpinner(); setTimeout(()=>{ applyFilterDrops(); hideSpinner(); }, 300); });
-  selWindow.addEventListener('change', ()=>{ fillPonOptions(selWindow.value); applyAllFilters(); });
+  document.getElementById('btnComplains').addEventListener('click', () => { showSpinner(); setTimeout(() => { applyFilterComplains(); hideSpinner(); }, 300); });
+  document.getElementById('btnOffline').addEventListener('click', () => { showSpinner(); setTimeout(() => { applyQuickFilterOffline(); hideSpinner(); }, 300); });
+  document.getElementById('btnDrops').addEventListener('click', () => { showSpinner(); setTimeout(() => { applyFilterDrops(); hideSpinner(); }, 300); });
+  selWindow.addEventListener('change', () => { fillPonOptions(selWindow.value); applyAllFilters(); });
   selPon.addEventListener('change', applyAllFilters);
   selTimeFilter.addEventListener('change', applyAllFilters);
-  document.getElementById('searchUser').addEventListener('input', ()=>{ if(document.getElementById('searchUser').value.length >= 3) applyAllFilters(); });
-  document.getElementById('searchMobile').addEventListener('input', ()=>{ if(document.getElementById('searchMobile').value.length >= 3) applyAllFilters(); });
-  document.getElementById('searchName').addEventListener('input', ()=>{ if(document.getElementById('searchName').value.length >= 3) applyAllFilters(); });
-  document.getElementById('searchMac').addEventListener('input', ()=>{ if(document.getElementById('searchMac').value.length >= 3) applyAllFilters(); });
+  document.getElementById('searchUser').addEventListener('input', () => { if (document.getElementById('searchUser').value.length >= 3) applyAllFilters(); });
+  document.getElementById('searchMobile').addEventListener('input', () => { if (document.getElementById('searchMobile').value.length >= 3) applyAllFilters(); });
+  document.getElementById('searchName').addEventListener('input', () => { if (document.getElementById('searchName').value.length >= 3) applyAllFilters(); });
+  document.getElementById('searchMac').addEventListener('input', () => { if (document.getElementById('searchMac').value.length >= 3) applyAllFilters(); });
   </script>
 </body>
 </html>
