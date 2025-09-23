@@ -1,5 +1,6 @@
 const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz-FZM6fwvv0ruaSv-PbEG8sHNOmldJn6kXtRY6e7NZ9YlN3TJ5Oe9ECMwmGBTK-LMTnA/exec';
 const TOKEN = 'abcd1234';
+const STATUS_LINK_URL = 'https://script.google.com/macros/s/AKfycbx4y-2MDbT1aNzC1R2PvS041XL84Cqs0cbrZ0vIj2A/dev';
 
 let oltData = {};
 let dashboardA7 = null;
@@ -50,14 +51,14 @@ async function loadData() {
           let isOn = dropCount < dashboardA7;
           if (isOn) {
             statusCell.textContent = "🟢";
-            statusCell.className = "onStatus";
+            statusCell.className = "status-link onStatus";
           } else {
             statusCell.textContent = "🔴";
-            statusCell.className = "offStatus";
+            statusCell.className = "status-link offStatus blink-red-dot";
           }
         } else {
           statusCell.textContent = "-";
-          statusCell.className = "";
+          statusCell.className = "status-link";
         }
 
         total += allRows.length;
@@ -113,7 +114,7 @@ function attachEventListeners() {
     { id: 'O3I7', pons: 4 },
     { id: 'O4I9', pons: 4 },
     { id: 'O5I2', pons: 8 }
-  ];
+    ];
   for (let oltObj of olts) {
     const olt = oltObj.id;
     const maxPon = oltObj.pons;
@@ -121,6 +122,7 @@ function attachEventListeners() {
       const ponElement = document.getElementById(`pon${i}-${olt}`);
       const offElement = document.getElementById(`off${i}-${olt}`);
       const tickElement = document.getElementById(`tick${i}-${olt}`);
+      const statusElement = document.getElementById(`stat${i}-${olt}`);
       if (ponElement) {
         ponElement.addEventListener('click', () => {
           if (ponElement.textContent === '0') {
@@ -145,6 +147,13 @@ function attachEventListeners() {
             showToast();
           } else {
             showUsers('tick', `${olt}P${i}`, olt, `P${i}`);
+          }
+        });
+      }
+      if (statusElement) {
+        statusElement.addEventListener('click', () => {
+          if (statusElement.textContent === '🟢' || statusElement.textContent === '🔴') {
+            window.location.href = STATUS_LINK_URL;
           }
         });
       }
@@ -198,23 +207,6 @@ function showUsers(type, nmid, olt, pon) {
     return;
   }
 
-  const userDetails = document.getElementById('userDetails');
-  userDetails.innerHTML = '<table><thead><tr><th>Sn</th><th>Name</th><th>Number</th><th>Location</th><th>Address</th><th>Power</th><th>Remarks</th></tr></thead><tbody></tbody></table>';
-  const tbody = userDetails.querySelector('tbody');
-
-  currentUsers.forEach((r, index) => {
-    const tr = document.createElement('tr');
-    if (r['Ticket']) {
-      tr.classList.add('red', 'blink');
-    } else if (r['Downs']) {
-      tr.classList.add('pink', 'blink');
-    }
-    const lastCalledNo = r['Last called no'];
-    const number = (typeof lastCalledNo === 'string' && lastCalledNo.trim()) ? lastCalledNo.trim() : (r['Number'] || '');
-    tr.innerHTML = `<td>${index + 1}</td><td>${r['Name'] || ''}</td><td>${number}</td><td>${r['Location'] || ''}</td><td>${r['Address'] || ''}</td><td>${r['Power'] || ''}</td><td>${r['Remarks'] || ''}</td>`;
-    tbody.appendChild(tr);
-  });
-
   const modalButtons = document.getElementById('modalButtons');
   modalButtons.innerHTML = '';
 
@@ -284,6 +276,23 @@ function showUsers(type, nmid, olt, pon) {
     });
   };
   modalButtons.appendChild(shareBtn);
+
+  const userDetails = document.getElementById('userDetails');
+  userDetails.innerHTML = '<table><thead><tr><th>Sn</th><th>Name</th><th>Number</th><th>Location</th><th>Address</th><th>Power</th><th>Remarks</th></tr></thead><tbody></tbody></table>';
+  const tbody = userDetails.querySelector('tbody');
+
+  currentUsers.forEach((r, index) => {
+    const tr = document.createElement('tr');
+    if (r['Ticket']) {
+      tr.classList.add('red');
+    } else if (r['Downs']) {
+      tr.classList.add('pink');
+    }
+    const lastCalledNo = r['Last called no'];
+    const number = (typeof lastCalledNo === 'string' && lastCalledNo.trim()) ? lastCalledNo.trim() : (r['Number'] || '');
+    tr.innerHTML = `<td>${index + 1}</td><td>${r['Name'] || ''}</td><td>${number}</td><td>${r['Location'] || ''}</td><td>${r['Address'] || ''}</td><td>${r['Power'] || ''}</td><td>${r['Remarks'] || ''}</td>`;
+    tbody.appendChild(tr);
+  });
 
   document.getElementById('userModal').style.display = 'flex';
 }
@@ -310,23 +319,6 @@ function showOltUsers(type, olt, maxPon) {
     return;
   }
 
-  const userDetails = document.getElementById('userDetails');
-  userDetails.innerHTML = '<table><thead><tr><th>Sn</th><th>Name</th><th>Number</th><th>Location</th><th>Address</th><th>Power</th><th>Remarks</th></tr></thead><tbody></tbody></table>';
-  const tbody = userDetails.querySelector('tbody');
-
-  currentUsers.forEach((r, index) => {
-    const tr = document.createElement('tr');
-    if (r['Ticket']) {
-      tr.classList.add('red', 'blink');
-    } else if (r['Downs']) {
-      tr.classList.add('pink', 'blink');
-    }
-    const lastCalledNo = r['Last called no'];
-    const number = (typeof lastCalledNo === 'string' && lastCalledNo.trim()) ? lastCalledNo.trim() : (r['Number'] || '');
-    tr.innerHTML = `<td>${index + 1}</td><td>${r['Name'] || ''}</td><td>${number}</td><td>${r['Location'] || ''}</td><td>${r['Address'] || ''}</td><td>${r['Power'] || ''}</td><td>${r['Remarks'] || ''}</td>`;
-    tbody.appendChild(tr);
-  });
-
   const modalButtons = document.getElementById('modalButtons');
   modalButtons.innerHTML = '';
 
@@ -396,6 +388,23 @@ function showOltUsers(type, olt, maxPon) {
     });
   };
   modalButtons.appendChild(shareBtn);
+
+  const userDetails = document.getElementById('userDetails');
+  userDetails.innerHTML = '<table><thead><tr><th>Sn</th><th>Name</th><th>Number</th><th>Location</th><th>Address</th><th>Power</th><th>Remarks</th></tr></thead><tbody></tbody></table>';
+  const tbody = userDetails.querySelector('tbody');
+
+  currentUsers.forEach((r, index) => {
+    const tr = document.createElement('tr');
+    if (r['Ticket']) {
+      tr.classList.add('red');
+    } else if (r['Downs']) {
+      tr.classList.add('pink');
+    }
+    const lastCalledNo = r['Last called no'];
+    const number = (typeof lastCalledNo === 'string' && lastCalledNo.trim()) ? lastCalledNo.trim() : (r['Number'] || '');
+    tr.innerHTML = `<td>${index + 1}</td><td>${r['Name'] || ''}</td><td>${number}</td><td>${r['Location'] || ''}</td><td>${r['Address'] || ''}</td><td>${r['Power'] || ''}</td><td>${r['Remarks'] || ''}</td>`;
+    tbody.appendChild(tr);
+  });
 
   document.getElementById('userModal').style.display = 'flex';
 }
