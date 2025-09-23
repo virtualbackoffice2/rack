@@ -7,8 +7,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<script src="script.js"></script>
 </head>
 <body>
+
 <h2>Merotra Network</h2>
 <div id="matrixHolder">
 <table id="matrixTable">
@@ -65,14 +67,14 @@
 </tr>
 <tr>
   <th>Line</th>
-  <td id="stat1-O1I5">⏳</td>
-  <td id="stat2-O1I5">⏳</td>
-  <td id="stat3-O1I5">⏳</td>
-  <td id="stat4-O1I5">⏳</td>
-  <td id="stat5-O1I5">⏳</td>
-  <td id="stat6-O1I5">⏳</td>
-  <td id="stat7-O1I5">⏳</td>
-  <td id="stat8-O1I5">⏳</td>
+  <td id="stat1-O1I5" class="status-link">⏳</td>
+  <td id="stat2-O1I5" class="status-link">⏳</td>
+  <td id="stat3-O1I5" class="status-link">⏳</td>
+  <td id="stat4-O1I5" class="status-link">⏳</td>
+  <td id="stat5-O1I5" class="status-link">⏳</td>
+  <td id="stat6-O1I5" class="status-link">⏳</td>
+  <td id="stat7-O1I5" class="status-link">⏳</td>
+  <td id="stat8-O1I5" class="status-link">⏳</td>
   <td></td>
 </tr>
 
@@ -116,14 +118,14 @@
 </tr>
 <tr>
   <th>Line</th>
-  <td id="stat1-O2I6">⏳</td>
-  <td id="stat2-O2I6">⏳</td>
-  <td id="stat3-O2I6">⏳</td>
-  <td id="stat4-O2I6">⏳</td>
-  <td id="stat5-O2I6">⏳</td>
-  <td id="stat6-O2I6">⏳</td>
-  <td id="stat7-O2I6">⏳</td>
-  <td id="stat8-O2I6">⏳</td>
+  <td id="stat1-O2I6" class="status-link">⏳</td>
+  <td id="stat2-O2I6" class="status-link">⏳</td>
+  <td id="stat3-O2I6" class="status-link">⏳</td>
+  <td id="stat4-O2I6" class="status-link">⏳</td>
+  <td id="stat5-O2I6" class="status-link">⏳</td>
+  <td id="stat6-O2I6" class="status-link">⏳</td>
+  <td id="stat7-O2I6" class="status-link">⏳</td>
+  <td id="stat8-O2I6" class="status-link">⏳</td>
   <td></td>
 </tr>
 
@@ -158,10 +160,10 @@
 </tr>
 <tr>
   <th>Line</th>
-  <td id="stat1-O3I7">⏳</td>
-  <td id="stat2-O3I7">⏳</td>
-  <td id="stat3-O3I7">⏳</td>
-  <td id="stat4-O3I7">⏳</td>
+  <td id="stat1-O3I7" class="status-link">⏳</td>
+  <td id="stat2-O3I7" class="status-link">⏳</td>
+  <td id="stat3-O3I7" class="status-link">⏳</td>
+  <td id="stat4-O3I7" class="status-link">⏳</td>
   <td colspan="4"></td>
   <td></td>
 </tr>
@@ -202,10 +204,10 @@
 </tr>
 <tr>
   <th>Line</th>
-  <td id="stat1-O4I9">⏳</td>
-  <td id="stat2-O4I9">⏳</td>
-  <td id="stat3-O4I9">⏳</td>
-  <td id="stat4-O4I9">⏳</td>
+  <td id="stat1-O4I9" class="status-link">⏳</td>
+  <td id="stat2-O4I9" class="status-link">⏳</td>
+  <td id="stat3-O4I9" class="status-link">⏳</td>
+  <td id="stat4-O4I9" class="status-link">⏳</td>
   <td colspan="4"></td>
   <td></td>
 </tr>
@@ -255,16 +257,17 @@
 </tr>
 <tr>
   <th>Line</th>
-  <td id="stat1-O5I2">⏳</td>
-  <td id="stat2-O5I2">⏳</td>
-  <td id="stat3-O5I2">⏳</td>
-  <td id="stat4-O5I2">⏳</td>
-  <td id="stat5-O5I2">⏳</td>
-  <td id="stat6-O5I2">⏳</td>
-  <td id="stat7-O5I2">⏳</td>
-  <td id="stat8-O5I2">⏳</td>
+  <td id="stat1-O5I2" class="status-link">⏳</td>
+  <td id="stat2-O5I2" class="status-link">⏳</td>
+  <td id="stat3-O5I2" class="status-link">⏳</td>
+  <td id="stat4-O5I2" class="status-link">⏳</td>
+  <td id="stat5-O5I2" class="status-link">⏳</td>
+  <td id="stat6-O5I2" class="status-link">⏳</td>
+  <td id="stat7-O5I2" class="status-link">⏳</td>
+  <td id="stat8-O5I2" class="status-link">⏳</td>
   <td></td>
 </tr>
+
 </table>
 </div>
 
@@ -281,15 +284,14 @@
     <div id="screenshotContent">
       <h3 id="modalTitle">Users Details</h3>
       <div id="modalSubTitle"></div>
+      <div id="modalButtons"></div>
       <div id="userDetails"></div>
     </div>
-    <div id="modalButtons"></div>
   </div>
 </div>
 
 <!-- Toast -->
 <div id="toast">No user in list!!</div>
 
-<script src="scripts.js"></script>
 </body>
 </html>
