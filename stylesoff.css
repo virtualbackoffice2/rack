@@ -1,9 +1,9 @@
-/* stylesoff.css */
+/* styles.css */
 body {
   font-family: 'Roboto', sans-serif;
   margin: 0;
   padding: 20px;
-  background-color: #ffffff;
+  background-color: #f4f6f8;
   color: #333;
 }
 
@@ -17,13 +17,18 @@ h1 {
 
 #tableWrap {
   overflow-x: auto;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+  border-radius: 10px;
+  background: linear-gradient(145deg, #ffffff, #f0f2f5);
   margin-top: 12px;
 }
 
 #dataTable {
   border-collapse: collapse;
   width: 100%;
-  background: #ffffff;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
 }
 
 #dataTable th,
@@ -32,6 +37,7 @@ h1 {
   padding: 14px;
   text-align: center;
   font-size: 18px;
+  transition: background 0.2s;
 }
 
 #dataTable th {
@@ -47,6 +53,12 @@ h1 {
 
 #dataTable th.sortable {
   cursor: pointer;
+}
+
+#dataTable th.sortable:after {
+  content: " ⥮";
+  font-size: 12px;
+  vertical-align: middle;
 }
 
 #dataTable tr:hover td {
@@ -68,21 +80,49 @@ tr.ticket {
   color: #2c3e50;
 }
 
-.mark-btn i {
-  color: #27ae60;
-}
-
-.remove-btn i {
-  color: #e74c3c;
-}
-
 .mark-btn,
 .remove-btn {
   border: none;
   background: transparent;
-  padding: 6px 8px;
-  font-size: 13px;
-  margin-left: 6px;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  margin: 0 8px;
+  transition: background 0.2s;
+}
+
+.mark-btn {
+  background: #3498db;
+  color: white;
+}
+
+.mark-btn:hover {
+  background: #2980b9;
+}
+
+.remove-btn {
+  background: #27ae60;
+  color: white;
+}
+
+.remove-btn:hover {
+  background: #219a52;
+}
+
+.mark-btn i,
+.remove-btn i {
+  display: none; /* Hide old icons */
+}
+
+.mark-btn::before {
+  content: "✏️";
+  margin-right: 8px;
+}
+
+.remove-btn::before {
+  content: "🗑️";
+  margin-right: 8px;
 }
 
 .remark-input {
@@ -100,22 +140,43 @@ tr.ticket {
   margin-bottom: 12px;
 }
 
-.controls button,
-.filters select,
-.filters input {
-  padding: 8px 10px;
-  border: 1px solid #ccc;
-  background: #f7f7f7;
+.controls button {
+  padding: 12px 24px;
+  border: none;
   border-radius: 6px;
   cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+  margin: 0 8px;
+}
+
+.controls button {
+  background: #3498db;
+  color: white;
+}
+
+.controls button:hover {
+  background: #2980b9;
 }
 
 .filters {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   align-items: center;
   flex-wrap: wrap;
   margin-top: 12px;
+}
+
+.filters label {
+  margin: 0;
+}
+
+.filters select,
+.filters input {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
 }
 
 .count-badge {
@@ -156,11 +217,19 @@ tr.ticket {
   width: 70px;
   height: 70px;
   animation: spin 0.3s linear infinite;
+  box-shadow: 0 0 20px rgba(52, 152, 219, 0.7), inset 0 0 10px rgba(52, 152, 219, 0.3);
 }
 
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+#spinnerOverlay p {
+  margin-top: 15px;
+  color: #7f8c8d;
+  font-size: 16px;
+  font-weight: 500;
 }
 
 /* Responsive Design */
@@ -176,6 +245,10 @@ tr.ticket {
   .top-row,
   .filters {
     flex-direction: column;
+  }
+  .top-row .controls,
+  .filters {
+    width: 100%;
   }
   .controls button,
   .filters select,
