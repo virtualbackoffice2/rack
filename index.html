@@ -1,3 +1,4 @@
+```html
 <!doctype html>
 <html>
 <head>
@@ -172,17 +173,18 @@ async function loadData() {
 
       // Status calculation
       let statusCell = document.getElementById('stat'+i);
+      let dropCount = dropTimes.length;
       if (dashboardA7 !== null) {
-        let isOn = dropTimes.length >= dashboardA7;
+        let isOn = dropCount >= dashboardA7;
         if (isOn) {
-          statusCell.textContent = "ON";
+          statusCell.textContent = "ON (" + dropCount + ")";
           statusCell.className = "onStatus";
         } else {
-          statusCell.textContent = "OFF";
+          statusCell.textContent = "OFF (" + dropCount + ")";
           statusCell.className = "offStatus";
         }
       } else {
-        statusCell.textContent = "-";
+        statusCell.textContent = "- (" + dropCount + ")";
       }
 
       total += allUsers.length;
@@ -238,3 +240,4 @@ window.addEventListener('load', loadData);
 </script>
 </body>
 </html>
+```
