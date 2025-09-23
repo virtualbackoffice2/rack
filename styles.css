@@ -38,13 +38,13 @@
 
 /* Status cell styling */
 .onStatus {
-  background-color: #e6ffe6; /* Light green for visibility */
-  color: #008000; /* Dark green for contrast */
+  background-color: #e6ffe6;
+  color: #008000;
 }
 
 .offStatus {
-  background-color: #ffe6e6; /* Light red for visibility */
-  color: #800000; /* Dark red for contrast */
+  background-color: #ffe6e6;
+  color: #800000;
 }
 
 .blink-red-dot::after {
@@ -157,11 +157,11 @@
 }
 
 #userDetails .red {
-  background-color: #ffcccc; /* Light red for ticket rows */
+  background-color: #ffcccc;
 }
 
 #userDetails .pink {
-  background-color: #ffe6e6; /* Light pink for offline rows */
+  background-color: #ffe6e6;
 }
 
 /* Toast styling */
