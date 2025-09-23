@@ -52,6 +52,7 @@ h2 { margin-bottom: 12px; }
   color: #555;
 }
 .closeBtn:hover { color: red; }
+#modalButtons { margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -392,8 +393,60 @@ async function loadData() {
       document.getElementById(`oltTickTotal-${olt}`).textContent = tickTotal;
     }
 
+    // Re-attach event listeners after data load to ensure elements are ready
+    attachEventListeners();
+
   } catch (err) {
     console.error('Fetch error:', err);
+    // Set all cells to error state if data fetch fails
+    const olts = [
+      { id: 'O1I5', pons: 8 },
+      { id: 'O2I6', pons: 8 },
+      { id: 'O3I7', pons: 4 },
+      { id: 'O4I9', pons: 4 },
+      { id: 'O5I2', pons: 8 }
+    ];
+    for (let oltObj of olts) {
+      const olt = oltObj.id;
+      const maxPon = oltObj.pons;
+      for (let i = 1; i <= maxPon; i++) {
+        document.getElementById(`pon${i}-${olt}`).textContent = 'Error';
+        document.getElementById(`off${i}-${olt}`).textContent = 'Error';
+        document.getElementById(`tick${i}-${olt}`).textContent = 'Error';
+        document.getElementById(`stat${i}-${olt}`).textContent = '-';
+      }
+      document.getElementById(`oltTotal-${olt}`).textContent = 'Error';
+      document.getElementById(`oltOffTotal-${olt}`).textContent = 'Error';
+      document.getElementById(`oltTickTotal-${olt}`).textContent = 'Error';
+    }
+  }
+}
+
+function attachEventListeners() {
+  const olts = [
+    { id: 'O1I5', pons: 8 },
+    { id: 'O2I6', pons: 8 },
+    { id: 'O3I7', pons: 4 },
+    { id: 'O4I9', pons: 4 },
+    { id: 'O5I2', pons: 8 }
+  ];
+  for (let oltObj of olts) {
+    const olt = oltObj.id;
+    const maxPon = oltObj.pons;
+    for (let i = 1; i <= maxPon; i++) {
+      const ponElement = document.getElementById(`pon${i}-${olt}`);
+      const offElement = document.getElementById(`off${i}-${olt}`);
+      const tickElement = document.getElementById(`tick${i}-${olt}`);
+      if (ponElement) ponElement.addEventListener('click', () => showUsers('all', `${olt}P${i}`));
+      if (offElement) offElement.addEventListener('click', () => showUsers('off', `${olt}P${i}`));
+      if (tickElement) tickElement.addEventListener('click', () => showUsers('tick', `${olt}P${i}`));
+    }
+    const totalElement = document.getElementById(`oltTotal-${olt}`);
+    const offTotalElement = document.getElementById(`oltOffTotal-${olt}`);
+    const tickTotalElement = document.getElementById(`oltTickTotal-${olt}`);
+    if (totalElement) totalElement.addEventListener('click', () => showOltUsers('all', olt, maxPon));
+    if (offTotalElement) offTotalElement.addEventListener('click', () => showOltUsers('off', olt, maxPon));
+    if (tickTotalElement) tickTotalElement.addEventListener('click', () => showOltUsers('tick', olt, maxPon));
   }
 }
 
@@ -418,7 +471,8 @@ function showUsers(type, nmid) {
     } else if (r['Downs']) {
       tr.classList.add('pink', 'blink');
     }
-    const number = (r['Last called no'] && r['Last called no'].trim()) ? r['Last called no'] : (r['Number'] || '');
+    const lastCalledNo = r['Last called no'];
+    const number = (typeof lastCalledNo === 'string' && lastCalledNo.trim()) ? lastCalledNo.trim() : (r['Number'] || '');
     tr.innerHTML = `<td>${r['Sn'] || ''}</td><td>${r['Name'] || ''}</td><td>${number}</td><td>${r['Location'] || ''}</td><td>${r['Address'] || ''}</td><td>${r['Power'] || ''}</td><td>${r['Remarks'] || ''}</td>`;
     tbody.appendChild(tr);
   }
@@ -428,10 +482,12 @@ function showUsers(type, nmid) {
 
   const downloadBtn = document.createElement('button');
   downloadBtn.textContent = 'Download CSV';
+  downloadBtn.style.marginRight = '10px';
   downloadBtn.onclick = () => {
     let csv = 'Sn,Name,Number,Location,Address,Power,Remarks\n';
     for (let r of currentUsers) {
-      const number = (r['Last called no'] && r['Last called no'].trim()) ? r['Last called no'] : (r['Number'] || '');
+      const lastCalledNo = r['Last called no'];
+      const number = (typeof lastCalledNo === 'string' && lastCalledNo.trim()) ? lastCalledNo.trim() : (r['Number'] || '');
       csv += [r['Sn'] || '', r['Name'] || '', number, r['Location'] || '', r['Address'] || '', r['Power'] || '', r['Remarks'] || ''].map(v => `"${v.replace(/"/g, '""')}"`).join(',') + '\n';
     }
     const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
@@ -495,7 +551,8 @@ function showOltUsers(type, olt, maxPon) {
     } else if (r['Downs']) {
       tr.classList.add('pink', 'blink');
     }
-    const number = (r['Last called no'] && r['Last called no'].trim()) ? r['Last called no'] : (r['Number'] || '');
+    const lastCalledNo = r['Last called no'];
+    const number = (typeof lastCalledNo === 'string' && lastCalledNo.trim()) ? lastCalledNo.trim() : (r['Number'] || '');
     tr.innerHTML = `<td>${r['Sn'] || ''}</td><td>${r['Name'] || ''}</td><td>${number}</td><td>${r['Location'] || ''}</td><td>${r['Address'] || ''}</td><td>${r['Power'] || ''}</td><td>${r['Remarks'] || ''}</td>`;
     tbody.appendChild(tr);
   }
@@ -505,10 +562,12 @@ function showOltUsers(type, olt, maxPon) {
 
   const downloadBtn = document.createElement('button');
   downloadBtn.textContent = 'Download CSV';
+  downloadBtn.style.marginRight = '10px';
   downloadBtn.onclick = () => {
     let csv = 'Sn,Name,Number,Location,Address,Power,Remarks\n';
     for (let r of currentUsers) {
-      const number = (r['Last called no'] && r['Last called no'].trim()) ? r['Last called no'] : (r['Number'] || '');
+      const lastCalledNo = r['Last called no'];
+      const number = (typeof lastCalledNo === 'string' && lastCalledNo.trim()) ? lastCalledNo.trim() : (r['Number'] || '');
       csv += [r['Sn'] || '', r['Name'] || '', number, r['Location'] || '', r['Address'] || '', r['Power'] || '', r['Remarks'] || ''].map(v => `"${v.replace(/"/g, '""')}"`).join(',') + '\n';
     }
     const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
@@ -547,28 +606,6 @@ function showOltUsers(type, olt, maxPon) {
 
 function closeModal() {
   document.getElementById('userModal').style.display = 'none';
-}
-
-// listeners for PONs and totals
-const olts = [
-  { id: 'O1I5', pons: 8 },
-  { id: 'O2I6', pons: 8 },
-  { id: 'O3I7', pons: 4 },
-  { id: 'O4I9', pons: 4 },
-  { id: 'O5I2', pons: 8 }
-];
-for (let oltObj of olts) {
-  const olt = oltObj.id;
-  const maxPon = oltObj.pons;
-  for (let i = 1; i <= maxPon; i++) {
-    document.getElementById(`pon${i}-${olt}`).addEventListener('click', () => showUsers('all', `${olt}P${i}`));
-    document.getElementById(`off${i}-${olt}`).addEventListener('click', () => showUsers('off', `${olt}P${i}`));
-    document.getElementById(`tick${i}-${olt}`).addEventListener('click', () => showUsers('tick', `${olt}P${i}`));
-  }
-  // listeners for totals
-  document.getElementById(`oltTotal-${olt}`).addEventListener('click', () => showOltUsers('all', olt, maxPon));
-  document.getElementById(`oltOffTotal-${olt}`).addEventListener('click', () => showOltUsers('off', olt, maxPon));
-  document.getElementById(`oltTickTotal-${olt}`).addEventListener('click', () => showOltUsers('tick', olt, maxPon));
 }
 
 window.addEventListener('load', loadData);
