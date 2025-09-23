@@ -5,33 +5,28 @@ body {
   background-color: #f4f6f8;
   color: #333;
 }
-
 h2 {
   text-align: center;
   color: #2c3e50;
   margin-bottom: 20px;
   font-weight: 700;
 }
-
 #matrixHolder {
   overflow-x: auto;
   box-shadow: 0 4px 8px rgba(0,0,0,0.1);
   border-radius: 8px;
   background: white;
 }
-
 #matrixTable {
   border-collapse: collapse;
   width: 100%;
 }
-
 #matrixTable th, #matrixTable td {
   border: 1px solid #ddd;
   padding: 12px;
   text-align: center;
-  font-size: 16px; /* Made larger for numbers */
+  font-size: 18px; /* Larger for numbers */
 }
-
 #matrixTable th {
   background-color: #3498db;
   color: white;
@@ -40,46 +35,41 @@ h2 {
   top: 0;
   z-index: 2;
 }
-
 .olt-name {
-  font-weight: bold; /* Added weight to OLT names */
-  font-size: 16px; /* Slightly larger */
+  font-weight: 700; /* Bolder for OLT names */
+  font-size: 18px; /* Larger */
 }
-
 .clickable {
   cursor: pointer;
-  transition: color 0.2s;
-  /* Removed underline and blue color */
+  transition: color 0.2s, transform 0.2s;
+  text-decoration: underline;
 }
-
 .clickable:hover {
   color: #1a5276;
+  transform: scale(1.05);
 }
-
 .onStatus {
-  background-color: #27ae60;
-  color: white;
+  background-color: white;
+  color: #27ae60;
   font-weight: bold;
-  border-radius: 4px;
+  border-radius: 50%;
+  animation: none;
 }
-
 .offStatus {
-  background-color: #e74c3c;
-  color: white;
+  background-color: white;
+  color: #e74c3c;
   font-weight: bold;
-  border-radius: 4px;
+  border-radius: 50%;
+  animation: blink 0.8s infinite;
 }
-
 .separator {
   background-color: #ecf0f1;
   font-weight: bold;
   color: #7f8c8d;
 }
-
 .separator th {
   padding: 10px;
 }
-
 /* Modal styles */
 #userModal {
   display: none;
@@ -91,7 +81,6 @@ h2 {
   justify-content: center;
   align-items: center;
 }
-
 #userModalContent {
   background: #fff;
   padding: 20px;
@@ -103,24 +92,20 @@ h2 {
   box-shadow: 0 8px 16px rgba(0,0,0,0.2);
   animation: fadeIn 0.3s;
 }
-
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-20px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
 #userModalContent h3 {
   margin-top: 0;
   color: #2c3e50;
   font-weight: 500;
 }
-
 #modalSubTitle {
   font-size: 14px;
   color: #7f8c8d;
   margin-bottom: 15px;
 }
-
 .closeBtn {
   float: right;
   cursor: pointer;
@@ -129,63 +114,54 @@ h2 {
   font-size: 24px;
   transition: color 0.2s;
 }
-
 .closeBtn:hover { color: #e74c3c; }
-
 #modalButtons {
   display: flex;
   justify-content: center;
-  margin-top: 20px;
+  margin-bottom: 20px;
 }
-
 #modalButtons button {
   padding: 10px 20px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
-  transition: background 0.2s;
+  transition: background 0.2s, transform 0.2s;
+  margin: 0 5px;
 }
-
 #modalButtons button:first-child {
   background: #3498db;
   color: white;
 }
-
 #modalButtons button:first-child:hover {
   background: #2980b9;
+  transform: scale(1.05);
 }
-
 #modalButtons button:last-child {
   background: #27ae60;
   color: white;
 }
-
 #modalButtons button:last-child:hover {
   background: #219a52;
+  transform: scale(1.05);
 }
-
 #userDetails table {
   width: 100%;
   border-collapse: collapse;
 }
-
 #userDetails th, #userDetails td {
   border: 1px solid #ecf0f1;
   padding: 10px;
   text-align: left;
   font-size: 13px;
 }
-
 #userDetails th {
   background-color: #f9f9f9;
   font-weight: 500;
 }
-
 .pink { background-color: #ffebee; }
 .red { background-color: #ef5350; color: white; }
 .blink { animation: blink 1s infinite; }
-
 /* Loading Overlay */
 #loadingOverlay {
   position: fixed;
@@ -200,28 +176,25 @@ h2 {
   align-items: center;
   flex-direction: column;
 }
-
 #loadingOverlay .spinner {
-  border: 5px solid #f3f3f3;
-  border-top: 5px solid #3498db;
+  border: 6px solid #f3f3f3;
+  border-top: 6px solid #3498db;
   border-radius: 50%;
-  width: 50px;
-  height: 50px;
-  animation: spin 0.5s linear infinite; /* Increased speed for fast feel */
-  box-shadow: 0 0 10px rgba(52, 152, 219, 0.5); /* Added glow for stylish look */
+  width: 60px;
+  height: 60px;
+  animation: spin 0.4s linear infinite;
+  box-shadow: 0 0 15px rgba(52, 152, 219, 0.6);
 }
-
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
-
 #loadingOverlay p {
-  margin-top: 10px;
+  margin-top: 15px;
   color: #7f8c8d;
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: 500;
 }
-
 /* Toast styles */
 #toast {
   display: none;
@@ -237,44 +210,38 @@ h2 {
   font-size: 16px;
   box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
-
 #toast.show {
   display: block;
   animation: fadeOut 3s forwards;
 }
-
 @keyframes fadeOut {
   0% { opacity: 1; }
   80% { opacity: 1; }
   100% { opacity: 0; }
 }
-
 /* Responsive Design */
 @media (max-width: 768px) {
   #matrixHolder {
     overflow-x: auto;
   }
-
   #userModalContent {
     width: 95%;
     padding: 15px;
   }
-
   #modalButtons {
     flex-direction: column;
   }
-
   #modalButtons button {
     width: 100%;
     margin-bottom: 10px;
+    margin: 0 0 10px 0;
   }
-
   #modalButtons button:last-child {
     margin-bottom: 0;
   }
 }
-
-/* Blink animation for status dots */
-.onStatus, .offStatus {
-  animation: blink 1s infinite; /* Added blink to both */
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.3; }
+  100% { opacity: 1; }
 }
