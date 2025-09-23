@@ -114,7 +114,7 @@ function attachEventListeners() {
     { id: 'O3I7', pons: 4 },
     { id: 'O4I9', pons: 4 },
     { id: 'O5I2', pons: 8 }
-    ];
+  ];
   for (let oltObj of olts) {
     const olt = oltObj.id;
     const maxPon = oltObj.pons;
