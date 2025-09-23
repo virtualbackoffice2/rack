@@ -5,83 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Merotra Network Table</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
-<style>
-body { font-family: Arial; margin: 20px; }
-h2 { margin-bottom: 12px; }
-#matrixTable { border-collapse: collapse; width: 100%; }
-#matrixTable th, #matrixTable td { border: 1px solid #ccc; padding: 4px 8px; text-align: center; }
-#matrixTable th { background: #eee; position: sticky; top: 0; z-index: 2; }
-
-.clickable { cursor: pointer; color: blue; text-decoration: underline; }
-.onStatus { background: #c6f6c6; font-weight: bold; }
-.offStatus { background: #f6c6c6; font-weight: bold; }
-.separator { background: #f0f0f0; font-weight: bold; }
-.pink { background-color: pink; }
-.red { background-color: red; }
-@keyframes blink {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
-}
-.blink { animation: blink 1s infinite; }
-
-/* Modal styles */
-#userModal {
-  display: none;
-  position: fixed;
-  z-index: 10;
-  left: 0; top: 0;
-  width: 100%; height: 100%;
-  background: rgba(0,0,0,0.5);
-}
-#userModalContent {
-  background: #fff;
-  margin: 10% auto;
-  padding: 20px;
-  border-radius: 6px;
-  width: 80%;
-  max-height: 60%;
-  overflow-y: auto;
-}
-#userModalContent h3 { margin-top: 0; }
-#modalSubTitle { font-size: 16px; font-style: italic; margin-bottom: 10px; }
-.closeBtn {
-  float: right;
-  cursor: pointer;
-  font-weight: bold;
-  color: #555;
-}
-.closeBtn:hover { color: red; }
-#modalButtons { margin-top: 10px; }
-#modalButtons button { padding: 8px 16px; cursor: pointer; }
-#userDetails table { width: 100%; border-collapse: collapse; }
-#userDetails th, #userDetails td { border: 1px solid #ccc; padding: 4px; text-align: left; }
-
-/* Toast styles */
-#toast {
-  display: none;
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #28a745;
-  color: white;
-  padding: 10px 20px;
-  border-radius: 4px;
-  z-index: 100;
-  font-size: 16px;
-}
-#toast.show {
-  display: block;
-  animation: fadeOut 3s forwards;
-}
-@keyframes fadeOut {
-  0% { opacity: 1; }
-  80% { opacity: 1; }
-  100% { opacity: 0; }
-}
-</style>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
@@ -345,6 +270,12 @@ h2 { margin-bottom: 12px; }
 </table>
 </div>
 
+<!-- Loading Overlay -->
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <p>Loading data...</p>
+</div>
+
 <!-- Modal -->
 <div id="userModal">
   <div id="userModalContent">
@@ -369,6 +300,7 @@ let oltData = {};
 let dashboardA7 = null;
 
 async function loadData() {
+  document.getElementById('loadingOverlay').style.display = 'flex';
   const url = WEB_APP_URL + '?token=' + encodeURIComponent(TOKEN);
   try {
     const response = await fetch(url);
@@ -457,6 +389,8 @@ async function loadData() {
       document.getElementById(`oltOffTotal-${olt}`).textContent = 'Error';
       document.getElementById(`oltTickTotal-${olt}`).textContent = 'Error';
     }
+  } finally {
+    document.getElementById('loadingOverlay').style.display = 'none';
   }
 }
 
@@ -473,8 +407,8 @@ function attachEventListeners() {
     { id: 'O3I7', pons: 4 },
     { id: 'O4I9', pons: 4 },
     { id: 'O5I2', pons: 8 }
-  ];
-  for (let oltObj of olts) {
+    ];
+    for (let oltObj of olts) {
     const olt = oltObj.id;
     const maxPon = oltObj.pons;
     for (let i = 1; i <= maxPon; i++) {
@@ -645,7 +579,7 @@ function showUsers(type, nmid, olt, pon) {
   };
   modalButtons.appendChild(shareBtn);
 
-  document.getElementById('userModal').style.display = 'block';
+  document.getElementById('userModal').style.display = 'flex';
 }
 
 // Modal for OLT totals
@@ -757,7 +691,7 @@ function showOltUsers(type, olt, maxPon) {
   };
   modalButtons.appendChild(shareBtn);
 
-  document.getElementById('userModal').style.display = 'block';
+  document.getElementById('userModal').style.display = 'flex';
 }
 
 function closeModal() {
