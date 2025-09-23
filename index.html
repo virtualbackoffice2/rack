@@ -152,7 +152,8 @@ async function loadData() {
       const allUsers = filtered.map(r => r['Users']);
       const offUsers = filtered.filter(r => r['Downs']).map(r => r['Users']);
       const tickUsers = filtered.filter(r => r['Ticket']).map(r => r['Users']);
-      const dropTimes = filtered.map(r => r['Drops']).filter(Boolean);
+      // Drops: only non-empty timestamps are considered
+      const dropTimes = filtered.map(r => r['Drops']).filter(v => v && v !== '');
 
       oltData[nmid] = { all: allUsers, off: offUsers, tick: tickUsers, drops: dropTimes };
 
@@ -224,7 +225,4 @@ for (let i=1; i<=8; i++) {
   document.getElementById('tick'+i).addEventListener('click', () => showUsers('tick','O1I5P'+i));
 }
 
-window.addEventListener('load', loadData);
-</script>
-</body>
-</html>
+window.add
