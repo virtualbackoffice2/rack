@@ -2,22 +2,26 @@ body {
   font-family: 'Roboto', sans-serif;
   margin: 0;
   padding: 20px;
-  background-color: #f4f6f8;
-  color: #333;
+  background: linear-gradient(135deg, #e6e9f0, #f4f6f8);
+  color: #2c3e50;
 }
 
 h2 {
   text-align: center;
-  color: #2c3e50;
-  margin-bottom: 20px;
+  color: #1a5276;
+  margin-bottom: 25px;
   font-weight: 700;
+  font-size: 2rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 #matrixHolder {
   overflow-x: auto;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  border-radius: 8px;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 10px;
   background: white;
+  margin: 0 auto;
+  max-width: 1200px;
 }
 
 #matrixTable {
@@ -26,54 +30,75 @@ h2 {
 }
 
 #matrixTable th, #matrixTable td {
-  border: 1px solid #ddd;
-  padding: 12px;
+  border: 1px solid #d1d8e0;
+  padding: 14px;
   text-align: center;
-  font-size: 14px;
+  font-size: 15px;
 }
 
 #matrixTable th {
-  background-color: #3498db;
+  background: linear-gradient(180deg, #3498db, #2980b9);
   color: white;
-  font-weight: 500;
+  font-weight: 600;
   position: sticky;
   top: 0;
   z-index: 2;
 }
 
+.olt-name {
+  font-weight: 700;
+  font-size: 16px;
+  background: #ecf0f1;
+  color: #2c3e50;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
 .clickable {
   cursor: pointer;
-  color: #2980b9;
-  text-decoration: underline;
-  transition: color 0.2s;
+  font-size: 16px;
+  font-weight: 500;
+  color: #2c3e50;
+  transition: background 0.2s, transform 0.1s;
 }
 
 .clickable:hover {
-  color: #1a5276;
+  background: #e6e9f0;
+  transform: scale(1.05);
 }
 
 .onStatus {
-  background-color: #27ae60;
   color: white;
   font-weight: bold;
-  border-radius: 4px;
+  background: #27ae60;
+  border-radius: 50%;
+  padding: 8px;
+  animation: blink 1s infinite;
 }
 
 .offStatus {
-  background-color: #e74c3c;
   color: white;
   font-weight: bold;
-  border-radius: 4px;
+  background: #e74c3c;
+  border-radius: 50%;
+  padding: 8px;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
 }
 
 .separator {
-  background-color: #ecf0f1;
-  font-weight: bold;
+  background: linear-gradient(90deg, #bdc3c7, #ecf0f1);
+  font-weight: 600;
   color: #7f8c8d;
 }
 
 .separator th {
-  padding: 10px;
+  padding: 12px;
 }
 
 /* Modal styles */
@@ -81,23 +106,25 @@ h2 {
   display: none;
   position: fixed;
   z-index: 10;
-  left: 0; top: 0;
-  width: 100%; height: 100%;
-  background: rgba(0,0,0,0.5);
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
   justify-content: center;
   align-items: center;
 }
 
 #userModalContent {
-  background: #fff;
-  padding: 20px;
+  background: white;
+  padding: 25px;
   border-radius: 12px;
   width: 90%;
-  max-width: 800px;
-  max-height: 80%;
+  max-width: 900px;
+  max-height: 85%;
   overflow-y: auto;
-  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-  animation: fadeIn 0.3s;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+  animation: fadeIn 0.3s ease-out;
 }
 
 @keyframes fadeIn {
@@ -107,14 +134,15 @@ h2 {
 
 #userModalContent h3 {
   margin-top: 0;
-  color: #2c3e50;
-  font-weight: 500;
+  color: #1a5276;
+  font-weight: 600;
+  font-size: 1.5rem;
 }
 
 #modalSubTitle {
   font-size: 14px;
   color: #7f8c8d;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
 }
 
 .closeBtn {
@@ -122,43 +150,49 @@ h2 {
   cursor: pointer;
   font-weight: bold;
   color: #bdc3c7;
-  font-size: 24px;
+  font-size: 28px;
   transition: color 0.2s;
 }
 
-.closeBtn:hover { color: #e74c3c; }
+.closeBtn:hover {
+  color: #e74c3c;
+}
 
 #modalButtons {
   display: flex;
   justify-content: center;
-  margin-top: 20px;
+  margin-top: 25px;
+  gap: 15px;
 }
 
 #modalButtons button {
-  padding: 10px 20px;
+  padding: 12px 25px;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
-  transition: background 0.2s;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
 #modalButtons button:first-child {
-  background: #3498db;
+  background: linear-gradient(90deg, #3498db, #2980b9);
   color: white;
 }
 
 #modalButtons button:first-child:hover {
-  background: #2980b9;
+  background: linear-gradient(90deg, #2980b9, #1a5276);
+  transform: translateY(-2px);
 }
 
 #modalButtons button:last-child {
-  background: #27ae60;
+  background: linear-gradient(90deg, #27ae60, #219a52);
   color: white;
 }
 
 #modalButtons button:last-child:hover {
-  background: #219a52;
+  background: linear-gradient(90deg, #219a52, #1a7c44);
+  transform: translateY(-2px);
 }
 
 #userDetails table {
@@ -167,20 +201,27 @@ h2 {
 }
 
 #userDetails th, #userDetails td {
-  border: 1px solid #ecf0f1;
-  padding: 10px;
+  border: 1px solid #d1d8e0;
+  padding: 12px;
   text-align: left;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 #userDetails th {
-  background-color: #f9f9f9;
-  font-weight: 500;
+  background: #f9f9f9;
+  font-weight: 600;
 }
 
-.pink { background-color: #ffebee; }
-.red { background-color: #ef5350; color: white; }
-.blink { animation: blink 1s infinite; }
+.pink {
+  background: #ffebee;
+  animation: blink 1s infinite;
+}
+
+.red {
+  background: #ef5350;
+  color: white;
+  animation: blink 1s infinite;
+}
 
 /* Loading Overlay */
 #loadingOverlay {
@@ -189,7 +230,7 @@ h2 {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(255,255,255,0.9);
+  background: rgba(255, 255, 255, 0.95);
   z-index: 1000;
   display: flex;
   justify-content: center;
@@ -198,12 +239,14 @@ h2 {
 }
 
 #loadingOverlay .spinner {
-  border: 5px solid #f3f3f3;
-  border-top: 5px solid #3498db;
+  border: 6px solid #f3f3f3;
+  border-top: 6px solid transparent;
+  border-image: linear-gradient(45deg, #3498db, #27ae60) 1;
   border-radius: 50%;
-  width: 50px;
-  height: 50px;
-  animation: spin 1s linear infinite;
+  width: 60px;
+  height: 60px;
+  animation: spin 0.333s linear infinite;
+  box-shadow: 0 0 15px rgba(52, 152, 219, 0.5);
 }
 
 @keyframes spin {
@@ -212,9 +255,17 @@ h2 {
 }
 
 #loadingOverlay p {
-  margin-top: 10px;
-  color: #7f8c8d;
-  font-size: 14px;
+  margin-top: 15px;
+  color: #2c3e50;
+  font-size: 16px;
+  font-weight: 500;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
 }
 
 /* Toast styles */
@@ -230,7 +281,8 @@ h2 {
   border-radius: 8px;
   z-index: 100;
   font-size: 16px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  font-weight: 500;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
 }
 
 #toast.show {
@@ -250,6 +302,19 @@ h2 {
     overflow-x: auto;
   }
 
+  #matrixTable th, #matrixTable td {
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  .clickable {
+    font-size: 15px;
+  }
+
+  .olt-name {
+    font-size: 15px;
+  }
+
   #userModalContent {
     width: 95%;
     padding: 15px;
@@ -257,14 +322,11 @@ h2 {
 
   #modalButtons {
     flex-direction: column;
+    gap: 10px;
   }
 
   #modalButtons button {
     width: 100%;
-    margin-bottom: 10px;
-  }
-
-  #modalButtons button:last-child {
-    margin-bottom: 0;
+    padding: 10px;
   }
 }
