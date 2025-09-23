@@ -37,7 +37,6 @@ h1 {
   padding: 14px;
   text-align: center;
   font-size: 18px;
-  transition: background 0.2s;
 }
 
 #dataTable th {
@@ -61,10 +60,6 @@ h1 {
   vertical-align: middle;
 }
 
-#dataTable tr:hover td {
-  background: #f8fafc;
-}
-
 tr.offline {
   background-color: #ffebee;
 }
@@ -83,46 +78,38 @@ tr.ticket {
 .mark-btn,
 .remove-btn {
   border: none;
-  background: transparent;
-  padding: 12px 24px;
-  border-radius: 6px;
+  background: linear-gradient(145deg, #3498db, #2980b9);
+  padding: 8px 16px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 14px;
-  margin: 0 8px;
-  transition: background 0.2s;
-}
-
-.mark-btn {
-  background: #3498db;
+  font-size: 12px;
+  margin: 0 4px;
   color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .mark-btn:hover {
-  background: #2980b9;
+  background: linear-gradient(145deg, #2980b9, #1a5276);
 }
 
 .remove-btn {
-  background: #27ae60;
-  color: white;
+  background: linear-gradient(145deg, #27ae60, #219a52);
 }
 
 .remove-btn:hover {
-  background: #219a52;
-}
-
-.mark-btn i,
-.remove-btn i {
-  display: none; /* Hide old icons */
+  background: linear-gradient(145deg, #219a52, #186a3c);
 }
 
 .mark-btn::before {
   content: "✏️";
-  margin-right: 8px;
+  margin-right: 4px;
 }
 
 .remove-btn::before {
   content: "🗑️";
-  margin-right: 8px;
+  margin-right: 4px;
 }
 
 .remark-input {
@@ -135,48 +122,42 @@ tr.ticket {
 .top-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 12px;
 }
 
 .controls button {
-  padding: 12px 24px;
+  padding: 8px 16px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 14px;
-  transition: background 0.2s;
-  margin: 0 8px;
-}
-
-.controls button {
-  background: #3498db;
+  font-size: 12px;
   color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  background: linear-gradient(145deg, #3498db, #2980b9);
+  margin: 0 4px;
 }
 
 .controls button:hover {
-  background: #2980b9;
+  background: linear-gradient(145deg, #2980b9, #1a5276);
 }
 
 .filters {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
-  flex-wrap: wrap;
   margin-top: 12px;
-}
-
-.filters label {
-  margin: 0;
 }
 
 .filters select,
 .filters input {
-  padding: 10px;
+  padding: 8px;
   border: 1px solid #ccc;
   border-radius: 6px;
   font-size: 14px;
+  width: 150px;
 }
 
 .count-badge {
