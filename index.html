@@ -113,7 +113,7 @@ function buildTableHTML(matrix, ponList){
   const olts = Object.keys(matrix).sort();
   let html = '<table id="matrixTable">';
   // Header
-  html += '<tr><th>OLT / PON</th>';
+  html += '<tr><th></th>'; // Blank first column header
   ponList.forEach(p=>html+=`<th>P${p}</th>`);
   html += '<th>Total</th></tr>';
   // Rows
