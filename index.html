@@ -1,3 +1,4 @@
+<xaiArtifact artifact_id="21272eb3-d1bc-4d04-86bb-44cedc7e190d" title="index.html" contentType="text Coerce
 <!doctype html>
 <html>
 <head>
@@ -11,162 +12,33 @@ h2 { margin-bottom: 12px; }
 #matrixTable { border-collapse: collapse; width: 100%; }
 #matrixTable th, #matrixTable td { border: 1px solid #ccc; padding: 4px 8px; text-align: center; }
 #matrixTable th { background: #eee; position: sticky; top: 0; z-index: 2; }
-.cell-count { cursor: pointer; color: blue; text-decoration: underline; }
-.popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); 
-         background: #fff; border: 1px solid #333; padding: 12px; max-height: 70%; 
-         overflow: auto; display: none; z-index: 1000; width: 600px; }
-.popup table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-.popup table th, .popup table td { border: 1px solid #ccc; padding: 4px; text-align: left; font-size: 12px; }
-.popup-close { cursor: pointer; color: red; float: right; font-weight: bold; }
 </style>
 </head>
 <body>
 
 <h2>Merotra Network</h2>
-<div id="matrixHolder"></div>
-
-<!-- Popup for user details -->
-<div id="userPopup" class="popup">
-  <span id="popupClose" class="popup-close">X</span>
-  <h3>User List</h3>
-  <div id="popupContent"></div>
+<div id="matrixHolder">
+<table id="matrixTable">
+<tr><th></th><th>Pon1</th><th>Pon2</th><th>Pon3</th><th>Pon4</th><th>Pon5</th><th>Pon6</th><th>Pon7</th><th>Pon8</th><th>Pon9</th><th>Pon10</th><th>Pon11</th><th>Pon12</th><th>Pon13</th><th>Pon14</th><th>Pon15</th><th>Pon16</th><th>Total</th></tr>
+<tr><th rowspan="4">O1I6</th><td>Ref1</td><td>Ref2</td><td>Ref3</td><td>Ref4</td><td>Ref5</td><td>Ref6</td><td>Ref7</td><td>Ref8</td><td>Ref9</td><td>Ref10</td><td>Ref11</td><td>Ref12</td><td>Ref13</td><td>Ref14</td><td>Ref15</td><td>Ref16</td><td>Ref17</td></tr>
+<tr><td>Ref18</td><td>Ref19</td><td>Ref20</td><td>Ref21</td><td>Ref22</td><td>Ref23</td><td>Ref24</td><td>Ref25</td><td>Ref26</td><td>Ref27</td><td>Ref28</td><td>Ref29</td><td>Ref30</td><td>Ref31</td><td>Ref32</td><td>Ref33</td><td>Ref34</td></tr>
+<tr><td>Ref35</td><td>Ref36</td><td>Ref37</td><td>Ref38</td><td>Ref39</td><td>Ref40</td><td>Ref41</td><td>Ref42</td><td>Ref43</td><td>Ref44</td><td>Ref45</td><td>Ref46</td><td>Ref47</td><td>Ref48</td><td>Ref49</td><td>Ref50</td><td>Ref51</td></tr>
+<tr><td>Ref52</td><td>Ref53</td><td>Ref54</td><td>Ref55</td><td>Ref56</td><td>Ref57</td><td>Ref58</td><td>Ref59</td><td>Ref60</td><td>Ref61</td><td>Ref62</td><td>Ref63</td><td>Ref64</td><td>Ref65</td><td>Ref66</td><td>Ref67</td><td>Ref68</td></tr>
+<tr><th rowspan="4">O2I5</th><td>Ref69</td><td>Ref70</td><td>Ref71</td><td>Ref72</td><td>Ref73</td><td>Ref74</td><td>Ref75</td><td>Ref76</td><td>Ref77</td><td>Ref78</td><td>Ref79</td><td>Ref80</td><td>Ref81</td><td>Ref82</td><td>Ref83</td><td>Ref84</td><td>Ref85</td></tr>
+<tr><td>Ref86</td><td>Ref87</td><td>Ref88</td><td>Ref89</td><td>Ref90</td><td>Ref91</td><td>Ref92</td><td>Ref93</td><td>Ref94</td><td>Ref95</td><td>Ref96</td><td>Ref97</td><td>Ref98</td><td>Ref99</td><td>Ref100</td><td>Ref101</td><td>Ref102</td></tr>
+<tr><td>Ref103</td><td>Ref104</td><td>Ref105</td><td>Ref106</td><td>Ref107</td><td>Ref108</td><td>Ref109</td><td>Ref110</td><td>Ref111</td><td>Ref112</td><td>Ref113</td><td>Ref114</td><td>Ref115</td><td>Ref116</td><td>Ref117</td><td>Ref118</td><td>Ref119</td></tr>
+<tr><td>Ref120</td><td>Ref121</td><td>Ref122</td><td>Ref123</td><td>Ref124</td><td>Ref125</td><td>Ref126</td><td>Ref127</td><td>Ref128</td><td>Ref129</td><td>Ref130</td><td>Ref131</td><td>Ref132</td><td>Ref133</td><td>Ref134</td><td>Ref135</td><td>Ref136</td></tr>
+<tr><th rowspan="4">O3I4</th><td>Ref137</td><td>Ref138</td><td>Ref139</td><td>Ref140</td><td>Ref141</td><td>Ref142</td><td>Ref143</td><td>Ref144</td><td>Ref145</td><td>Ref146</td><td>Ref147</td><td>Ref148</td><td>Ref149</td><td>Ref150</td><td>Ref151</td><td>Ref152</td><td>Ref153</td></tr>
+<tr><td>Ref154</td><td>Ref155</td><td>Ref156</td><td>Ref157</td><td>Ref158</td><td>Ref159</td><td>Ref160</td><td>Ref161</td><td>Ref162</td><td>Ref163</td><td>Ref164</td><td>Ref165</td><td>Ref166</td><td>Ref167</td><td>Ref168</td><td>Ref169</td><td>Ref170</td></tr>
+<tr><td>Ref171</td><td>Ref172</td><td>Ref173</td><td>Ref174</td><td>Ref175</td><td>Ref176</td><td>Ref177</td><td>Ref178</td><td>Ref179</td><td>Ref180</td><td>Ref181</td><td>Ref182</td><td>Ref183</td><td>Ref184</td><td>Ref185</td><td>Ref186</td><td>Ref187</td></tr>
+<tr><td>Ref188</td><td>Ref189</td><td>Ref190</td><td>Ref191</td><td>Ref192</td><td>Ref193</td><td>Ref194</td><td>Ref195</td><td>Ref196</td><td>Ref197</td><td>Ref198</td><td>Ref199</td><td>Ref200</td><td>Ref201</td><td>Ref202</td><td>Ref203</td><td>Ref204</td></tr>
+<tr><th rowspan="4">O4I3</th><td>Ref205</td><td>Ref206</td><td>Ref207</td><td>Ref208</td><td>Ref209</td><td>Ref210</td><td>Ref211</td><td>Ref212</td><td>Ref213</td><td>Ref214</td><td>Ref215</td><td>Ref216</td><td>Ref217</td><td>Ref218</td><td>Ref219</td><td>Ref220</td><td>Ref221</td></tr>
+<tr><td>Ref222</td><td>Ref223</td><td>Ref224</td><td>Ref225</td><td>Ref226</td><td>Ref227</td><td>Ref228</td><td>Ref229</td><td>Ref230</td><td>Ref231</td><td>Ref232</td><td>Ref233</td><td>Ref234</td><td>Ref235</td><td>Ref236</td><td>Ref237</td><td>Ref238</td></tr>
+<tr><td>Ref239</td><td>Ref240</td><td>Ref241</td><td>Ref242</td><td>Ref243</td><td>Ref244</td><td>Ref245</td><td>Ref246</td><td>Ref247</td><td>Ref248</td><td>Ref249</td><td>Ref250</td><td>Ref251</td><td>Ref252</td><td>Ref253</td><td>Ref254</td><td>Ref255</td></tr>
+<tr><td>Ref256</td><td>Ref257</td><td>Ref258</td><td>Ref259</td><td>Ref260</td><td>Ref261</td><td>Ref262</td><td>Ref263</td><td>Ref264</td><td>Ref265</td><td>Ref266</td><td>Ref267</td><td>Ref268</td><td>Ref269</td><td>Ref270</td><td>Ref271</td><td>Ref272</td></tr>
+<tr><th>O5I2</th><td>Ref273</td><td>Ref274</td><td>Ref275</td><td>Ref276</td><td>Ref277</td><td>Ref278</td><td>Ref279</td><td>Ref280</td><td>Ref281</td><td>Ref282</td><td>Ref283</td><td>Ref284</td><td>Ref285</td><td>Ref286</td><td>Ref287</td><td>Ref288</td><td>Ref289</td></tr>
+</table>
 </div>
 
-<script>
-// ====== CONFIG ======
-const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz-FZM6fwvv0ruaSv-PbEG8sHNOmldJn6kXtRY6e7NZ9YlN3TJ5Oe9ECMwmGBTK-LMTnA/exec';
-const TOKEN = 'abcd1234';
-// ===================
-
-let sheetData = [];
-
-// Popup helpers
-const popup = document.getElementById('userPopup');
-const popupContent = document.getElementById('popupContent');
-document.getElementById('popupClose').onclick = () => { popup.style.display = 'none'; };
-
-function showUserPopup(title, users) {
-  popupContent.innerHTML = `<strong>${title}</strong><br><br>`;
-  if(users.length===0){ popupContent.innerHTML += 'No users'; popup.style.display='block'; return; }
-
-  let html = '<table><thead><tr><th>SN</th><th>Name</th><th>Number</th><th>Location</th><th>Address</th><th>Power</th><th>Remarks</th></tr></thead><tbody>';
-  users.forEach((u,i)=>{
-    let number = u['Last called no'] ? u['Last called no'] : u['Number'];
-    html += `<tr>
-      <td>${i+1}</td>
-      <td>${u['Name']||''}</td>
-      <td>${number||''}</td>
-      <td>${u['Location']||''}</td>
-      <td>${u['Address']||''}</td>
-      <td>${u['Power']||''}</td>
-      <td>${u['Remarks']||''}</td>
-    </tr>`;
-  });
-  html += '</tbody></table>';
-  popupContent.innerHTML += html;
-  popup.style.display = 'block';
-}
-
-// Extract OLT and PON from NMID
-function parseNMID(nmid){
-  const ponMatch = nmid.match(/P(\d+)/i);
-  const olt = nmid.replace(/P\d+/i,'');
-  const pon = ponMatch ? ponMatch[1] : '';
-  return { olt, pon };
-}
-
-// Build matrix data structure
-function buildMatrix(data){
-  const matrix = {}; // {OLT:{PON:[rows]}}
-  const ponSet = new Set();
-  data.forEach(row=>{
-    if(!row['User']) return; // ignore rows without User ID
-    const nm = parseNMID(row['NMID']);
-    if(!matrix[nm.olt]) matrix[nm.olt] = {};
-    if(!matrix[nm.olt][nm.pon]) matrix[nm.olt][nm.pon] = [];
-    matrix[nm.olt][nm.pon].push(row);
-    ponSet.add(nm.pon);
-  });
-  const ponList = Array.from(ponSet).sort((a,b)=>parseInt(a)-parseInt(b));
-  return {matrix, ponList};
-}
-
-// Compute cell counts
-function computeCellCounts(rows){
-  const totalUsers = rows.length;
-  const offlineUsers = rows.filter(r=>r['Downs']).length;
-  const complaints = rows.filter(r=>r['Ticket']).length;
-  // On/Off status
-  const dropsCount = {};
-  rows.forEach(r=>{
-    if(!r['Drops']) return;
-    const ts = r['Drops'];
-    dropsCount[ts] = (dropsCount[ts]||0)+1;
-  });
-  let status = 'On';
-  Object.values(dropsCount).forEach(v=>{ if(v>=4) status='Off'; });
-  return {totalUsers, offlineUsers, complaints, status};
-}
-
-// Build matrix table HTML
-function buildTableHTML(matrix, ponList){
-  const olts = Object.keys(matrix).sort();
-  let html = '<table id="matrixTable">';
-  // Header
-  html += '<tr><th></th>'; // Blank first column header
-  ponList.forEach(p=>html+=`<th>P${p}</th>`);
-  html += '<th>Total</th></tr>';
-  // Rows
-  olts.forEach(olt=>{
-    html += `<tr><th>${olt}</th>`;
-    let rowTotalUsers = 0;
-    ponList.forEach(pon=>{
-      const rows = matrix[olt][pon]||[];
-      const counts = computeCellCounts(rows);
-      rowTotalUsers += counts.totalUsers;
-      html += `<td>
-        <div class="cell-count" onclick="showUserPopup('PON ${pon} / ${olt} - Total Users',${JSON.stringify(rows)})">
-          Total: ${counts.totalUsers}<br>
-          Offline: ${counts.offlineUsers}<br>
-          Complaints: ${counts.complaints}<br>
-          ${counts.status}
-        </div>
-      </td>`;
-    });
-    // Row total
-    const allRows = [];
-    ponList.forEach(p=>{ if(matrix[olt][p]) allRows.push(...matrix[olt][p]); });
-    html += `<td><div class="cell-count" onclick="showUserPopup('Total Users for ${olt}',${JSON.stringify(allRows)})">${rowTotalUsers}</div></td>`;
-    html += '</tr>';
-  });
-  html += '</table>';
-  return html;
-}
-
-// Load data via fetch
-async function loadData(){
-  const url = WEB_APP_URL + '?token=' + encodeURIComponent(TOKEN);
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error('Network response was not ok: ' + response.statusText);
-    }
-    const data = await response.json();
-    handleSheetData(data);
-  } catch (error) {
-    console.error('Fetch error:', error);
-    // Optional: Display error in UI
-    document.getElementById('matrixHolder').innerHTML = '<p>Error loading data: ' + error.message + '</p>';
-  }
-}
-
-function handleSheetData(data){
-  sheetData = data.rows || data || []; // Adjust based on actual response format; if plain array, use data
-  const {matrix, ponList} = buildMatrix(sheetData);
-  document.getElementById('matrixHolder').innerHTML = buildTableHTML(matrix, ponList);
-}
-
-window.addEventListener('load', loadData);
-</script>
 </body>
 </html>
