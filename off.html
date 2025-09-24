@@ -37,6 +37,16 @@
       from { bottom: 30px; opacity: 1; }
       to { bottom: 0; opacity: 0; }
     }
+
+    #tableWrap {
+      overflow: visible; /* Ensure no hidden overflow during capture */
+      position: relative;
+    }
+
+    #dataTable {
+      width: 100%;
+      table-layout: auto; /* Allow natural width for all columns */
+    }
   </style>
 </head>
 <body>
@@ -387,12 +397,23 @@
       await new Promise(resolve => setTimeout(resolve, 100));
       const node = document.getElementById('tableWrap');
       if (!node) throw new Error('Table element not found');
+
+      // Temporarily disable overflow and ensure full table is captured
+      const originalOverflow = node.style.overflow;
+      node.style.overflow = 'visible';
+      node.style.height = 'auto'; // Allow full height for capture
+
       const canvas = await html2canvas(node, {
         scale: window.devicePixelRatio || 1,
         useCORS: true,
         logging: true,
-        backgroundColor: null // Preserve transparency if needed
+        backgroundColor: null,
+        scrollX: 0,
+        scrollY: -window.scrollY, // Adjust for page scroll
+        windowWidth: document.documentElement.scrollWidth,
+        windowHeight: document.documentElement.scrollHeight
       });
+
       if (!canvas) throw new Error('Canvas creation failed');
       const dataUrl = canvas.toDataURL('image/png');
       const blob = await (await fetch(dataUrl)).blob();
@@ -404,6 +425,11 @@
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+
+      // Restore original styles
+      node.style.overflow = originalOverflow;
+      node.style.height = '';
+
       showToast('Screenshot downloaded successfully!');
     } catch (err) {
       console.error('Screenshot download failed:', err);
