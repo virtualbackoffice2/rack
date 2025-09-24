@@ -17,7 +17,6 @@
       <button id="btnDownloadCsv">CSV</button>
       <button id="btnScreenshotWhatsapp">Screenshot</button>
     </div>
-    <div>User count: <span id="userCount">0</span></div>
   </div>
   <div class="filters">
     <select id="selWindow" placeholder="Select Window"></select>
@@ -27,6 +26,7 @@
     <input id="searchName" placeholder="Enter Name">
     <input id="searchMac" placeholder="Enter Mac/Serial">
     <select id="selTimeFilter" placeholder="Select Time"></select>
+    <div>User count: <span id="userCount">0</span></div>
   </div>
   <div id="tableWrap">
     <table id="dataTable">
@@ -209,7 +209,11 @@
   function populateTimeFilter() {
     const times = new Set();
     filtered.forEach(r => {
-      const v = (r['Drops'] || r['AB'] || '').toString();
+      let v = r['Drops'] || r['AB'] || '';
+      // Handle different data types (string, number, date)
+      if (typeof v === 'number') v = v.toString();
+      else if (v instanceof Date) v = v.toISOString().split('T')[0]; // Extract date part
+      else if (typeof v === 'string') v = v.trim();
       if (v) times.add(v);
     });
     selTimeFilter.innerHTML = '<option value="">Select Time</option>' + Array.from(times).sort().map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
