@@ -384,14 +384,14 @@
       const canvas = await html2canvas(node, { scale: 1 });
       const dataUrl = canvas.toDataURL('image/png');
       try {
-        if (navigator.canShare && typeof navigator.canShare === 'function') {
+       /* if (navigator.canShare && typeof navigator.canShare === 'function') {
           const blob = await (await fetch(dataUrl)).blob();
           if (navigator.canShare({ files: [new File([blob], 'screenshot.png', { type: 'image/png' })] })) {
             await navigator.share({ files: [new File([blob], 'screenshot.png', { type: 'image/png' })], text: 'Complain Manager screenshot' });
             hideSpinner();
             return;
           }
-        }
+        } */
       } catch (shareErr) { console.warn('Native share not available or failed:', shareErr); }
       const w = window.open('about:blank', '_blank');
       if (w) {
