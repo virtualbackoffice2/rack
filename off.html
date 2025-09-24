@@ -189,7 +189,7 @@
       if (!ponsForWindow[win]) ponsForWindow[win] = new Set();
       if (pon) ponsForWindow[win].add(pon);
     });
-    selWindow.innerHTML = '<option value="" style="color: black;">All Window</option>' + Array.from(windows).sort().map(w => `<option value="${escapeHtml(w)}" style="color: black;">${escapeHtml(w)}</option>`).join('');
+    selWindow.innerHTML = '<option value="" style="color: black;">All Window</option>' + Array.from(windows).filter(w => w.trim() !== '').sort().map(w => `<option value="${escapeHtml(w)}" style="color: black;">${escapeHtml(w)}</option>`).join('');
     selWindow._ponsMap = ponsForWindow;
     fillPonOptions('');
   }
