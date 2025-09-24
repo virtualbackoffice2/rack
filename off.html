@@ -47,6 +47,12 @@
       width: 100%;
       table-layout: auto; /* Allow natural width for all columns */
     }
+
+    #captureArea {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+    }
   </style>
 </head>
 <body>
@@ -60,33 +66,35 @@
       <button id="btnScreenshotDownload">Screenshot</button>
     </div>
   </div>
-  <div class="filters">
-    <select id="selWindow" placeholder="Select Window"></select>
-    <select id="selPon" placeholder="Select PON"></select>
-    <input id="searchUser" placeholder="Enter User ID">
-    <input id="searchMobile" placeholder="Enter Mobile No">
-    <input id="searchName" placeholder="Enter Name">
-    <input id="searchMac" placeholder="Enter Mac/Serial">
-    <div>User count: <span id="userCount">0</span></div>
-  </div>
-  <div id="tableWrap">
-    <table id="dataTable">
-      <thead>
-        <tr>
-          <th class="sortable" data-key="NMID">PON No</th>
-          <th class="sortable" data-key="Users">User ID</th>
-          <th>Mobile No</th>
-          <th>Name</th>
-          <th>Mac / Serial</th>
-          <th class="sortable" data-key="Drops">Down Time</th>
-          <th>Remark</th>
-          <th>Actions</th>
-          <th>Location</th>
-          <th>Procare</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+  <div id="captureArea">
+    <div class="filters">
+      <select id="selWindow" placeholder="Select Window"></select>
+      <select id="selPon" placeholder="Select PON"></select>
+      <input id="searchUser" placeholder="Enter User ID">
+      <input id="searchMobile" placeholder="Enter Mobile No">
+      <input id="searchName" placeholder="Enter Name">
+      <input id="searchMac" placeholder="Enter Mac/Serial">
+      <div>User count: <span id="userCount">0</span></div>
+    </div>
+    <div id="tableWrap">
+      <table id="dataTable">
+        <thead>
+          <tr>
+            <th class="sortable" data-key="NMID">PON No</th>
+            <th class="sortable" data-key="Users">User ID</th>
+            <th>Mobile No</th>
+            <th>Name</th>
+            <th>Mac / Serial</th>
+            <th class="sortable" data-key="Drops">Down Time</th>
+            <th>Remark</th>
+            <th>Actions</th>
+            <th>Location</th>
+            <th>Procare</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </div>
   <div id="spinnerOverlay"><div class="spinner"></div><p>Loading...</p></div>
   <div id="toast"></div>
@@ -395,14 +403,12 @@
     try {
       // Ensure the table is fully rendered
       await new Promise(resolve => setTimeout(resolve, 100));
-      const node = document.getElementById('tableWrap');
-      if (!node) throw new Error('Table element not found');
-
+      const node = document.getElementById('captureArea');
+      if (!node) throw new Error('Capture area not found');
       // Temporarily disable overflow and ensure full table is captured
       const originalOverflow = node.style.overflow;
       node.style.overflow = 'visible';
       node.style.height = 'auto'; // Allow full height for capture
-
       const canvas = await html2canvas(node, {
         scale: window.devicePixelRatio || 1,
         useCORS: true,
@@ -413,7 +419,6 @@
         windowWidth: document.documentElement.scrollWidth,
         windowHeight: document.documentElement.scrollHeight
       });
-
       if (!canvas) throw new Error('Canvas creation failed');
       const dataUrl = canvas.toDataURL('image/png');
       const blob = await (await fetch(dataUrl)).blob();
@@ -425,11 +430,9 @@
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-
       // Restore original styles
       node.style.overflow = originalOverflow;
       node.style.height = '';
-
       showToast('Screenshot downloaded successfully!');
     } catch (err) {
       console.error('Screenshot download failed:', err);
