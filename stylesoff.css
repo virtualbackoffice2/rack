@@ -78,7 +78,6 @@ tr.ticket {
 .mark-btn,
 .remove-btn {
   border: none;
-  background: linear-gradient(145deg, #3498db, #2980b9);
   padding: 8px 16px;
   border-radius: 8px;
   cursor: pointer;
@@ -88,23 +87,28 @@ tr.ticket {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  display: inline-block; /* Ensure side by side */
+}
+
+.mark-btn {
+  background: linear-gradient(145deg, #3498db, #2980b9);
 }
 
 .mark-btn:hover {
   background: linear-gradient(145deg, #2980b9, #1a5276);
 }
 
-.remove-btn {
-  background: linear-gradient(145deg, #27ae60, #219a52);
-}
-
-.remove-btn:hover {
-  background: linear-gradient(145deg, #219a52, #186a3c);
-}
-
 .mark-btn::before {
   content: "✏️";
   margin-right: 4px;
+}
+
+.remove-btn {
+  background: linear-gradient(145deg, #e74c3c, #c0392b); /* Red for delete */
+}
+
+.remove-btn:hover {
+  background: linear-gradient(145deg, #c0392b, #a93226);
 }
 
 .remove-btn::before {
