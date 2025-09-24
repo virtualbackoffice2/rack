@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Complain Manager</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="stylesoff.css">
   <style>
     #toast {
       visibility: hidden;
@@ -57,7 +57,6 @@
     <input id="searchMobile" placeholder="Enter Mobile No">
     <input id="searchName" placeholder="Enter Name">
     <input id="searchMac" placeholder="Enter Mac/Serial">
-    <select id="selTimeFilter" placeholder="Select Time"></select>
     <div>User count: <span id="userCount">0</span></div>
   </div>
   <div id="tableWrap">
@@ -93,7 +92,6 @@
   const tbody = document.querySelector('#dataTable tbody');
   const selWindow = document.getElementById('selWindow');
   const selPon = document.getElementById('selPon');
-  const selTimeFilter = document.getElementById('selTimeFilter');
   function showSpinner() { spinner.style.display = 'flex'; document.body.classList.add('disabled'); }
   function hideSpinner() { spinner.style.display = 'none'; document.body.classList.remove('disabled'); }
   function showToast(message) {
@@ -191,15 +189,15 @@
       if (!ponsForWindow[win]) ponsForWindow[win] = new Set();
       if (pon) ponsForWindow[win].add(pon);
     });
-    selWindow.innerHTML = '<option value="">Select Window</option>' + Array.from(windows).sort().map(w => `<option value="${escapeHtml(w)}">${escapeHtml(w)}</option>`).join('');
+    selWindow.innerHTML = '<option value="" style="color: black;">All Window</option>' + Array.from(windows).sort().map(w => `<option value="${escapeHtml(w)}" style="color: black;">${escapeHtml(w)}</option>`).join('');
     selWindow._ponsMap = ponsForWindow;
     fillPonOptions('');
   }
   function fillPonOptions(windowName) {
     const map = selWindow._ponsMap || {};
     const set = windowName ? (map[windowName] || new Set()) : new Set(Object.values(map).flatMap(s => Array.from(s)));
-    const opts = Array.from(set).sort().map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
-    selPon.innerHTML = '<option value="">Select PON</option>' + opts;
+    const opts = Array.from(set).sort().map(p => `<option value="${escapeHtml(p)}" style="color: black;">${escapeHtml(p)}</option>`).join('');
+    selPon.innerHTML = '<option value="" style="color: black;">Select PON</option>' + opts;
   }
   function applyQuickFilterOffline() {
     filtered = rawRows.filter(r => {
@@ -207,7 +205,6 @@
       return val !== '';
     });
     renderTable();
-    populateTimeFilter();
   }
   function applyFilterComplains() {
     filtered = rawRows.filter(r => {
@@ -215,7 +212,6 @@
       return val !== '';
     });
     renderTable();
-    populateTimeFilter();
   }
   function applyFilterDrops() {
     filtered = rawRows.filter(r => {
@@ -223,7 +219,6 @@
       return val !== '';
     });
     renderTable();
-    populateTimeFilter();
   }
   function applyAllFilters() {
     const win = selWindow.value;
@@ -232,30 +227,16 @@
     const mobile = document.getElementById('searchMobile').value.trim().toLowerCase();
     const name = document.getElementById('searchName').value.trim().toLowerCase();
     const mac = document.getElementById('searchMac').value.trim().toLowerCase();
-    const timeSel = selTimeFilter.value;
     filtered = rawRows.filter(r => {
-      if (win) { const v = (r['Window'] || r['window'] || '').toString(); if (v !== win) return false }
+      if (win && win !== '') { const v = (r['Window'] || r['window'] || '').toString(); if (v !== win) return false }
       if (pon) { const v = (r['NMID'] || r['C'] || '').toString(); if (v !== pon) return false }
       if (userId && userId.length >= 3) { const v = (r['Users'] || r['N'] || '').toString().toLowerCase(); if (!v.includes(userId)) return false }
       if (mobile && mobile.length >= 3) { const v1 = (r['Last called no'] || r['AC'] || '').toString().toLowerCase(); const v2 = (r['Number'] || r['P'] || '').toString().toLowerCase(); if (!v1.includes(mobile) && !v2.includes(mobile)) return false }
       if (name && name.length >= 3) { const v = (r['Name'] || r['O'] || '').toString().toLowerCase(); if (!v.includes(name)) return false }
       if (mac && mac.length >= 3) { const v1 = (r['MAC'] || r['U'] || '').toString().toLowerCase(); const v2 = (r['Serial'] || r['V'] || '').toString().toLowerCase(); if (!v1.includes(mac) && !v2.includes(mac)) return false }
-      if (timeSel) { const v = formatTimestamp(new Date(r['Drops'] || r['AB'] || '')); if (v === 'NaN/NaN/NaN NaN:NaN:NaN') return false; if (v !== timeSel) return false }
       return true;
     });
     renderTable();
-  }
-  function populateTimeFilter() {
-    const times = new Set();
-    filtered.forEach(r => {
-      let v = r['Drops'] || r['AB'] || '';
-      if (v) {
-        const date = new Date(v);
-        v = formatTimestamp(date); // Format to "M/D/YYYY H:MM:SS"
-        if (v !== 'NaN/NaN/NaN NaN:NaN:NaN') times.add(v); // Only add valid timestamps
-      }
-    });
-    selTimeFilter.innerHTML = '<option value="">Select Time</option>' + Array.from(times).sort().map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
   }
   function renderTable() {
     tbody.innerHTML = '';
@@ -440,7 +421,6 @@
   document.getElementById('btnDrops').addEventListener('click', () => { showSpinner(); setTimeout(() => { applyFilterDrops(); hideSpinner(); }, 300); });
   selWindow.addEventListener('change', () => { fillPonOptions(selWindow.value); applyAllFilters(); });
   selPon.addEventListener('change', applyAllFilters);
-  selTimeFilter.addEventListener('change', applyAllFilters);
   document.getElementById('searchUser').addEventListener('input', () => { if (document.getElementById('searchUser').value.length >= 3) applyAllFilters(); });
   document.getElementById('searchMobile').addEventListener('input', () => { if (document.getElementById('searchMobile').value.length >= 3) applyAllFilters(); });
   document.getElementById('searchName').addEventListener('input', () => { if (document.getElementById('searchName').value.length >= 3) applyAllFilters(); });
