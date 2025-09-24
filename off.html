@@ -80,6 +80,9 @@
   </div>
   <div id="spinnerOverlay"><div class="spinner"></div><p>Loading...</p></div>
   <div id="toast"></div>
+
+  <!-- Include html2canvas library -->
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
   <script>
   // --- CONFIG: update these to your deployed GAS endpoint & token ---
   const GAS_URL = "https://script.google.com/macros/s/AKfycbz-FZM6fwvv0ruaSv-PbEG8sHNOmldJn6kXtRY6e7NZ9YlN3TJ5Oe9ECMwmGBTK-LMTnA/exec";
@@ -380,8 +383,17 @@
   document.getElementById('btnScreenshotDownload').addEventListener('click', async () => {
     showSpinner();
     try {
+      // Ensure the table is fully rendered
+      await new Promise(resolve => setTimeout(resolve, 100));
       const node = document.getElementById('tableWrap');
-      const canvas = await html2canvas(node, { scale: 1 });
+      if (!node) throw new Error('Table element not found');
+      const canvas = await html2canvas(node, {
+        scale: window.devicePixelRatio || 1,
+        useCORS: true,
+        logging: true,
+        backgroundColor: null // Preserve transparency if needed
+      });
+      if (!canvas) throw new Error('Canvas creation failed');
       const dataUrl = canvas.toDataURL('image/png');
       const blob = await (await fetch(dataUrl)).blob();
       const url = URL.createObjectURL(blob);
@@ -395,7 +407,7 @@
       showToast('Screenshot downloaded successfully!');
     } catch (err) {
       console.error('Screenshot download failed:', err);
-      showToast('Failed to download screenshot: ' + err.message);
+      showToast('Failed to download screenshot: ' + (err.message || 'Unknown error'));
     }
     hideSpinner();
   });
