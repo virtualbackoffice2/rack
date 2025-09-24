@@ -47,7 +47,7 @@
       <button id="btnOffline">Offline</button>
       <button id="btnDrops">Drops</button>
       <button id="btnDownloadCsv">CSV</button>
-      <button id="btnScreenshotWhatsapp">Screenshot</button>
+      <button id="btnScreenshotDownload">Screenshot</button>
     </div>
   </div>
   <div class="filters">
@@ -376,30 +376,27 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = 'complains.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   });
-  // Screenshot & WhatsApp
-  document.getElementById('btnScreenshotWhatsapp').addEventListener('click', async () => {
+  // Screenshot download
+  document.getElementById('btnScreenshotDownload').addEventListener('click', async () => {
     showSpinner();
     try {
       const node = document.getElementById('tableWrap');
       const canvas = await html2canvas(node, { scale: 1 });
       const dataUrl = canvas.toDataURL('image/png');
-      try {
-       /* if (navigator.canShare && typeof navigator.canShare === 'function') {
-          const blob = await (await fetch(dataUrl)).blob();
-          if (navigator.canShare({ files: [new File([blob], 'screenshot.png', { type: 'image/png' })] })) {
-            await navigator.share({ files: [new File([blob], 'screenshot.png', { type: 'image/png' })], text: 'Complain Manager screenshot' });
-            hideSpinner();
-            return;
-          }
-        } */
-      } catch (shareErr) { console.warn('Native share not available or failed:', shareErr); }
-      const w = window.open('about:blank', '_blank');
-      if (w) {
-        w.document.write(`<title>Screenshot</title><img src="${dataUrl}" style="max-width:100%"><p><a id=dl href="${dataUrl}" download="screenshot.png">Download image</a> - then share via WhatsApp Web or Mobile</p>`);
-      } else {
-        alert('Popup blocked. Please allow popups for this site to view the screenshot.');
-      }
-    } catch (err) { console.error('Screenshot failed:', err); alert('Screenshot failed: ' + err.message); }
+      const blob = await (await fetch(dataUrl)).blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'screenshot.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Screenshot downloaded successfully!');
+    } catch (err) {
+      console.error('Screenshot download failed:', err);
+      showToast('Failed to download screenshot: ' + err.message);
+    }
     hideSpinner();
   });
   // Sorting toggles
