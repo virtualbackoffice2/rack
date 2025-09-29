@@ -646,11 +646,10 @@ function closeModal() {
   document.getElementById('userModal').style.display = 'none';
 }
 window.addEventListener('load', () => {
-  loadData();       // main table data
-  setInterval(() => {
-    loadData();
-  }, 30000); // 30 sec refresh
+  loadData(); // Pehle ek baar run
+  setInterval(loadData, 30000); // har 30 sec me backend sync karega
 });
+
 
 
   
