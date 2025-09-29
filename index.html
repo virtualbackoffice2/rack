@@ -644,7 +644,11 @@ function showOltUsers(type, olt, maxPon) {
 function closeModal() {
   document.getElementById('userModal').style.display = 'none';
 }
-window.addEventListener('load', loadData);
+window.addEventListener('load', () => {
+  loadData(); // Pehle ek baar run
+  setInterval(loadData, 30000); // har 30 sec me backend sync karega
+});
+  
 </script>
 </body>
 </html>
