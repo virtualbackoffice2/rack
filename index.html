@@ -14,10 +14,7 @@
   <p>Loading rack...</p>
 </div>
 <h2>Merotra Network Rack</h2>
-  <div id="extraInfo" style="margin: 15px 0; font-size: 14px; color: #333;">
-  <strong>Last Updated:</strong> <span id="lastUpdated">Loading...</span><br>
-  <strong>Drop Limits:</strong> <span id="dropLimits">Loading...</span>
-</div>
+
 <div id="matrixHolder">
 <table id="matrixTable">
 <tr>
@@ -650,31 +647,10 @@ function closeModal() {
 }
 window.addEventListener('load', () => {
   loadData();       // main table data
-  loadExtraInfo();  // dashboard values
-
   setInterval(() => {
     loadData();
-    loadExtraInfo();
   }, 30000); // 30 sec refresh
 });
-
-
-function loadExtraInfo() {
-  fetch(WEB_APP_URL + "?page=dashboard")
-    .then(response => response.json())
-    .then(data => {
-      // मान लो data.values में पूरा sheet आ रहा है
-      // C2 = row 2, col 3 → data.values[1][2]
-      // A7 = row 7, col 1 → data.values[6][0]
-
-      const lastUpdated = data.values[1][2] || "N/A";
-      const dropLimits = data.values[6][0] || "N/A";
-
-      document.getElementById("lastUpdated").textContent = lastUpdated;
-      document.getElementById("dropLimits").textContent = dropLimits;
-    })
-    .catch(error => console.error("Extra info load error:", error));
-}
 
 
   
