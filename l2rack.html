@@ -540,7 +540,21 @@ function showUsers(type, nmid, olt, pon) {
   if (type === "tick") title = "Ticket Users Details";
   if (type === "drop") title = "Drop Users Details";  // New
   document.getElementById('modalTitle').textContent = title;
-  document.getElementById('modalSubTitle').textContent = `OLT: ${olt} PON: ${pon}`;
+  let subTitle = `OLT: ${olt} PON: ${pon}`;
+  if (type === "drop") {  // New: Add drop time for drop users
+    const currentUsers = (oltData[nmid] && oltData[nmid][type]) || [];
+    if (currentUsers.length > 0) {
+      // Get latest timestamp from drop users (assume "Time Stamp" field exists)
+      const timestamps = currentUsers
+        .map(r => r['Time Stamp'])
+        .filter(ts => ts && ts !== '')
+        .sort((a, b) => new Date(b) - new Date(a));  // Sort descending (latest first)
+      if (timestamps.length > 0) {
+        subTitle += ` | Drop Time: ${timestamps[0]}`;
+      }
+    }
+  }
+  document.getElementById('modalSubTitle').textContent = subTitle;
   const currentUsers = (oltData[nmid] && oltData[nmid][type]) || [];  // Works for 'drop' too
   if (currentUsers.length === 0) {
     showToast();
