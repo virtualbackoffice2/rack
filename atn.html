@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Employee Attendance (Selfie)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 720px;
+      margin: 20px auto;
+      padding: 10px;
+    }
+    .card {
+      border: 1px solid #ddd;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    video, canvas {
+      width: 100%;
+      max-width: 400px;
+      border-radius: 8px;
+      background: #000;
+    }
+    button {
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-right: 6px;
+    }
+    input, label {
+      display: block;
+      margin: 6px 0;
+    }
+    .result {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 6px;
+      background: #f5f5f5;
+    }
+  </style>
+</head>
+<body>
+  <h2>Employee Attendance (Selfie)</h2>
+
+  <div class="card">
+    <label for="name">Your Name</label>
+    <input type="text" id="name" placeholder="Enter your name" />
+
+    <div style="margin-top:10px;">
+      <video id="video" autoplay playsinline></video>
+      <canvas id="canvas" style="display:none;"></canvas>
+    </div>
+
+    <div style="margin-top:8px;">
+      <button id="startBtn">Start Camera</button>
+      <button id="captureBtn" disabled>Capture Selfie</button>
+      <button id="uploadBtn" disabled>Upload Attendance</button>
+    </div>
+
+    <div id="previewArea" style="margin-top:10px;"></div>
+    <div id="statusMsg" class="result" style="display:none;"></div>
+  </div>
+
+  <script>
+    const startBtn = document.getElementById('startBtn');
+    const captureBtn = document.getElementById('captureBtn');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const previewArea = document.getElementById('previewArea');
+    const statusMsg = document.getElementById('statusMsg');
+
+    let stream = null;
+    let lastDataUrl = null;
+
+    startBtn.onclick = async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user" },
+          audio: false
+        });
+        video.srcObject = stream;
+        captureBtn.disabled = false;
+        startBtn.disabled = true;
+      } catch (err) {
+        alert("Camera access denied or not available: " + err.message);
+      }
+    };
+
+    captureBtn.onclick = () => {
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL("image/png");
+      lastDataUrl = dataUrl;
+      previewArea.innerHTML =
+        '<h4>Preview</h4><img src="' +
+        dataUrl +
+        '" style="max-width:320px;border-radius:8px;"/>';
+      uploadBtn.disabled = false;
+    };
+
+    uploadBtn.onclick = async () => {
+      const name = document.getElementById("name").value.trim();
+      if (!name) {
+        alert("Please enter your name");
+        return;
+      }
+      if (!lastDataUrl) {
+        alert("Please capture a selfie first");
+        return;
+      }
+
+      statusMsg.style.display = "block";
+      statusMsg.innerText = "Uploading...";
+
+      const payload = {
+        name: name,
+        imageBase64: lastDataUrl
+      };
+
+      try {
+        const SCRIPT_URL =
+          "https://script.google.com/macros/s/AKfycbxHIqwyzi8oiHM0eomzTewXcxS8yzyAUpE3yRaW5YGigerHlpTNUf17hs_UcrlVtIq5/exec";
+
+        const response = await fetch(SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        // If the script returns HTML instead of JSON, catch that here.
+        const text = await response.text();
+        try {
+          const res = JSON.parse(text);
+          if (res.error) {
+            statusMsg.innerText = "Error: " + res.error;
+          } else if (res.success) {
+            statusMsg.innerHTML =
+              "<strong>Status:</strong> " +
+              res.status +
+              "<br/><strong>Time:</strong> " +
+              res.time +
+              "<br/><a href='" +
+              res.photoUrl +
+              "' target='_blank'>View Photo</a>";
+          } else {
+            statusMsg.innerText = JSON.stringify(res);
+          }
+        } catch {
+          // If response was not JSON, show the raw output
+          statusMsg.innerText =
+            "Unexpected response:\n" + text.slice(0, 200) + "...";
+        }
+      } catch (err) {
+        statusMsg.innerText = "Upload failed: " + err.message;
+      }
+    };
+  </script>
+</body>
+</html>
