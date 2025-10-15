@@ -1,186 +1,103 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Employee Attendance (Selfie)</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Employee Attendance</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 720px;
-      margin: 20px auto;
-      padding: 10px;
-    }
-    .card {
-      border: 1px solid #ddd;
-      padding: 12px;
-      border-radius: 8px;
-      margin-bottom: 12px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    video, canvas {
-      width: 100%;
-      max-width: 400px;
-      border-radius: 8px;
-      background: #000;
-    }
-    button {
-      padding: 8px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-right: 6px;
-    }
-    input, label {
-      display: block;
-      margin: 6px 0;
-    }
-    .result {
-      margin-top: 10px;
-      padding: 10px;
-      border-radius: 6px;
-      background: #f5f5f5;
-    }
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
+    body{font-family:Arial;max-width:720px;margin:20px auto;padding:10px;}
+    .card{border:1px solid #ddd;padding:12px;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,0.1);}
+    video{width:100%;max-width:400px;border-radius:8px;background:#000;}
+    button{padding:8px 12px;border-radius:6px;cursor:pointer;margin:2px;}
+    input, label{display:block;margin:6px 0;}
+    .result{padding:10px;border-radius:6px;margin-top:10px;}
+    button:disabled{opacity:0.6;}
   </style>
 </head>
 <body>
-  <h2>Employee Attendance (Selfie)</h2>
-
+  <h2>👤 Employee Attendance (Selfie)</h2>
   <div class="card">
-    <label for="employeeId">Employee ID *</label>
-    <input type="text" id="employeeId" placeholder="Enter your Employee ID" required />
-
-    <label for="name">Your Name *</label>
-    <input type="text" id="name" placeholder="Enter your name" required />
-
-    <div style="margin-top:10px;">
-      <video id="video" autoplay playsinline></video>
-      <canvas id="canvas" style="display:none;"></canvas>
-    </div>
-
-    <div style="margin-top:8px;">
-      <button id="startBtn">Start Camera</button>
-      <button id="captureBtn" disabled>Capture Selfie</button>
-      <button id="uploadBtn" disabled>Upload Attendance</button>
-    </div>
-
-    <div id="previewArea" style="margin-top:10px;"></div>
+    <label>Employee ID *</label>
+    <input type="text" id="employeeId" placeholder="Enter ID" required>
+    
+    <label>Name *</label>
+    <input type="text" id="name" placeholder="Enter name" required>
+    
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+    
+    <button id="startBtn">📷 Start Camera</button>
+    <button id="captureBtn" disabled>📸 Capture</button>
+    <button id="uploadBtn" disabled>✅ Upload</button>
+    
+    <div id="previewArea"></div>
     <div id="statusMsg" class="result" style="display:none;"></div>
   </div>
 
   <script>
+    // 🔥🔥 STEP 2: APNA NEW URL YAHAN PASTE KARO
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxY_ZmJiyWbmDesnB0FlxQa5ati4mSHGu3xYKs7fGQoB0vywSy2Dud9jhpNLSuovJwo/exec";
+
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
     const startBtn = document.getElementById('startBtn');
     const captureBtn = document.getElementById('captureBtn');
     const uploadBtn = document.getElementById('uploadBtn');
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
     const previewArea = document.getElementById('previewArea');
     const statusMsg = document.getElementById('statusMsg');
 
-    let stream = null;
-    let lastDataUrl = null;
+    let stream, lastDataUrl;
 
     startBtn.onclick = async () => {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user" },
-          audio: false
-        });
-        video.srcObject = stream;
-        captureBtn.disabled = false;
-        startBtn.disabled = true;
-      } catch (err) {
-        alert("Camera access denied or not available: " + err.message);
-      }
+      stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: "user"}});
+      video.srcObject = stream;
+      startBtn.disabled = true;
+      captureBtn.disabled = false;
     };
 
     captureBtn.onclick = () => {
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL("image/png");
-      lastDataUrl = dataUrl;
-      previewArea.innerHTML =
-        '<h4>Preview</h4><img src="' +
-        dataUrl +
-        '" style="max-width:320px;border-radius:8px;"/>';
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      lastDataUrl = canvas.toDataURL('image/png');
+      previewArea.innerHTML = '<h4>Preview:</h4><img src="' + lastDataUrl + '" style="max-width:300px;">';
       uploadBtn.disabled = false;
     };
 
     uploadBtn.onclick = async () => {
-      const employeeId = document.getElementById("employeeId").value.trim();
-      const name = document.getElementById("name").value.trim();
+      const id = document.getElementById('employeeId').value;
+      const name = document.getElementById('name').value;
       
-      if (!employeeId) {
-        alert("Please enter your Employee ID");
-        return;
-      }
-      if (!name) {
-        alert("Please enter your name");
-        return;
-      }
-      if (!lastDataUrl) {
-        alert("Please capture a selfie first");
-        return;
-      }
-
-      statusMsg.style.display = "block";
-      statusMsg.innerText = "Uploading...";
-
-      const payload = {
-        employeeId: employeeId,  // ✅ FIXED: Added employeeId
-        name: name,
-        imageBase64: lastDataUrl
-      };
-
+      if (!id || !name || !lastDataUrl) return alert('Fill all & capture selfie!');
+      
+      statusMsg.style.display = 'block';
+      statusMsg.textContent = 'Uploading...';
+      
+      const data = {employeeId: id, name: name, imageBase64: lastDataUrl};
+      
       try {
-        const SCRIPT_URL =
-          "https://script.google.com/macros/s/AKfycbxHIqwyzi8oiHM0eomzTewXcxS8yzyAUpE3yRaW5YGigerHlpTNUf17hs_UcrlVtIq5/exec";
-
-        const response = await fetch(SCRIPT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+        const res = await fetch(SCRIPT_URL, {
+          method: 'POST',
+          body: JSON.stringify(data)
         });
-
-        const text = await response.text();
-        try {
-          const res = JSON.parse(text);
-          if (res.error) {
-            statusMsg.innerText = "Error: " + res.error;
-            statusMsg.style.background = "#ffebee";
-          } else if (res.success) {
-            statusMsg.innerHTML =
-              "<strong>✅ Success!</strong><br/>" +
-              "<strong>Status:</strong> " + res.status +
-              "<br/><strong>Time:</strong> " + res.time +
-              "<br/><a href='" + res.photoUrl + "' target='_blank'>📸 View Photo</a>";
-            statusMsg.style.background = "#e8f5e8";
-            // Reset form
-            document.getElementById("employeeId").value = "";
-            document.getElementById("name").value = "";
-            previewArea.innerHTML = "";
-            uploadBtn.disabled = true;
-            captureBtn.disabled = true;
-            startBtn.disabled = false;
-            if (stream) {
-              stream.getTracks().forEach(track => track.stop());
-            }
-            video.srcObject = null;
-          } else {
-            statusMsg.innerText = JSON.stringify(res);
-          }
-        } catch {
-          statusMsg.innerText = "Unexpected response:\n" + text.slice(0, 200) + "...";
-          statusMsg.style.background = "#fff3e0";
+        const result = await res.json();
+        
+        if (result.success) {
+          statusMsg.innerHTML = `✅ ${result.status}<br>Time: ${result.time}<br><a href="${result.photoUrl}" target="_blank">📸 Photo</a>`;
+          statusMsg.style.background = '#d4edda';
+          // RESET
+          document.getElementById('employeeId').value = '';
+          document.getElementById('name').value = '';
+          previewArea.innerHTML = '';
+          uploadBtn.disabled = captureBtn.disabled = true;
+          startBtn.disabled = false;
+          stream.getTracks().forEach(t => t.stop());
+        } else {
+          throw result.error;
         }
-      } catch (err) {
-        statusMsg.innerText = "Upload failed: " + err.message;
-        statusMsg.style.background = "#ffebee";
+      } catch (e) {
+        statusMsg.textContent = '❌ ' + e;
+        statusMsg.style.background = '#f8d7da';
       }
     };
   </script>
