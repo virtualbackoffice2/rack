@@ -70,6 +70,9 @@
       border-color: #667eea;
     }
     label { font-weight: 600; color: #4a5568; }
+    .email-section {
+      position: relative;
+    }
     .email-info {
       background: #f7fafc;
       padding: 12px;
@@ -77,6 +80,21 @@
       margin: 10px 0;
       font-size: 14px;
       color: #4a5568;
+      border: 2px solid #e2e8f0;
+    }
+    .auto-email { color: #48bb78; font-weight: bold; }
+    .manual-email { color: #f56565; }
+    .fetch-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      padding: 6px 12px;
+      font-size: 12px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
     }
     textarea { min-height: 80px; resize: vertical; }
     .result {
@@ -107,8 +125,13 @@
     <label for="name">Your Name *</label>
     <input type="text" id="name" placeholder="Enter your full name" required>
 
-    <div class="email-info">
-      <strong>📧 Email:</strong> <span id="emailDisplay">Detecting...</span>
+    <div class="email-section">
+      <label>Your Email *</label>
+      <div class="email-info">
+        <span id="emailDisplay">🔍 Click "Auto Fetch" or Enter Manually</span>
+        <button type="button" class="fetch-btn" onclick="autoFetchEmail()">Auto Fetch</button>
+      </div>
+      <input type="email" id="emailInput" placeholder="example@company.com" style="display:none;">
     </div>
 
     <label for="remarks">Remarks (Optional)</label>
@@ -128,7 +151,7 @@
   </div>
 
   <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/YOUR_NEW_SCRIPT_ID_HERE/exec"; // ← YOUR URL HERE
+    const SCRIPT_URL = "https://script.google.com/macros/s/YOUR_NEW_SCRIPT_ID_HERE/exec"; // ← YOUR URL
 
     const elements = {
       startBtn: document.getElementById('startBtn'),
@@ -139,43 +162,49 @@
       previewArea: document.getElementById('previewArea'),
       statusMsg: document.getElementById('statusMsg'),
       emailDisplay: document.getElementById('emailDisplay'),
+      emailInput: document.getElementById('emailInput'),
       name: document.getElementById('name'),
       remarks: document.getElementById('remarks')
     };
 
     let stream = null;
     let lastDataUrl = null;
+    let currentEmail = '';
 
-    // 🔥 AUTO FETCH EMAIL FROM CHROME
-    async function getEmail() {
+    // 🔥 AUTO FETCH EMAIL - SIMPLIFIED
+    window.autoFetchEmail = async function() {
+      elements.emailDisplay.innerHTML = '🔄 Detecting...';
+      
+      // Method 1: Simple Google Account Check
       try {
-        // Method 1: Chrome Identity API (if available)
-        if (chrome && chrome.identity) {
-          const email = await new Promise(resolve => {
-            chrome.identity.getProfileUserInfo({accountStatus: chrome.identity.AccountStatus.ANY}, 
-              (info) => resolve(info.email || 'Not available')
-            );
-          });
-          elements.emailDisplay.textContent = email;
-          return email;
+        const response = await fetch('https://www.googleapis.com/oauth2/v1/userinfo?alt=json');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.email) {
+            currentEmail = data.email;
+            elements.emailDisplay.innerHTML = `<span class="auto-email">✅ ${data.email}</span>`;
+            elements.emailInput.style.display = 'none';
+            return;
+          }
         }
       } catch(e) {}
 
-      // Method 2: Fallback - Google Account (if signed in)
-      try {
-        const response = await fetch('https://www.googleapis.com/oauth2/v1/userinfo?alt=json');
-        const data = await response.json();
-        elements.emailDisplay.textContent = data.email;
-        return data.email;
-      } catch(e) {}
+      // Method 2: Fallback - Show Manual Input
+      elements.emailDisplay.innerHTML = '<span class="manual-email">⚠️ Auto failed - Enter manually</span>';
+      elements.emailInput.style.display = 'block';
+      elements.emailInput.focus();
+    };
 
-      // Method 3: Manual fallback
-      elements.emailDisplay.textContent = 'Please sign in to Chrome/Google';
-      return '';
-    }
+    // Manual Email Change
+    elements.emailInput.oninput = function() {
+      currentEmail = this.value;
+      if (this.value.includes('@')) {
+        elements.emailDisplay.innerHTML = `<span class="auto-email">✅ ${this.value}</span>`;
+      }
+    };
 
     // Initialize
-    getEmail();
+    autoFetchEmail();
 
     elements.startBtn.onclick = async () => {
       try {
@@ -192,12 +221,11 @@
     };
 
     elements.captureBtn.onclick = () => {
-      elements.canvas.width = 400; // Fixed size for compression
+      elements.canvas.width = 400;
       elements.canvas.height = 300;
       const ctx = elements.canvas.getContext("2d");
       ctx.drawImage(elements.video, 0, 0, 400, 300);
 
-      // 🔥 COMPRESS TO < 100KB
       let quality = 0.8;
       let dataUrl = elements.canvas.toDataURL("image/jpeg", quality);
       while (atob(dataUrl.split(',')[1]).length > 90 * 1024 && quality > 0.2) {
@@ -214,20 +242,21 @@
 
     elements.uploadBtn.onclick = async () => {
       const name = elements.name.value.trim();
-      const email = elements.emailDisplay.textContent;
-      const remarks = elements.remarks.value.trim();
       
       if (!name) return alert("Please enter your name");
+      if (!currentEmail || !currentEmail.includes('@')) 
+        return alert("Please enter valid email (Auto Fetch or Manual)");
       if (!lastDataUrl) return alert("Please capture selfie first");
-      if (email === 'Detecting...' || !email.includes('@')) 
-        return alert("Please refresh page and ensure Google sign-in");
 
       elements.statusMsg.style.display = "block";
       elements.statusMsg.textContent = "⏳ Uploading...";
       elements.statusMsg.className = "result loading";
 
       const payload = {
-        name, email, remarks: remarks || "N/A", imageBase64: lastDataUrl
+        name, 
+        email: currentEmail, 
+        remarks: elements.remarks.value.trim() || "N/A", 
+        imageBase64: lastDataUrl
       };
 
       try {
@@ -241,18 +270,22 @@
         if (res.success) {
           elements.statusMsg.innerHTML = 
             `✅ <strong>${res.status}</strong><br>` +
+            `Email: ${currentEmail}<br>` +
             `Time: ${res.time}<br>` +
             `<a href="${res.photoUrl}" target="_blank">📸 View Photo</a>`;
           elements.statusMsg.className = "result success";
           
           // RESET
           elements.name.value = elements.remarks.value = "";
+          elements.emailInput.value = "";
+          currentEmail = '';
           elements.previewArea.innerHTML = "";
           lastDataUrl = null;
           elements.uploadBtn.disabled = elements.captureBtn.disabled = true;
           elements.startBtn.disabled = false;
           if (stream) stream.getTracks().forEach(t => t.stop());
           elements.video.srcObject = null;
+          autoFetchEmail(); // Re-detect email
         } else {
           throw new Error(res.error || "Unknown error");
         }
