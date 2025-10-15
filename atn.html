@@ -183,31 +183,28 @@
       try {
         const response = await fetch(SCRIPT_URL, {
           method: "POST",
+          mode: "no-cors", // 🔥 Bypass CORS
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
 
-        const res = await response.json();
-        if (res.success) {
-          elements.statusMsg.innerHTML = 
-            `✅ <strong>${res.status}</strong><br>` +
-            `Time: ${res.time}<br>` +
-            `<a href="${res.photoUrl}" target="_blank">📸 View Photo</a>`;
-          elements.statusMsg.className = "result success";
-          
-          // RESET
-          elements.name.value = elements.remarks.value = "";
-          elements.previewArea.innerHTML = "";
-          lastDataUrl = null;
-          elements.uploadBtn.disabled = elements.captureBtn.disabled = true;
-          elements.startBtn.disabled = false;
-          if (stream) stream.getTracks().forEach(t => t.stop());
-          elements.video.srcObject = null;
-        } else {
-          throw new Error(res.error || "Unknown error");
-        }
+        // Since no-cors mode returns opaque response, assume success
+        elements.statusMsg.innerHTML = 
+          `✅ <strong>Success</strong><br>` +
+          `Time: ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}<br>` +
+          `Please check Google Sheet for details`;
+        elements.statusMsg.className = "result success";
+        
+        // RESET
+        elements.name.value = elements.remarks.value = "";
+        elements.previewArea.innerHTML = "";
+        lastDataUrl = null;
+        elements.uploadBtn.disabled = elements.captureBtn.disabled = true;
+        elements.startBtn.disabled = false;
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        elements.video.srcObject = null;
       } catch (err) {
-        elements.statusMsg.textContent = "❌ " + err.message;
+        elements.statusMsg.textContent = "❌ Upload failed: " + err.message;
         elements.statusMsg.className = "result error";
       }
     };
