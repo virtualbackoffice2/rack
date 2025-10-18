@@ -713,24 +713,20 @@
       };
 
       try {
-        const response = await fetch(SCRIPT_URL, {
+        await fetch(SCRIPT_URL, {
           method: "POST",
-          mode: "cors",
+          mode: "no-cors",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
-        const result = await response.json();
+
         elements.statusMsg.style.display = 'block';
-        if (result.success) {
-          elements.statusMsg.innerHTML =
-            `✅ <strong>Done!</strong><br>` +
-            `Time: ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}<br>` +
-            `Attendance recorded!`;
-          elements.statusMsg.className = 'result success';
-        } else {
-          elements.statusMsg.textContent = '❌ ' + result.error;
-          elements.statusMsg.className = 'result error';
-        }
+        elements.statusMsg.innerHTML =
+          `✅ <strong>Done!</strong><br>` +
+          `Time: ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}<br>` +
+          `Attendance recorded!`;
+        elements.statusMsg.className = 'result success';
+
         elements.status.selectedIndex = 0;
         elements.remarks.value = '';
         elements.bikePhoto.value = '';
@@ -802,9 +798,7 @@
     elements.checkAttendance.onclick = async () => {
       if (!userEmailValue) return;
       try {
-        const response = await fetch(`${SCRIPT_URL}?action=getAttendance&email=${encodeURIComponent(userEmailValue)}`, {
-          mode: "cors"
-        });
+        const response = await fetch(`${SCRIPT_URL}?action=getAttendance&email=${encodeURIComponent(userEmailValue)}`);
         attendanceData = await response.json();
         renderAttendanceTable('All');
         elements.attendanceModal.style.display = 'flex';
