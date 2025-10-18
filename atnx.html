@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Employee Attendance System</title>
+  <meta http-equiv="Permissions-Policy" content="identity-credentials-get=self">
+  <meta name="google-signin-use_fedcm" content="true">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     * { box-sizing: border-box; }
@@ -198,16 +200,18 @@
     </div>
 
     <div id="gSignInWrapper" style="text-align:center; margin-bottom:20px;">
-      <div id="my-signin2"
+      <div id="g_id_onload"
            data-client_id="415169964515-vlf28tsj228j6dma3ot6s10eeudhkas2.apps.googleusercontent.com"
            data-callback="handleCredentialResponse"
+           data-scope="profile email">
+      </div>
+      <div class="g_id_signin"
            data-type="standard"
            data-shape="rect"
            data-theme="outline"
            data-text="signin_with"
            data-size="large"
-           data-logo_alignment="center"
-           class="g_id_signin">
+           data-logo_alignment="center">
       </div>
       <p id="signOutBtn" style="display:none;cursor:pointer;color:#667eea;text-decoration:underline;">Sign Out</p>
     </div>
@@ -238,7 +242,6 @@
 
   <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxY_ZmJiyWbmDesnB0FlxQa5ati4mSHGu3xYKs7fGQoB0vywSy2Dud9jhpNLSuovJwo/exec";
-
     const allowedOfficeLocation = { lat: 26.931306, lon: 80.774056 };
     const allowedRadiusMeters = 100;
 
@@ -259,15 +262,18 @@
     let userEmailValue = '';
 
     function handleCredentialResponse(response) {
-      const responsePayload = decodeJwtResponse(response.credential);
-      if (responsePayload.email) {
-        userEmailValue = responsePayload.email;
-        elements.userEmail.textContent = userEmailValue;
-        elements.status.disabled = false;
+      try {
+        const responsePayload = decodeJwtResponse(response.credential);
+        userEmailValue = responsePayload.email || '';
+        elements.userEmail.textContent = userEmailValue || 'Sign-in failed';
+        elements.status.disabled = !userEmailValue;
         updateButtonState();
-        toggleSignIn(false);
-      } else {
+        toggleSignIn(!userEmailValue);
+      } catch (err) {
+        console.error('Sign-in error:', err);
         elements.userEmail.textContent = 'Sign-in failed';
+        elements.status.disabled = true;
+        toggleSignIn(true);
       }
     }
 
@@ -279,6 +285,7 @@
     }
 
     function signOut() {
+      google.accounts.id.disableAutoSelect();
       google.accounts.id.revoke(userEmailValue, () => {
         userEmailValue = '';
         elements.userEmail.textContent = 'Not signed in';
@@ -292,7 +299,7 @@
     document.getElementById('signOutBtn').addEventListener('click', signOut);
 
     function toggleSignIn(showSignIn) {
-      document.getElementById('my-signin2').style.display = showSignIn ? 'block' : 'none';
+      document.querySelector('.g_id_signin').style.display = showSignIn ? 'block' : 'none';
       document.getElementById('signOutBtn').style.display = showSignIn ? 'none' : 'block';
     }
 
@@ -325,6 +332,7 @@
             elements.markAttendanceBtn.disabled = dist > allowedRadiusMeters;
             elements.markAttendanceBtn.classList.toggle('enabled', dist <= allowedRadiusMeters);
           }, err => {
+            console.error('Geolocation error:', err);
             elements.markAttendanceBtn.disabled = true;
             elements.markAttendanceBtn.classList.remove('enabled');
           }, { timeout: 5000, maximumAge: 0 });
@@ -365,6 +373,7 @@
         elements.markAttendanceBtn.textContent = "📸 Capture Selfie";
         elements.markAttendanceBtn.onclick = captureAndSend;
       } catch (err) {
+        console.error('Camera error:', err);
         alert('Camera access denied or unavailable: ' + err.message);
       }
     };
@@ -403,9 +412,9 @@
 
       const statusVal = elements.status.value;
       const remarksVal = elements.remarks.value.trim() || "N/A";
-
       const bikePhotoFile = elements.bikePhoto.files[0];
       let bikePhotoData = null;
+
       if (bikePhotoFile) {
         bikePhotoData = await fileToBase64(bikePhotoFile);
       }
@@ -444,6 +453,7 @@
         elements.markAttendanceBtn.textContent = 'Mark Attendance (Take Selfie)';
         updateButtonState();
       } catch (err) {
+        console.error('Upload error:', err);
         elements.statusMsg.textContent = '❌ Upload failed: ' + err.message;
         elements.statusMsg.className = 'result error';
       }
@@ -457,6 +467,20 @@
         reader.readAsDataURL(file);
       });
     }
+
+    window.onload = () => {
+      google.accounts.id.initialize({
+        client_id: '415169964515-vlf28tsj228j6dma3ot6s10eeudhkas2.apps.googleusercontent.com',
+        callback: handleCredentialResponse,
+        auto_select: false,
+        use_fedcm_for_prompt: true,
+        scope: 'profile email'
+      });
+      google.accounts.id.renderButton(
+        document.getElementById('g_id_onload'),
+        { theme: 'outline', size: 'large', type: 'standard' }
+      ); // Render the button manually
+    };
   </script>
 </body>
 </html>
