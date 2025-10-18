@@ -29,6 +29,7 @@
       text-align: center;
       color: #667eea;
       margin-bottom: 25px;
+      position: relative;
     }
     .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
     .header p { margin: 5px 0 0; color: #666; font-size: 18px; font-weight: 600; }
@@ -96,7 +97,7 @@
       visibility: hidden;
     }
     input[type="file"]::before {
-      content: "📷 Reading Photo";
+      content: "🏍️ Bike meter reading photo";
       display: inline-block;
       background: #48bb78;
       border-radius: 10px;
@@ -143,12 +144,20 @@
       display: block;
       margin: 0 auto;
     }
-    .status-email {
+    .bike-preview {
+      max-width: 100px;
+      max-height: 75px;
+      border-radius: 8px;
+      display: block;
+      margin: 10px auto;
+    }
+    .welcome {
       font-size: 16px;
       margin-bottom: 10px;
       font-weight: 600;
       color: #4a5568;
-      user-select: none;
+      text-align: center;
+      display: none;
     }
     .result {
       margin-top: 15px;
@@ -192,6 +201,13 @@
       background: #5a67d8;
       transform: translateY(-2px);
     }
+    #datetime {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 14px;
+      color: #666;
+    }
     @media (max-width: 600px) {
       body { padding: 10px; }
       .card { padding: 20px; margin: 10px 0; }
@@ -214,7 +230,10 @@
     <div class="header">
       <h1>👤 Attendance System</h1>
       <p>Merotra Cable Network</p>
+      <div id="datetime"></div>
     </div>
+
+    <div class="welcome" id="welcome">Welcome, <span id="userEmail">Not signed in</span></div>
 
     <div id="gSignInWrapper" style="text-align:center; margin-bottom:20px;">
       <div id="g_id_onload"
@@ -230,7 +249,7 @@
            data-size="large"
            data-logo_alignment="center">
       </div>
-      <p id="signOutBtn" style="display:none;cursor:pointer;color:#667eea;text-decoration:underline;">Sign Out</p>
+      <p id="signOutBtn" style="display:none;cursor:pointer;color:#667eea;text-decoration:underline;">Change mail ID</p>
     </div>
 
     <select id="status" required disabled>
@@ -241,16 +260,16 @@
       <option value="Duty off">Duty off</option>
     </select>
 
-    <button id="checkLocation" style="display:none;">Check Location</button>
+    <button id="checkLocation" style="display:none;">Reached office?</button>
 
     <textarea id="remarks" placeholder="Remark and bike reading"></textarea>
 
-    <label id="readingPhotoLabel" for="bikePhoto">Reading photo</label>
+    <label id="readingPhotoLabel" for="bikePhoto">Bike meter reading photo</label>
     <input type="file" id="bikePhoto" accept="image/*" capture="environment" />
 
-    <div class="status-email" title="Your email (auto fetched)">Email: <span id="userEmail">Not signed in</span></div>
+    <div id="bikePreviewArea" style="text-align: center;"></div>
 
-    <button id="markAttendance" disabled>Mark Attendance (Take Selfie)</button>
+    <button id="markAttendance" disabled>Click to mark attendance</button>
 
     <video id="video" autoplay playsinline style="display:none;"></video>
     <canvas id="canvas" style="display:none;"></canvas>
@@ -269,11 +288,13 @@
       checkLocation: document.getElementById('checkLocation'),
       remarks: document.getElementById('remarks'),
       bikePhoto: document.getElementById('bikePhoto'),
+      welcome: document.getElementById('welcome'),
       userEmail: document.getElementById('userEmail'),
       markAttendanceBtn: document.getElementById('markAttendance'),
       video: document.getElementById('video'),
       canvas: document.getElementById('canvas'),
       previewArea: document.getElementById('previewArea'),
+      bikePreviewArea: document.getElementById('bikePreviewArea'),
       statusMsg: document.getElementById('statusMsg')
     };
 
@@ -286,12 +307,18 @@
         const responsePayload = decodeJwtResponse(response.credential);
         userEmailValue = responsePayload.email || '';
         elements.userEmail.textContent = userEmailValue || 'Sign-in failed';
+        if (userEmailValue) {
+          elements.welcome.style.display = 'block';
+        } else {
+          elements.welcome.style.display = 'none';
+        }
         elements.status.disabled = !userEmailValue;
         updateButtonState();
         toggleSignIn(!userEmailValue);
       } catch (err) {
         console.error('Sign-in error:', err);
         elements.userEmail.textContent = 'Sign-in failed';
+        elements.welcome.style.display = 'none';
         elements.status.disabled = true;
         toggleSignIn(true);
       }
@@ -309,6 +336,7 @@
       google.accounts.id.revoke(userEmailValue, () => {
         userEmailValue = '';
         elements.userEmail.textContent = 'Not signed in';
+        elements.welcome.style.display = 'none';
         elements.status.disabled = true;
         elements.markAttendanceBtn.disabled = true;
         elements.markAttendanceBtn.classList.remove('enabled');
@@ -391,6 +419,34 @@
       }
     };
 
+    elements.bikePhoto.addEventListener('change', () => {
+      const file = elements.bikePhoto.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = document.createElement('img');
+          img.src = e.target.result;
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          img.onload = () => {
+            let width = img.width;
+            let height = img.height;
+            let quality = 0.8;
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(img, 0, 0, width, height);
+            let dataUrl = canvas.toDataURL('image/jpeg', quality);
+            while (atob(dataUrl.split(',')[1]).length > 100 * 1024 && quality > 0.2) {
+              quality -= 0.1;
+              dataUrl = canvas.toDataURL('image/jpeg', quality);
+            }
+            elements.bikePreviewArea.innerHTML = `<img src="${dataUrl}" class="bike-preview" alt="Bike Preview">`;
+          };
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
     elements.markAttendanceBtn.onclick = async () => {
       if (elements.markAttendanceBtn.disabled) return;
       if (!elements.status.value) {
@@ -410,7 +466,7 @@
         elements.video.style.display = 'block';
         elements.video.srcObject = stream;
 
-        elements.markAttendanceBtn.textContent = "📸 Capture Selfie";
+        elements.markAttendanceBtn.textContent = "Click to mark attendance";
         elements.markAttendanceBtn.onclick = captureAndSend;
       } catch (err) {
         console.error('Camera error:', err);
@@ -456,7 +512,7 @@
       let bikePhotoData = null;
 
       if (bikePhotoFile) {
-        bikePhotoData = await fileToBase64(bikePhotoFile);
+        bikePhotoData = await compressAndBase64(bikePhotoFile);
       }
 
       elements.statusMsg.style.display = 'block';
@@ -480,7 +536,7 @@
         });
 
         elements.statusMsg.innerHTML =
-          `✅ <strong>Success</strong><br>` +
+          `✅ <strong>Done!</strong><br>` +
           `Time: ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}<br>` +
           `Attendance recorded!`;
         elements.statusMsg.className = 'result success';
@@ -489,8 +545,9 @@
         elements.remarks.value = '';
         elements.bikePhoto.value = '';
         elements.previewArea.innerHTML = '';
+        elements.bikePreviewArea.innerHTML = '';
         lastDataUrl = null;
-        elements.markAttendanceBtn.textContent = 'Mark Attendance (Take Selfie)';
+        elements.markAttendanceBtn.textContent = 'Click to mark attendance';
         updateButtonState();
       } catch (err) {
         console.error('Upload error:', err);
@@ -499,14 +556,53 @@
       }
     }
 
-    function fileToBase64(file) {
-      return new Promise((resolve, reject) => {
+    async function compressAndBase64(file) {
+      return new Promise((resolve) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = err => reject(err);
+        reader.onload = (e) => {
+          const img = new Image();
+          img.src = e.target.result;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            let width = img.width;
+            let height = img.height;
+            if (width > height) {
+              if (width > 800) {
+                height *= 800 / width;
+                width = 800;
+              }
+            } else {
+              if (height > 800) {
+                width *= 800 / height;
+                height = 800;
+              }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(img, 0, 0, width, height);
+            let quality = 0.8;
+            let dataUrl = canvas.toDataURL('image/jpeg', quality);
+            while (atob(dataUrl.split(',')[1]).length > 100 * 1024 && quality > 0.2) {
+              quality -= 0.1;
+              dataUrl = canvas.toDataURL('image/jpeg', quality);
+            }
+            resolve(dataUrl);
+          };
+        };
         reader.readAsDataURL(file);
       });
     }
+
+    function updateDateTime() {
+      const now = new Date();
+      const date = now.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
+      const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      document.getElementById('datetime').textContent = `${date} ${time}`;
+    }
+
+    setInterval(updateDateTime, 1000);
+    updateDateTime();
 
     window.onload = () => {
       google.accounts.id.initialize({
