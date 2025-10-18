@@ -31,10 +31,12 @@
     .header p { margin: 5px 0 0; color: #666; font-size: 18px; font-weight: 600; }
     video, canvas {
       width: 100%;
-      max-width: 100%;
+      max-width: 280px;
+      max-height: 210px;
       border-radius: 12px;
       background: #000;
-      margin: 15px 0;
+      margin: 15px auto;
+      display: block;
     }
     button {
       padding: 12px 20px;
@@ -79,13 +81,23 @@
     .success { background: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; }
     .error { background: #fed7d7; color: #742a2a; border: 1px solid #fc8181; }
     .loading { background: #bee3f8; color: #2c5282; border: 1px solid #90cdf4; }
-    .preview-img { max-width: 100%; border-radius: 12px; }
+    .preview-img { 
+      max-width: 280px; 
+      max-height: 210px; 
+      border-radius: 12px; 
+      display: block;
+      margin: 0 auto;
+    }
     @media (max-width: 600px) {
       body { padding: 10px; }
       .card { padding: 20px; margin: 10px 0; }
       .header h1 { font-size: 24px; }
       .header p { font-size: 16px; }
       button { padding: 10px 16px; font-size: 14px; }
+      video, .preview-img {
+        max-width: 240px;
+        max-height: 180px;
+      }
     }
   </style>
 </head>
@@ -136,7 +148,7 @@
     elements.startBtn.onclick = async () => {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user", width: 640, height: 480 },
+          video: { facingMode: "user", width: 320, height: 240 },
           audio: false
         });
         elements.video.srcObject = stream;
@@ -148,10 +160,10 @@
     };
 
     elements.captureBtn.onclick = () => {
-      elements.canvas.width = 400;
-      elements.canvas.height = 300;
+      elements.canvas.width = 280;
+      elements.canvas.height = 210;
       const ctx = elements.canvas.getContext("2d");
-      ctx.drawImage(elements.video, 0, 0, 400, 300);
+      ctx.drawImage(elements.video, 0, 0, 280, 210);
 
       let quality = 0.8;
       let dataUrl = elements.canvas.toDataURL("image/jpeg", quality);
@@ -162,7 +174,7 @@
 
       lastDataUrl = dataUrl;
       elements.previewArea.innerHTML = 
-        '<h4>✅ Preview (' + (atob(dataUrl.split(',')[1]).length/1024).toFixed(1) + 'KB)</h4>' +
+        '<h4 style="text-align:center; margin:10px 0;">✅ Preview (' + (atob(dataUrl.split(',')[1]).length/1024).toFixed(1) + 'KB)</h4>' +
         '<img src="' + dataUrl + '" class="preview-img">';
       elements.uploadBtn.disabled = false;
     };
@@ -183,12 +195,11 @@
       try {
         const response = await fetch(SCRIPT_URL, {
           method: "POST",
-          mode: "no-cors", // 🔥 Bypass CORS
+          mode: "no-cors",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
 
-        // Since no-cors mode returns opaque response, assume success
         elements.statusMsg.innerHTML = 
           `✅ <strong>Success</strong><br>` +
           `Time: ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}<br>` +
