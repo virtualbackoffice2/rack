@@ -4,8 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Employee Attendance System</title>
-  <meta name="google-signin-client_id" content="415169964515-vlf28tsj228j6dma3ot6s10eeudhkas2.apps.googleusercontent.com" />
-  <script src="https://apis.google.com/js/platform.js" async defer></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -199,11 +198,21 @@
     </div>
 
     <div id="gSignInWrapper" style="text-align:center; margin-bottom:20px;">
-      <div id="my-signin2"></div>
+      <div id="my-signin2"
+           data-client_id="415169964515-vlf28tsj228j6dma3ot6s10eeudhkas2.apps.googleusercontent.com"
+           data-callback="handleCredentialResponse"
+           data-type="standard"
+           data-shape="rect"
+           data-theme="outline"
+           data-text="signin_with"
+           data-size="large"
+           data-logo_alignment="center"
+           class="g_id_signin">
+      </div>
       <p id="signOutBtn" style="display:none;cursor:pointer;color:#667eea;text-decoration:underline;">Sign Out</p>
     </div>
 
-    <select id="status" required>
+    <select id="status" required disabled>
       <option value="" disabled selected>Select attendance</option>
       <option value="Duty start">Duty start</option>
       <option value="Lunch start">Lunch start</option>
@@ -249,34 +258,28 @@
     let lastDataUrl = null;
     let userEmailValue = '';
 
-    function onSuccess(googleUser) {
-      const profile = googleUser.getBasicProfile();
-      userEmailValue = profile.getEmail();
-      elements.userEmail.textContent = userEmailValue;
-      elements.status.disabled = false;
-      updateButtonState();
-      toggleSignIn(false);
-      console.log('Signed in as:', userEmailValue); // Debug log
+    function handleCredentialResponse(response) {
+      const responsePayload = decodeJwtResponse(response.credential);
+      if (responsePayload.email) {
+        userEmailValue = responsePayload.email;
+        elements.userEmail.textContent = userEmailValue;
+        elements.status.disabled = false;
+        updateButtonState();
+        toggleSignIn(false);
+      } else {
+        elements.userEmail.textContent = 'Sign-in failed';
+      }
     }
-    function onFailure(error) {
-      console.error('Sign-in error:', error);
-      elements.userEmail.textContent = 'Sign-in failed';
-    }
-    function renderButton() {
-      gapi.signin2.render('my-signin2', {
-        scope: 'profile email',
-        width: 240,
-        height: 40,
-        longtitle: true,
-        theme: 'dark',
-        onsuccess: onSuccess,
-        onfailure: onFailure
-      });
+
+    function decodeJwtResponse(token) {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+      return JSON.parse(jsonPayload);
     }
 
     function signOut() {
-      const auth2 = gapi.auth2.getAuthInstance();
-      auth2.signOut().then(() => {
+      google.accounts.id.revoke(userEmailValue, () => {
         userEmailValue = '';
         elements.userEmail.textContent = 'Not signed in';
         elements.status.disabled = true;
@@ -307,27 +310,21 @@
 
     function updateButtonState() {
       const statusVal = elements.status.value;
-      if(!userEmailValue) {
+      if (!userEmailValue) {
         elements.markAttendanceBtn.disabled = true;
         elements.markAttendanceBtn.classList.remove('enabled');
         return;
       }
-      if(statusVal === "Duty start" || statusVal === "Duty off") {
-        if(navigator.geolocation) {
+      if (statusVal === "Duty start" || statusVal === "Duty off") {
+        if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(pos => {
             const dist = getDistanceFromLatLonInMeters(
               pos.coords.latitude, pos.coords.longitude,
               allowedOfficeLocation.lat, allowedOfficeLocation.lon
             );
-            if(dist <= allowedRadiusMeters) {
-              elements.markAttendanceBtn.disabled = false;
-              elements.markAttendanceBtn.classList.add('enabled');
-            } else {
-              elements.markAttendanceBtn.disabled = true;
-              elements.markAttendanceBtn.classList.remove('enabled');
-            }
+            elements.markAttendanceBtn.disabled = dist > allowedRadiusMeters;
+            elements.markAttendanceBtn.classList.toggle('enabled', dist <= allowedRadiusMeters);
           }, err => {
-            console.error('Geolocation error:', err);
             elements.markAttendanceBtn.disabled = true;
             elements.markAttendanceBtn.classList.remove('enabled');
           }, { timeout: 5000, maximumAge: 0 });
@@ -335,7 +332,7 @@
           elements.markAttendanceBtn.disabled = true;
           elements.markAttendanceBtn.classList.remove('enabled');
         }
-      } else if(statusVal === "Lunch start" || statusVal === "Lunch done") {
+      } else if (statusVal === "Lunch start" || statusVal === "Lunch done") {
         elements.markAttendanceBtn.disabled = false;
         elements.markAttendanceBtn.classList.add('enabled');
       } else {
@@ -346,21 +343,13 @@
 
     elements.status.addEventListener('change', updateButtonState);
 
-    function startApp() {
-      gapi.load('auth2', function() {
-        gapi.auth2.init({
-          client_id: '415169964515-vlf28tsj228j6dma3ot6s10eeudhkas2.apps.googleusercontent.com'
-        }).then(renderButton);
-      });
-    }
-
     elements.markAttendanceBtn.onclick = async () => {
-      if(elements.markAttendanceBtn.disabled) return;
-      if(!elements.status.value) {
+      if (elements.markAttendanceBtn.disabled) return;
+      if (!elements.status.value) {
         alert('Please select attendance status');
         return;
       }
-      if(!userEmailValue) {
+      if (!userEmailValue) {
         alert('Please sign in');
         return;
       }
@@ -374,41 +363,40 @@
         elements.video.srcObject = stream;
 
         elements.markAttendanceBtn.textContent = "📸 Capture Selfie";
-        elements.markAttendanceBtn.disabled = false;
-
-        elements.markAttendanceBtn.onclick = () => {
-          elements.canvas.width = 280;
-          elements.canvas.height = 210;
-          const ctx = elements.canvas.getContext('2d');
-          ctx.drawImage(elements.video, 0, 0, 280, 210);
-
-          let quality = 0.8;
-          let dataUrl = elements.canvas.toDataURL('image/jpeg', quality);
-          while(atob(dataUrl.split(',')[1]).length > 90 * 1024 && quality > 0.2) {
-            quality -= 0.1;
-            dataUrl = elements.canvas.toDataURL('image/jpeg', quality);
-          }
-          lastDataUrl = dataUrl;
-          elements.previewArea.innerHTML =
-            `<h4 style="text-align:center; margin:10px 0;">✅ Preview (${(atob(dataUrl.split(',')[1]).length/1024).toFixed(1)}KB)</h4>` +
-            `<img src="${dataUrl}" class="preview-img">`;
-
-          if(stream) {
-            stream.getTracks().forEach(t => t.stop());
-            stream = null;
-          }
-          elements.video.style.display = 'none';
-
-          sendAttendance();
-        };
-      } catch(err) {
-        console.error('Camera error:', err);
+        elements.markAttendanceBtn.onclick = captureAndSend;
+      } catch (err) {
         alert('Camera access denied or unavailable: ' + err.message);
       }
     };
 
+    function captureAndSend() {
+      elements.canvas.width = 280;
+      elements.canvas.height = 210;
+      const ctx = elements.canvas.getContext('2d');
+      ctx.drawImage(elements.video, 0, 0, 280, 210);
+
+      let quality = 0.8;
+      let dataUrl = elements.canvas.toDataURL('image/jpeg', quality);
+      while (atob(dataUrl.split(',')[1]).length > 90 * 1024 && quality > 0.2) {
+        quality -= 0.1;
+        dataUrl = elements.canvas.toDataURL('image/jpeg', quality);
+      }
+      lastDataUrl = dataUrl;
+      elements.previewArea.innerHTML =
+        `<h4 style="text-align:center; margin:10px 0;">✅ Preview (${(atob(dataUrl.split(',')[1]).length/1024).toFixed(1)}KB)</h4>` +
+        `<img src="${dataUrl}" class="preview-img">`;
+
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
+      elements.video.style.display = 'none';
+
+      sendAttendance();
+    }
+
     async function sendAttendance() {
-      if(!lastDataUrl) {
+      if (!lastDataUrl) {
         alert('Please capture selfie first');
         return;
       }
@@ -418,8 +406,7 @@
 
       const bikePhotoFile = elements.bikePhoto.files[0];
       let bikePhotoData = null;
-
-      if(bikePhotoFile) {
+      if (bikePhotoFile) {
         bikePhotoData = await fileToBase64(bikePhotoFile);
       }
 
@@ -436,7 +423,7 @@
       };
 
       try {
-        const response = await fetch(SCRIPT_URL, {
+        await fetch(SCRIPT_URL, {
           method: "POST",
           mode: "no-cors",
           headers: { "Content-Type": "application/json" },
@@ -456,9 +443,7 @@
         lastDataUrl = null;
         elements.markAttendanceBtn.textContent = 'Mark Attendance (Take Selfie)';
         updateButtonState();
-
-      } catch(err) {
-        console.error('Upload error:', err);
+      } catch (err) {
         elements.statusMsg.textContent = '❌ Upload failed: ' + err.message;
         elements.statusMsg.className = 'result error';
       }
@@ -472,10 +457,6 @@
         reader.readAsDataURL(file);
       });
     }
-
-    window.onload = () => {
-      startApp();
-    };
   </script>
 </body>
 </html>
