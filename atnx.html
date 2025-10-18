@@ -208,6 +208,47 @@
       font-size: 14px;
       color: #666;
     }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.4);
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background-color: #fefefe;
+      margin: auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 80%;
+      max-width: 300px;
+      border-radius: 10px;
+      text-align: center;
+      animation: fadeIn 0.3s;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    @keyframes fadeIn {
+      from {opacity: 0; transform: scale(0.9);}
+      to {opacity: 1; transform: scale(1);}
+    }
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+    }
+    .close:hover,
+    .close:focus {
+      color: black;
+      text-decoration: none;
+      cursor: pointer;
+    }
     @media (max-width: 600px) {
       body { padding: 10px; }
       .card { padding: 20px; margin: 10px 0; }
@@ -278,6 +319,14 @@
     <div id="statusMsg" class="result" style="display:none;"></div>
   </div>
 
+  <!-- Modal for location messages -->
+  <div id="locationModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <p id="modalMessage"></p>
+    </div>
+  </div>
+
   <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxY_ZmJiyWbmDesnB0FlxQa5ati4mSHGu3xYKs7fGQoB0vywSy2Dud9jhpNLSuovJwo/exec";
     const allowedOfficeLocation = { lat: 26.931306, lon: 80.774056 };
@@ -295,12 +344,31 @@
       canvas: document.getElementById('canvas'),
       previewArea: document.getElementById('previewArea'),
       bikePreviewArea: document.getElementById('bikePreviewArea'),
-      statusMsg: document.getElementById('statusMsg')
+      statusMsg: document.getElementById('statusMsg'),
+      locationModal: document.getElementById('locationModal'),
+      modalMessage: document.getElementById('modalMessage')
     };
 
     let stream = null;
     let lastDataUrl = null;
     let userEmailValue = '';
+    let isUploading = false;
+
+    function showModal(message) {
+      elements.modalMessage.textContent = message;
+      elements.locationModal.style.display = 'flex';
+    }
+
+    const modalClose = document.getElementsByClassName("close")[0];
+    modalClose.onclick = () => {
+      elements.locationModal.style.display = "none";
+    };
+
+    window.onclick = (event) => {
+      if (event.target == elements.locationModal) {
+        elements.locationModal.style.display = "none";
+      }
+    };
 
     function handleCredentialResponse(response) {
       try {
@@ -402,18 +470,18 @@
           elements.markAttendanceBtn.disabled = !isWithinRange;
           elements.markAttendanceBtn.classList.toggle('enabled', isWithinRange);
           if (!isWithinRange) {
-            alert(`You are ${dist.toFixed(0)} meters away from the office. Must be within ${allowedRadiusMeters} meters. Accuracy: ${pos.coords.accuracy.toFixed(0)} meters.`);
+            showModal(`You are ${dist.toFixed(0)} meters away from the office. Must be within ${allowedRadiusMeters} meters. Accuracy: ${pos.coords.accuracy.toFixed(0)} meters.`);
           } else {
-            alert(`Location verified. You are within range. Accuracy: ${pos.coords.accuracy.toFixed(0)} meters.`);
+            showModal(`Location verified. You are within range. Accuracy: ${pos.coords.accuracy.toFixed(0)} meters.`);
           }
         }, err => {
           console.error('Geolocation error:', err);
-          alert('Geolocation error: ' + err.message + '. Please ensure location services are enabled and permission is granted.');
+          showModal('Geolocation error: ' + err.message + '. Please ensure location services are enabled and permission is granted.');
           elements.markAttendanceBtn.disabled = true;
           elements.markAttendanceBtn.classList.remove('enabled');
         }, { timeout: 20000, maximumAge: 0, enableHighAccuracy: true });
       } else {
-        alert('Geolocation is not supported by this browser.');
+        showModal('Geolocation is not supported by this browser.');
         elements.markAttendanceBtn.disabled = true;
         elements.markAttendanceBtn.classList.remove('enabled');
       }
@@ -448,7 +516,7 @@
     });
 
     elements.markAttendanceBtn.onclick = async () => {
-      if (elements.markAttendanceBtn.disabled) return;
+      if (elements.markAttendanceBtn.disabled || isUploading) return;
       if (!elements.status.value) {
         alert('Please select attendance status');
         return;
@@ -506,6 +574,11 @@
         return;
       }
 
+      isUploading = true;
+      elements.markAttendanceBtn.textContent = '⏳ Uploading...';
+      elements.markAttendanceBtn.disabled = true;
+      elements.markAttendanceBtn.classList.remove('enabled');
+
       const statusVal = elements.status.value;
       const remarksVal = elements.remarks.value.trim() || "N/A";
       const bikePhotoFile = elements.bikePhoto.files[0];
@@ -514,10 +587,6 @@
       if (bikePhotoFile) {
         bikePhotoData = await compressAndBase64(bikePhotoFile);
       }
-
-      elements.statusMsg.style.display = 'block';
-      elements.statusMsg.textContent = '⏳ Uploading...';
-      elements.statusMsg.className = 'result loading';
 
       const payload = {
         name: userEmailValue,
@@ -535,6 +604,7 @@
           body: JSON.stringify(payload)
         });
 
+        elements.statusMsg.style.display = 'block';
         elements.statusMsg.innerHTML =
           `✅ <strong>Done!</strong><br>` +
           `Time: ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}<br>` +
@@ -551,8 +621,13 @@
         updateButtonState();
       } catch (err) {
         console.error('Upload error:', err);
+        elements.statusMsg.style.display = 'block';
         elements.statusMsg.textContent = '❌ Upload failed: ' + err.message;
         elements.statusMsg.className = 'result error';
+        elements.markAttendanceBtn.textContent = 'Click to mark attendance';
+        updateButtonState();
+      } finally {
+        isUploading = false;
       }
     }
 
