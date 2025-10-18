@@ -202,11 +202,10 @@
       transform: translateY(-2px);
     }
     #datetime {
-      position: absolute;
-      top: 10px;
-      right: 10px;
+      text-align: right;
       font-size: 14px;
       color: #666;
+      margin-bottom: 10px;
     }
     .modal {
       display: none;
@@ -249,6 +248,18 @@
       text-decoration: none;
       cursor: pointer;
     }
+    #modalOk {
+      background: #48bb78;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    #modalOk:hover {
+      background: #38a169;
+    }
     @media (max-width: 600px) {
       body { padding: 10px; }
       .card { padding: 20px; margin: 10px 0; }
@@ -257,6 +268,7 @@
       button, input[type="file"] { font-size: 16px; padding: 14px; }
       video, .preview-img { max-width: 100%; max-height: 200px; }
       select { padding-right: 2rem; font-size: 16px; }
+      #datetime { font-size: 12px; margin-bottom: 5px; }
     }
     @media (max-width: 480px) {
       body { padding: 5px; }
@@ -269,9 +281,9 @@
 <body>
   <div class="card">
     <div class="header">
+      <div id="datetime"></div>
       <h1>👤 Attendance System</h1>
       <p>Merotra Cable Network</p>
-      <div id="datetime"></div>
     </div>
 
     <div class="welcome" id="welcome">Welcome, <span id="userEmail">Not signed in</span></div>
@@ -324,6 +336,7 @@
     <div class="modal-content">
       <span class="close">&times;</span>
       <p id="modalMessage"></p>
+      <button id="modalOk">OK</button>
     </div>
   </div>
 
@@ -346,13 +359,16 @@
       bikePreviewArea: document.getElementById('bikePreviewArea'),
       statusMsg: document.getElementById('statusMsg'),
       locationModal: document.getElementById('locationModal'),
-      modalMessage: document.getElementById('modalMessage')
+      modalMessage: document.getElementById('modalMessage'),
+      modalOk: document.getElementById('modalOk')
     };
 
     let stream = null;
     let lastDataUrl = null;
     let userEmailValue = '';
     let isUploading = false;
+    let currentLocation = null;
+    let verificationMessage = '';
 
     function showModal(message) {
       elements.modalMessage.textContent = message;
@@ -361,6 +377,10 @@
 
     const modalClose = document.getElementsByClassName("close")[0];
     modalClose.onclick = () => {
+      elements.locationModal.style.display = "none";
+    };
+
+    elements.modalOk.onclick = () => {
       elements.locationModal.style.display = "none";
     };
 
@@ -469,19 +489,24 @@
           const isWithinRange = dist <= allowedRadiusMeters;
           elements.markAttendanceBtn.disabled = !isWithinRange;
           elements.markAttendanceBtn.classList.toggle('enabled', isWithinRange);
+          currentLocation = `${pos.coords.latitude},${pos.coords.longitude}`;
           if (!isWithinRange) {
-            showModal(`You are ${dist.toFixed(0)} meters away from the office. Must be within ${allowedRadiusMeters} meters. Accuracy: ${pos.coords.accuracy.toFixed(0)} meters.`);
+            verificationMessage = `You are ${dist.toFixed(0)} meters away from the office. Must be within ${allowedRadiusMeters} meters. Accuracy: ${pos.coords.accuracy.toFixed(0)} meters.`;
+            showModal(verificationMessage);
           } else {
-            showModal(`Location verified. You are within range. Accuracy: ${pos.coords.accuracy.toFixed(0)} meters.`);
+            verificationMessage = `Location verified. You are within range. Accuracy: ${pos.coords.accuracy.toFixed(0)} meters.`;
+            showModal(verificationMessage);
           }
         }, err => {
           console.error('Geolocation error:', err);
-          showModal('Geolocation error: ' + err.message + '. Please ensure location services are enabled and permission is granted.');
+          verificationMessage = 'Geolocation error: ' + err.message + '. Please ensure location services are enabled and permission is granted.';
+          showModal(verificationMessage);
           elements.markAttendanceBtn.disabled = true;
           elements.markAttendanceBtn.classList.remove('enabled');
         }, { timeout: 20000, maximumAge: 0, enableHighAccuracy: true });
       } else {
-        showModal('Geolocation is not supported by this browser.');
+        verificationMessage = 'Geolocation is not supported by this browser.';
+        showModal(verificationMessage);
         elements.markAttendanceBtn.disabled = true;
         elements.markAttendanceBtn.classList.remove('enabled');
       }
@@ -593,7 +618,9 @@
         status: statusVal,
         remarks: remarksVal,
         imageBase64: lastDataUrl,
-        bikePhotoBase64: bikePhotoData || null
+        bikePhotoBase64: bikePhotoData || null,
+        location: currentLocation || "",
+        verificationMessage: verificationMessage || ""
       };
 
       try {
