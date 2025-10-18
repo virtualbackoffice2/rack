@@ -31,7 +31,7 @@
     }
     .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
     .header p { margin: 5px 0 0; color: #666; font-size: 18px; font-weight: 600; }
-    select, textarea, input {
+    select, textarea, input[type="text"], input[type="email"] {
       display: block;
       width: 100%;
       margin: 12px 0;
@@ -41,8 +41,18 @@
       font-size: 16px;
       transition: border-color 0.3s;
       font-family: inherit;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
     }
-    select:focus, textarea:focus, input:focus {
+    select {
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+      background-position: right 0.5rem center;
+      background-repeat: no-repeat;
+      background-size: 1.5em 1.5em;
+      padding-right: 2.5rem;
+    }
+    select:focus, textarea:focus, input[type="text"]:focus, input[type="email"]:focus {
       outline: none;
       border-color: #667eea;
     }
@@ -56,7 +66,7 @@
       margin-top: 4px;
       margin-bottom: 0;
     }
-    button {
+    button, input[type="file"] {
       padding: 12px 20px;
       border-radius: 10px;
       border: none;
@@ -69,12 +79,45 @@
       color: white;
       background: #999;
       cursor: not-allowed;
+      text-align: center;
+      display: inline-block;
+      overflow: hidden;
+    }
+    input[type="file"] {
+      background: #48bb78;
+      cursor: pointer;
+      color: white;
+      font-family: inherit;
+      padding: 12px;
+      position: relative;
+    }
+    input[type="file"]::-webkit-file-upload-button {
+      visibility: hidden;
+    }
+    input[type="file"]::before {
+      content: "📷 Reading Photo";
+      display: inline-block;
+      background: #48bb78;
+      border-radius: 10px;
+      padding: 12px 20px;
+      outline: none;
+      white-space: nowrap;
+      -webkit-user-select: none;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 18px;
+      color: white;
+      text-align: center;
+      width: 100%;
+    }
+    input[type="file"]:hover::before {
+      background: #38a169;
     }
     button.enabled {
       background: #48bb78;
       cursor: pointer;
     }
-    button.enabled:hover {
+    button.enabled:hover, input[type="file"]:hover {
       background: #38a169;
       transform: translateY(-2px);
     }
@@ -129,19 +172,22 @@
       border: 1px solid #90cdf4;
     }
     #readingPhotoLabel {
-      font-weight: 600;
-      color: #4a5568;
-      margin-top: 10px;
-      margin-bottom: 4px;
-      display: block;
+      display: none;
     }
     @media (max-width: 600px) {
       body { padding: 10px; }
       .card { padding: 20px; margin: 10px 0; }
       .header h1 { font-size: 24px; }
       .header p { font-size: 16px; }
-      button { font-size: 16px; }
-      video, .preview-img { max-width: 240px; max-height: 180px; }
+      button, input[type="file"] { font-size: 16px; padding: 14px; }
+      video, .preview-img { max-width: 100%; max-height: 200px; }
+      select { padding-right: 2rem; font-size: 16px; }
+    }
+    @media (max-width: 480px) {
+      body { padding: 5px; }
+      .card { padding: 15px; }
+      .header h1 { font-size: 22px; }
+      button, input[type="file"] { font-size: 15px; padding: 12px; }
     }
   </style>
 </head>
@@ -157,7 +203,7 @@
       <p id="signOutBtn" style="display:none;cursor:pointer;color:#667eea;text-decoration:underline;">Sign Out</p>
     </div>
 
-    <select id="status" required disabled>
+    <select id="status" required>
       <option value="" disabled selected>Select attendance</option>
       <option value="Duty start">Duty start</option>
       <option value="Lunch start">Lunch start</option>
@@ -168,7 +214,7 @@
     <textarea id="remarks" placeholder="Remark and bike reading"></textarea>
 
     <label id="readingPhotoLabel" for="bikePhoto">Reading photo</label>
-    <input type="file" id="bikePhoto" accept="image/*" />
+    <input type="file" id="bikePhoto" accept="image/*" capture="environment" />
 
     <div class="status-email" title="Your email (auto fetched)">Email: <span id="userEmail">Not signed in</span></div>
 
@@ -210,9 +256,10 @@
       elements.status.disabled = false;
       updateButtonState();
       toggleSignIn(false);
+      console.log('Signed in as:', userEmailValue); // Debug log
     }
     function onFailure(error) {
-      console.error(error);
+      console.error('Sign-in error:', error);
       elements.userEmail.textContent = 'Sign-in failed';
     }
     function renderButton() {
@@ -280,6 +327,7 @@
               elements.markAttendanceBtn.classList.remove('enabled');
             }
           }, err => {
+            console.error('Geolocation error:', err);
             elements.markAttendanceBtn.disabled = true;
             elements.markAttendanceBtn.classList.remove('enabled');
           }, { timeout: 5000, maximumAge: 0 });
@@ -300,7 +348,9 @@
 
     function startApp() {
       gapi.load('auth2', function() {
-        gapi.auth2.init().then(renderButton);
+        gapi.auth2.init({
+          client_id: '415169964515-vlf28tsj228j6dma3ot6s10eeudhkas2.apps.googleusercontent.com'
+        }).then(renderButton);
       });
     }
 
@@ -352,6 +402,7 @@
           sendAttendance();
         };
       } catch(err) {
+        console.error('Camera error:', err);
         alert('Camera access denied or unavailable: ' + err.message);
       }
     };
@@ -385,7 +436,7 @@
       };
 
       try {
-        await fetch(SCRIPT_URL, {
+        const response = await fetch(SCRIPT_URL, {
           method: "POST",
           mode: "no-cors",
           headers: { "Content-Type": "application/json" },
@@ -407,6 +458,7 @@
         updateButtonState();
 
       } catch(err) {
+        console.error('Upload error:', err);
         elements.statusMsg.textContent = '❌ Upload failed: ' + err.message;
         elements.statusMsg.className = 'result error';
       }
