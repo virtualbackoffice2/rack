@@ -4,16 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Employee Attendance System</title>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@latest"></script>
-  <script src="https://justadudewhohacks.github.io/face-api.js/dist/face-api.min.js"></script>
   <style>
     * { box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 15px;
+      max-width: 100%;
+      margin: 0;
+      padding: 10px;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
       color: #333;
@@ -21,33 +18,37 @@
     .card {
       background: white;
       border-radius: 16px;
-      padding: 25px;
+      padding: 20px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-      margin: 20px 0;
+      margin: 10px 0;
     }
     .header {
       text-align: center;
       color: #667eea;
-      margin-bottom: 25px;
+      margin-bottom: 20px;
     }
-    .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
-    .header p { margin: 5px 0 0; color: #666; font-size: 18px; font-weight: 600; }
+    .header h1 { margin: 0; font-size: 24px; font-weight: 700; }
+    .header p { margin: 5px 0 0; color: #666; font-size: 16px; font-weight: 600; }
     video, canvas {
       width: 100%;
-      max-width: 100%;
+      max-width: 280px;
+      max-height: 210px;
       border-radius: 12px;
       background: #000;
-      margin: 15px 0;
+      margin: 10px auto;
+      display: block;
     }
     button {
-      padding: 12px 20px;
+      padding: 12px 16px;
       border-radius: 10px;
       border: none;
       cursor: pointer;
-      margin: 5px;
+      margin: 4px;
       font-weight: 500;
       transition: all 0.3s;
-      font-size: 16px;
+      font-size: 14px;
+      width: calc(50% - 8px);
+      box-sizing: border-box;
     }
     .btn-primary { background: #667eea; color: white; }
     .btn-primary:hover { background: #5a67d8; transform: translateY(-2px); }
@@ -55,13 +56,11 @@
     .btn-success:hover { background: #38a169; transform: translateY(-2px); }
     .btn-secondary { background: #ed8936; color: white; }
     .btn-secondary:hover { background: #dd6b20; transform: translateY(-2px); }
-    .btn-info { background: #4299e1; color: white; }
-    .btn-info:hover { background: #3182ce; transform: translateY(-2px); }
     button:disabled { background: #ccc; cursor: not-allowed; transform: none; }
     input, textarea, label {
       display: block;
       width: 100%;
-      margin: 12px 0;
+      margin: 10px 0;
     }
     input, textarea {
       padding: 12px;
@@ -84,15 +83,35 @@
     .success { background: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; }
     .error { background: #fed7d7; color: #742a2a; border: 1px solid #fc8181; }
     .loading { background: #bee3f8; color: #2c5282; border: 1px solid #90cdf4; }
-    .preview-img { max-width: 100%; border-radius: 12px; }
-    .face-box { position: absolute; border: 2px solid #48bb78; box-shadow: 0 0 10px rgba(72, 187, 120, 0.5); }
-    #faceRecognitionDiv { margin: 15px 0; }
-    @media (max-width: 600px) {
-      body { padding: 10px; }
-      .card { padding: 20px; margin: 10px 0; }
-      .header h1 { font-size: 24px; }
-      .header p { font-size: 16px; }
-      button { padding: 10px 16px; font-size: 14px; }
+    .preview-img { 
+      width: 100%; 
+      max-width: 280px; 
+      max-height: 210px; 
+      border-radius: 12px; 
+      display: block;
+      margin: 0 auto;
+    }
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 15px 0;
+    }
+    @media (max-width: 480px) {
+      body { padding: 8px; }
+      .card { padding: 15px; margin: 8px 0; }
+      .header h1 { font-size: 22px; }
+      .header p { font-size: 14px; }
+      button { 
+        padding: 10px 12px; 
+        font-size: 13px;
+        width: 100%;
+        margin: 2px 0;
+      }
+      video, .preview-img {
+        max-width: 240px;
+        max-height: 180px;
+      }
     }
   </style>
 </head>
@@ -111,21 +130,14 @@
 
     <video id="video" autoplay playsinline></video>
     <canvas id="canvas" style="display:none;"></canvas>
-    <canvas id="overlay" style="position: absolute; top: 0; left: 0; pointer-events: none; display: none;"></canvas>
 
-    <div style="margin: 15px 0;">
+    <div class="btn-row">
       <button id="startBtn" class="btn-primary">📷 Start Camera</button>
       <button id="captureBtn" disabled class="btn-secondary">📸 Capture</button>
       <button id="uploadBtn" disabled class="btn-success">✅ Submit</button>
-      <button id="addFaceBtn" disabled class="btn-info">➕ Add to Recognition DB</button>
-      <button id="clearDbBtn" class="btn-secondary" style="font-size: 12px; padding: 8px 12px;">🗑️ Clear DB</button>
     </div>
 
     <div id="previewArea"></div>
-    <div id="faceRecognitionDiv" style="display:none;">
-      <h4>🔍 Face Recognition</h4>
-      <p id="recognitionStatus"></p>
-    </div>
     <div id="statusMsg" class="result" style="display:none;"></div>
   </div>
 
@@ -136,120 +148,36 @@
       startBtn: document.getElementById('startBtn'),
       captureBtn: document.getElementById('captureBtn'),
       uploadBtn: document.getElementById('uploadBtn'),
-      addFaceBtn: document.getElementById('addFaceBtn'),
-      clearDbBtn: document.getElementById('clearDbBtn'),
       video: document.getElementById('video'),
       canvas: document.getElementById('canvas'),
-      overlay: document.getElementById('overlay'),
       previewArea: document.getElementById('previewArea'),
       statusMsg: document.getElementById('statusMsg'),
       name: document.getElementById('name'),
-      remarks: document.getElementById('remarks'),
-      recognitionDiv: document.getElementById('faceRecognitionDiv'),
-      recognitionStatus: document.getElementById('recognitionStatus')
+      remarks: document.getElementById('remarks')
     };
 
     let stream = null;
     let lastDataUrl = null;
-    let lastImage = null;
-    let faceMatcher = null;
-    const RECOGNITION_THRESHOLD = 0.6;
 
-    // Load face-api models
-    async function loadModels() {
-      await faceapi.nets.tinyFaceDetector.loadFromUri('https://justadudewhohacks.github.io/face-api.js/weights');
-      await faceapi.nets.faceLandmark68Net.loadFromUri('https://justadudewhohacks.github.io/face-api.js/weights');
-      await faceapi.nets.faceRecognitionNet.loadFromUri('https://justadudewhohacks.github.io/face-api.js/weights');
-      console.log('Face-api models loaded');
-    }
-
-    // Load stored labeled descriptors
-    function loadLabeledDescriptors() {
-      const stored = localStorage.getItem('labeledDescriptors');
-      if (!stored) return null;
-      const descriptors = JSON.parse(stored);
-      const labeledDescriptors = descriptors.map(d => new faceapi.LabeledFaceDescriptors(d.label, d.descriptors.map(dd => new Float32Array(dd))));
-      return new faceapi.FaceMatcher(labeledDescriptors, RECOGNITION_THRESHOLD);
-    }
-
-    // Save labeled descriptors
-    function saveLabeledDescriptors(labeledDescriptors) {
-      const data = labeledDescriptors.map(ld => ({
-        label: ld.label,
-        descriptors: ld.descriptors.map(d => Array.from(d))
-      }));
-      localStorage.setItem('labeledDescriptors', JSON.stringify(data));
-      faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, RECOGNITION_THRESHOLD);
-    }
-
-    // Detect and recognize faces in image
-    async function detectAndRecognize(image) {
-      const detections = await faceapi.detectAllFaces(image).withFaceLandmarks().withFaceDescriptors();
-      if (detections.length === 0) {
-        return { status: 'no-face', message: 'No face detected. Please ensure your face is clearly visible.' };
-      }
-      if (detections.length > 1) {
-        return { status: 'multiple-faces', message: 'Multiple faces detected. Please capture only one face.' };
-      }
-      const detection = detections[0];
-      if (!faceMatcher) {
-        return { status: 'no-db', message: 'No faces in database yet. Please enter your name and add to DB first.' };
-      }
-      const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
-      if (bestMatch.label === 'unknown' || bestMatch.distance > RECOGNITION_THRESHOLD) {
-        return { status: 'no-match', message: 'Face not recognized. Please enter your name.' };
-      }
-      return { status: 'match', label: bestMatch.label, distance: bestMatch.distance };
-    }
-
-    // Draw face box on overlay
-    function drawFaceBox(detections) {
-      const videoRect = elements.video.getBoundingClientRect();
-      elements.overlay.style.display = 'block';
-      elements.overlay.width = elements.video.videoWidth;
-      elements.overlay.height = elements.video.videoHeight;
-      elements.overlay.style.left = `${videoRect.left}px`;
-      elements.overlay.style.top = `${videoRect.top}px`;
-      const ctx = elements.overlay.getContext('2d');
-      ctx.clearRect(0, 0, elements.overlay.width, elements.overlay.height);
-      detections.forEach(d => {
-        const box = d.detection.box;
-        const drawBox = new faceapi.draw.DrawBox(box, { label: d.detection.label || 'Face' });
-        drawBox.draw(ctx);
-      });
-    }
-
-    // Start camera with real-time detection
     elements.startBtn.onclick = async () => {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user", width: 640, height: 480 },
+          video: { facingMode: "user", width: 320, height: 240 },
           audio: false
         });
         elements.video.srcObject = stream;
         elements.startBtn.disabled = true;
         elements.captureBtn.disabled = false;
-
-        // Real-time face detection
-        await loadModels();
-        faceMatcher = loadLabeledDescriptors();
-
-        elements.video.addEventListener('play', () => {
-          const canvas = faceapi.createCanvasFromMedia(elements.video);
-          faceapi.draw.drawDetections(canvas, faceapi.detectAllFaces(elements.video).withFaceLandmarks());
-          drawFaceBox(faceapi.detectAllFaces(elements.video));
-        });
       } catch (err) {
         alert("Camera access denied: " + err.message);
       }
     };
 
-    // Capture with recognition
-    elements.captureBtn.onclick = async () => {
-      elements.canvas.width = 400;
-      elements.canvas.height = 300;
+    elements.captureBtn.onclick = () => {
+      elements.canvas.width = 280;
+      elements.canvas.height = 210;
       const ctx = elements.canvas.getContext("2d");
-      ctx.drawImage(elements.video, 0, 0, 400, 300);
+      ctx.drawImage(elements.video, 0, 0, 280, 210);
 
       let quality = 0.8;
       let dataUrl = elements.canvas.toDataURL("image/jpeg", quality);
@@ -259,62 +187,12 @@
       }
 
       lastDataUrl = dataUrl;
-      const img = new Image();
-      img.src = dataUrl;
-      await new Promise(resolve => img.onload = resolve);
-      lastImage = img;
-
-      // Recognize face
-      const result = await detectAndRecognize(img);
-      elements.recognitionDiv.style.display = 'block';
-      elements.recognitionStatus.textContent = result.message || `Match: ${result.label} (Confidence: ${(1 - result.distance).toFixed(2)})`;
-      elements.recognitionStatus.className = result.status === 'match' ? 'success' : 'error';
-
-      if (result.status === 'match') {
-        elements.name.value = result.label;
-        elements.addFaceBtn.disabled = true; // Already in DB
-      } else {
-        elements.addFaceBtn.disabled = false;
-      }
-
       elements.previewArea.innerHTML = 
-        '<h4>✅ Preview (' + (atob(dataUrl.split(',')[1]).length/1024).toFixed(1) + 'KB)</h4>' +
+        '<h4 style="text-align:center; margin:10px 0;">✅ Preview (' + (atob(dataUrl.split(',')[1]).length/1024).toFixed(1) + 'KB)</h4>' +
         '<img src="' + dataUrl + '" class="preview-img">';
       elements.uploadBtn.disabled = false;
     };
 
-    // Add current face to DB
-    elements.addFaceBtn.onclick = async () => {
-      if (!lastImage || !elements.name.value.trim()) {
-        alert('Capture a photo and enter your name first.');
-        return;
-      }
-      const detections = await faceapi.detectAllFaces(lastImage).withFaceLandmarks().withFaceDescriptors();
-      if (detections.length === 0) {
-        alert('No face detected in the capture.');
-        return;
-      }
-      let labeledDescriptors = faceMatcher ? faceMatcher.labeledDescriptors : [];
-      const newDescriptor = detections[0].descriptor;
-      const existing = labeledDescriptors.find(ld => ld.label === elements.name.value.trim());
-      if (existing) {
-        existing.descriptors.push(newDescriptor);
-      } else {
-        labeledDescriptors.push(new faceapi.LabeledFaceDescriptors(elements.name.value.trim(), [newDescriptor]));
-      }
-      saveLabeledDescriptors(labeledDescriptors);
-      elements.recognitionStatus.textContent = `Added/Updated ${elements.name.value} to recognition database!`;
-      elements.addFaceBtn.disabled = true;
-    };
-
-    // Clear DB
-    elements.clearDbBtn.onclick = () => {
-      localStorage.removeItem('labeledDescriptors');
-      faceMatcher = null;
-      alert('Recognition database cleared.');
-    };
-
-    // Submit
     elements.uploadBtn.onclick = async () => {
       const name = elements.name.value.trim();
       const remarks = elements.remarks.value.trim() || "N/A";
@@ -345,13 +223,11 @@
         // RESET
         elements.name.value = elements.remarks.value = "";
         elements.previewArea.innerHTML = "";
-        elements.recognitionDiv.style.display = 'none';
-        lastDataUrl = lastImage = null;
-        elements.uploadBtn.disabled = elements.captureBtn.disabled = elements.addFaceBtn.disabled = true;
+        lastDataUrl = null;
+        elements.uploadBtn.disabled = elements.captureBtn.disabled = true;
         elements.startBtn.disabled = false;
         if (stream) stream.getTracks().forEach(t => t.stop());
         elements.video.srcObject = null;
-        elements.overlay.style.display = 'none';
       } catch (err) {
         elements.statusMsg.textContent = "❌ Upload failed: " + err.message;
         elements.statusMsg.className = "result error";
