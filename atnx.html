@@ -260,6 +260,41 @@
     #modalOk:hover {
       background: #38a169;
     }
+    #attendanceModal .modal-content {
+      max-width: 90%;
+      width: auto;
+      overflow-x: auto;
+    }
+    #attendanceTable {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    #attendanceTable th, #attendanceTable td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    #attendanceTable th {
+      background-color: #f2f2f2;
+    }
+    #attendanceFilter {
+      margin-bottom: 10px;
+      width: 100%;
+    }
+    #checkAttendance {
+      background: #667eea;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 8px;
+      margin: 10px 0;
+      font-weight: 500;
+      font-size: 16px;
+      width: auto;
+      display: none;
+    }
+    #checkAttendance:hover {
+      background: #5a67d8;
+    }
     @media (max-width: 600px) {
       body { padding: 10px; }
       .card { padding: 20px; margin: 10px 0; }
@@ -305,6 +340,8 @@
       <p id="signOutBtn" style="display:none;cursor:pointer;color:#667eea;text-decoration:underline;">Change mail ID</p>
     </div>
 
+    <button id="checkAttendance">Check my attendance</button>
+
     <select id="status" required disabled>
       <option value="" disabled selected>Select attendance</option>
       <option value="Duty start">Duty start</option>
@@ -340,6 +377,35 @@
     </div>
   </div>
 
+  <!-- Modal for attendance records -->
+  <div id="attendanceModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Attendance Records</h2>
+      <select id="attendanceFilter">
+        <option value="All">All</option>
+        <option value="Full day">Full day</option>
+        <option value="Late">Late</option>
+        <option value="Half day">Half day</option>
+        <option value="Off">Off</option>
+      </select>
+      <table id="attendanceTable">
+        <thead>
+          <tr>
+            <th>Serial</th>
+            <th>Date</th>
+            <th>Duty Start</th>
+            <th>Lunch Start</th>
+            <th>Lunch Done</th>
+            <th>Duty Off</th>
+            <th>Attendance</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
   <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxY_ZmJiyWbmDesnB0FlxQa5ati4mSHGu3xYKs7fGQoB0vywSy2Dud9jhpNLSuovJwo/exec";
     const allowedOfficeLocation = { lat: 26.931306, lon: 80.774056 };
@@ -360,7 +426,11 @@
       statusMsg: document.getElementById('statusMsg'),
       locationModal: document.getElementById('locationModal'),
       modalMessage: document.getElementById('modalMessage'),
-      modalOk: document.getElementById('modalOk')
+      modalOk: document.getElementById('modalOk'),
+      checkAttendance: document.getElementById('checkAttendance'),
+      attendanceModal: document.getElementById('attendanceModal'),
+      attendanceFilter: document.getElementById('attendanceFilter'),
+      attendanceTable: document.getElementById('attendanceTable')
     };
 
     let stream = null;
@@ -369,6 +439,7 @@
     let isUploading = false;
     let currentLocation = null;
     let verificationMessage = '';
+    let attendanceData = [];
 
     function showModal(message) {
       elements.modalMessage.textContent = message;
@@ -390,6 +461,20 @@
       }
     };
 
+    const attendanceModalClose = elements.attendanceModal.querySelector('.close');
+    attendanceModalClose.onclick = () => {
+      elements.attendanceModal.style.display = "none";
+    };
+
+    window.onclick = (event) => {
+      if (event.target == elements.attendanceModal) {
+        elements.attendanceModal.style.display = "none";
+      }
+      if (event.target == elements.locationModal) {
+        elements.locationModal.style.display = "none";
+      }
+    };
+
     function handleCredentialResponse(response) {
       try {
         const responsePayload = decodeJwtResponse(response.credential);
@@ -397,8 +482,10 @@
         elements.userEmail.textContent = userEmailValue || 'Sign-in failed';
         if (userEmailValue) {
           elements.welcome.style.display = 'block';
+          elements.checkAttendance.style.display = 'block';
         } else {
           elements.welcome.style.display = 'none';
+          elements.checkAttendance.style.display = 'none';
         }
         elements.status.disabled = !userEmailValue;
         updateButtonState();
@@ -407,6 +494,7 @@
         console.error('Sign-in error:', err);
         elements.userEmail.textContent = 'Sign-in failed';
         elements.welcome.style.display = 'none';
+        elements.checkAttendance.style.display = 'none';
         elements.status.disabled = true;
         toggleSignIn(true);
       }
@@ -425,6 +513,7 @@
         userEmailValue = '';
         elements.userEmail.textContent = 'Not signed in';
         elements.welcome.style.display = 'none';
+        elements.checkAttendance.style.display = 'none';
         elements.status.disabled = true;
         elements.markAttendanceBtn.disabled = true;
         elements.markAttendanceBtn.classList.remove('enabled');
@@ -705,6 +794,92 @@
 
     setInterval(updateDateTime, 1000);
     updateDateTime();
+
+    elements.checkAttendance.onclick = async () => {
+      if (!userEmailValue) return;
+      try {
+        const response = await fetch(`${SCRIPT_URL}?action=getAttendance&email=${encodeURIComponent(userEmailValue)}`);
+        attendanceData = await response.json();
+        renderAttendanceTable('All');
+        elements.attendanceModal.style.display = 'flex';
+      } catch (err) {
+        console.error('Error fetching attendance:', err);
+        alert('Failed to fetch attendance records.');
+      }
+    };
+
+    elements.attendanceFilter.addEventListener('change', (e) => {
+      renderAttendanceTable(e.target.value);
+    });
+
+    function renderAttendanceTable(filter) {
+      const tbody = elements.attendanceTable.querySelector('tbody');
+      tbody.innerHTML = '';
+      const dateGroups = groupByDate(attendanceData);
+      const rows = [];
+      dateGroups.forEach((group, date) => {
+        const attendance = computeAttendance(group);
+        if (filter === 'All' || attendance === filter) {
+          rows.push({
+            date,
+            dutyStart: group.dutyStart || '--',
+            lunchStart: group.lunchStart || '--',
+            lunchDone: group.lunchDone || '--',
+            dutyOff: group.dutyOff || '--',
+            attendance
+          });
+        }
+      });
+      rows.forEach((row, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${index + 1}</td>
+          <td>${row.date}</td>
+          <td>${row.dutyStart}</td>
+          <td>${row.lunchStart}</td>
+          <td>${row.lunchDone}</td>
+          <td>${row.dutyOff}</td>
+          <td>${row.attendance}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function groupByDate(data) {
+      const groups = new Map();
+      data.forEach(row => {
+        const tsStr = row[0];
+        const ts = new Date(tsStr);
+        const dateKey = ts.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        if (!groups.has(dateKey)) {
+          groups.set(dateKey, { dutyStart: null, lunchStart: null, lunchDone: null, dutyOff: null, tsMap: new Map() });
+        }
+        const type = row[2];
+        const time = ts.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+        const group = groups.get(dateKey);
+        if (type === 'Duty start') group.dutyStart = time;
+        if (type === 'Lunch start') group.lunchStart = time;
+        if (type === 'Lunch done') group.lunchDone = time;
+        if (type === 'Duty off') group.dutyOff = time;
+        group.tsMap.set(type, ts);
+      });
+      return groups;
+    }
+
+    function computeAttendance(group) {
+      if (!group.dutyStart || !group.lunchStart || !group.lunchDone || !group.dutyOff) return 'Off';
+      const dutyStartTs = group.tsMap.get('Duty start');
+      const lunchStartTs = group.tsMap.get('Lunch start');
+      const lunchDoneTs = group.tsMap.get('Lunch done');
+      const dutyOffTs = group.tsMap.get('Duty off');
+      const morningHours = (lunchStartTs - dutyStartTs) / 3600000;
+      const afternoonHours = (dutyOffTs - lunchDoneTs) / 3600000;
+      const totalHours = morningHours + afternoonHours;
+      if (totalHours > 9.5) return 'Full day';
+      if (totalHours >= 8.5 && totalHours <= 9.5) return 'Late';
+      if (totalHours < 8.5) return 'Half day';
+      return 'Off';
+    }
 
     window.onload = () => {
       google.accounts.id.initialize({
