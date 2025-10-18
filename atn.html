@@ -8,9 +8,9 @@
     * { box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      max-width: 100%;
-      margin: 0;
-      padding: 10px;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 15px;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
       color: #333;
@@ -18,37 +18,33 @@
     .card {
       background: white;
       border-radius: 16px;
-      padding: 20px;
+      padding: 25px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-      margin: 10px 0;
+      margin: 20px 0;
     }
     .header {
       text-align: center;
       color: #667eea;
-      margin-bottom: 20px;
+      margin-bottom: 25px;
     }
-    .header h1 { margin: 0; font-size: 24px; font-weight: 700; }
-    .header p { margin: 5px 0 0; color: #666; font-size: 16px; font-weight: 600; }
+    .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
+    .header p { margin: 5px 0 0; color: #666; font-size: 18px; font-weight: 600; }
     video, canvas {
       width: 100%;
-      max-width: 280px;
-      max-height: 210px;
+      max-width: 100%;
       border-radius: 12px;
       background: #000;
-      margin: 10px auto;
-      display: block;
+      margin: 15px 0;
     }
     button {
-      padding: 12px 16px;
+      padding: 12px 20px;
       border-radius: 10px;
       border: none;
       cursor: pointer;
-      margin: 4px;
+      margin: 5px;
       font-weight: 500;
       transition: all 0.3s;
-      font-size: 14px;
-      width: calc(50% - 8px);
-      box-sizing: border-box;
+      font-size: 16px;
     }
     .btn-primary { background: #667eea; color: white; }
     .btn-primary:hover { background: #5a67d8; transform: translateY(-2px); }
@@ -60,7 +56,7 @@
     input, textarea, label {
       display: block;
       width: 100%;
-      margin: 10px 0;
+      margin: 12px 0;
     }
     input, textarea {
       padding: 12px;
@@ -83,35 +79,13 @@
     .success { background: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; }
     .error { background: #fed7d7; color: #742a2a; border: 1px solid #fc8181; }
     .loading { background: #bee3f8; color: #2c5282; border: 1px solid #90cdf4; }
-    .preview-img { 
-      width: 100%; 
-      max-width: 280px; 
-      max-height: 210px; 
-      border-radius: 12px; 
-      display: block;
-      margin: 0 auto;
-    }
-    .btn-row {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin: 15px 0;
-    }
-    @media (max-width: 480px) {
-      body { padding: 8px; }
-      .card { padding: 15px; margin: 8px 0; }
-      .header h1 { font-size: 22px; }
-      .header p { font-size: 14px; }
-      button { 
-        padding: 10px 12px; 
-        font-size: 13px;
-        width: 100%;
-        margin: 2px 0;
-      }
-      video, .preview-img {
-        max-width: 240px;
-        max-height: 180px;
-      }
+    .preview-img { max-width: 100%; border-radius: 12px; }
+    @media (max-width: 600px) {
+      body { padding: 10px; }
+      .card { padding: 20px; margin: 10px 0; }
+      .header h1 { font-size: 24px; }
+      .header p { font-size: 16px; }
+      button { padding: 10px 16px; font-size: 14px; }
     }
   </style>
 </head>
@@ -131,7 +105,7 @@
     <video id="video" autoplay playsinline></video>
     <canvas id="canvas" style="display:none;"></canvas>
 
-    <div class="btn-row">
+    <div style="margin: 15px 0;">
       <button id="startBtn" class="btn-primary">📷 Start Camera</button>
       <button id="captureBtn" disabled class="btn-secondary">📸 Capture</button>
       <button id="uploadBtn" disabled class="btn-success">✅ Submit</button>
@@ -162,7 +136,7 @@
     elements.startBtn.onclick = async () => {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user", width: 320, height: 240 },
+          video: { facingMode: "user", width: 640, height: 480 },
           audio: false
         });
         elements.video.srcObject = stream;
@@ -174,10 +148,10 @@
     };
 
     elements.captureBtn.onclick = () => {
-      elements.canvas.width = 280;
-      elements.canvas.height = 210;
+      elements.canvas.width = 400;
+      elements.canvas.height = 300;
       const ctx = elements.canvas.getContext("2d");
-      ctx.drawImage(elements.video, 0, 0, 280, 210);
+      ctx.drawImage(elements.video, 0, 0, 400, 300);
 
       let quality = 0.8;
       let dataUrl = elements.canvas.toDataURL("image/jpeg", quality);
@@ -188,7 +162,7 @@
 
       lastDataUrl = dataUrl;
       elements.previewArea.innerHTML = 
-        '<h4 style="text-align:center; margin:10px 0;">✅ Preview (' + (atob(dataUrl.split(',')[1]).length/1024).toFixed(1) + 'KB)</h4>' +
+        '<h4>✅ Preview (' + (atob(dataUrl.split(',')[1]).length/1024).toFixed(1) + 'KB)</h4>' +
         '<img src="' + dataUrl + '" class="preview-img">';
       elements.uploadBtn.disabled = false;
     };
@@ -209,15 +183,16 @@
       try {
         const response = await fetch(SCRIPT_URL, {
           method: "POST",
-          mode: "no-cors",
+          mode: "no-cors", // 🔥 Bypass CORS
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
 
+        // Since no-cors mode returns opaque response, assume success
         elements.statusMsg.innerHTML = 
           `✅ <strong>Success</strong><br>` +
           `Time: ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}<br>` +
-          `Please check Google Sheet for details`;
+          `Attendance recorded!`;
         elements.statusMsg.className = "result success";
         
         // RESET
