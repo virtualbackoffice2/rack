@@ -175,6 +175,23 @@
     #readingPhotoLabel {
       display: none;
     }
+    #checkLocation {
+      background: #667eea;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 10px;
+      margin: 10px 0;
+      font-weight: 600;
+      font-size: 18px;
+      transition: all 0.3s;
+      width: 100%;
+      border: none;
+      cursor: pointer;
+    }
+    #checkLocation:hover {
+      background: #5a67d8;
+      transform: translateY(-2px);
+    }
     @media (max-width: 600px) {
       body { padding: 10px; }
       .card { padding: 20px; margin: 10px 0; }
@@ -224,6 +241,8 @@
       <option value="Duty off">Duty off</option>
     </select>
 
+    <button id="checkLocation" style="display:none;">Check Location</button>
+
     <textarea id="remarks" placeholder="Remark and bike reading"></textarea>
 
     <label id="readingPhotoLabel" for="bikePhoto">Reading photo</label>
@@ -247,6 +266,7 @@
 
     const elements = {
       status: document.getElementById('status'),
+      checkLocation: document.getElementById('checkLocation'),
       remarks: document.getElementById('remarks'),
       bikePhoto: document.getElementById('bikePhoto'),
       userEmail: document.getElementById('userEmail'),
@@ -320,45 +340,56 @@
       if (!userEmailValue) {
         elements.markAttendanceBtn.disabled = true;
         elements.markAttendanceBtn.classList.remove('enabled');
+        elements.checkLocation.style.display = 'none';
         return;
       }
       if (statusVal === "Duty start" || statusVal === "Duty off") {
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(pos => {
-            const dist = getDistanceFromLatLonInMeters(
-              pos.coords.latitude, pos.coords.longitude,
-              allowedOfficeLocation.lat, allowedOfficeLocation.lon
-            );
-            console.log('Current position:', pos.coords.latitude, pos.coords.longitude);
-            console.log('Accuracy:', pos.coords.accuracy);
-            console.log('Distance:', dist);
-            const isWithinRange = dist <= allowedRadiusMeters;
-            elements.markAttendanceBtn.disabled = !isWithinRange;
-            elements.markAttendanceBtn.classList.toggle('enabled', isWithinRange);
-            if (!isWithinRange) {
-              alert(`You are ${dist.toFixed(0)} meters away from the office. Must be within ${allowedRadiusMeters} meters.`);
-            }
-          }, err => {
-            console.error('Geolocation error:', err);
-            alert('Geolocation error: ' + err.message + '. Please ensure location services are enabled and permission is granted.');
-            elements.markAttendanceBtn.disabled = true;
-            elements.markAttendanceBtn.classList.remove('enabled');
-          }, { timeout: 15000, maximumAge: 0, enableHighAccuracy: true });
-        } else {
-          alert('Geolocation is not supported by this browser.');
-          elements.markAttendanceBtn.disabled = true;
-          elements.markAttendanceBtn.classList.remove('enabled');
-        }
+        elements.checkLocation.style.display = 'block';
+        elements.markAttendanceBtn.disabled = true;
+        elements.markAttendanceBtn.classList.remove('enabled');
       } else if (statusVal === "Lunch start" || statusVal === "Lunch done") {
+        elements.checkLocation.style.display = 'none';
         elements.markAttendanceBtn.disabled = false;
         elements.markAttendanceBtn.classList.add('enabled');
       } else {
+        elements.checkLocation.style.display = 'none';
         elements.markAttendanceBtn.disabled = true;
         elements.markAttendanceBtn.classList.remove('enabled');
       }
     }
 
     elements.status.addEventListener('change', updateButtonState);
+
+    elements.checkLocation.onclick = () => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          const dist = getDistanceFromLatLonInMeters(
+            pos.coords.latitude, pos.coords.longitude,
+            allowedOfficeLocation.lat, allowedOfficeLocation.lon
+          );
+          console.log('Current position:', pos.coords.latitude, pos.coords.longitude);
+          console.log('Accuracy:', pos.coords.accuracy);
+          console.log('Distance:', dist);
+          const isWithinRange = dist <= allowedRadiusMeters;
+          elements.markAttendanceBtn.disabled = !isWithinRange;
+          elements.markAttendanceBtn.classList.toggle('enabled', isWithinRange);
+          if (!isWithinRange) {
+            alert(`You are ${dist.toFixed(0)} meters away from the office. Must be within ${allowedRadiusMeters} meters. Accuracy: ${pos.coords.accuracy.toFixed(0)} meters.`);
+          } else {
+            alert(`Location verified. You are within range. Accuracy: ${pos.coords.accuracy.toFixed(0)} meters.`);
+          }
+        }, err => {
+          console.error('Geolocation error:', err);
+          alert('Geolocation error: ' + err.message + '. Please ensure location services are enabled and permission is granted.');
+          elements.markAttendanceBtn.disabled = true;
+          elements.markAttendanceBtn.classList.remove('enabled');
+        }, { timeout: 20000, maximumAge: 0, enableHighAccuracy: true });
+      } else {
+        alert('Geolocation is not supported by this browser.');
+        elements.markAttendanceBtn.disabled = true;
+        elements.markAttendanceBtn.classList.remove('enabled');
+      }
+    };
 
     elements.markAttendanceBtn.onclick = async () => {
       if (elements.markAttendanceBtn.disabled) return;
