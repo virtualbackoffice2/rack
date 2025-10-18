@@ -243,7 +243,7 @@
   <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxY_ZmJiyWbmDesnB0FlxQa5ati4mSHGu3xYKs7fGQoB0vywSy2Dud9jhpNLSuovJwo/exec";
     const allowedOfficeLocation = { lat: 26.931306, lon: 80.774056 };
-    const allowedRadiusMeters = 100;
+    const allowedRadiusMeters = 300;
 
     const elements = {
       status: document.getElementById('status'),
@@ -329,14 +329,23 @@
               pos.coords.latitude, pos.coords.longitude,
               allowedOfficeLocation.lat, allowedOfficeLocation.lon
             );
-            elements.markAttendanceBtn.disabled = dist > allowedRadiusMeters;
-            elements.markAttendanceBtn.classList.toggle('enabled', dist <= allowedRadiusMeters);
+            console.log('Current position:', pos.coords.latitude, pos.coords.longitude);
+            console.log('Accuracy:', pos.coords.accuracy);
+            console.log('Distance:', dist);
+            const isWithinRange = dist <= allowedRadiusMeters;
+            elements.markAttendanceBtn.disabled = !isWithinRange;
+            elements.markAttendanceBtn.classList.toggle('enabled', isWithinRange);
+            if (!isWithinRange) {
+              alert(`You are ${dist.toFixed(0)} meters away from the office. Must be within ${allowedRadiusMeters} meters.`);
+            }
           }, err => {
             console.error('Geolocation error:', err);
+            alert('Geolocation error: ' + err.message + '. Please ensure location services are enabled and permission is granted.');
             elements.markAttendanceBtn.disabled = true;
             elements.markAttendanceBtn.classList.remove('enabled');
-          }, { timeout: 5000, maximumAge: 0 });
+          }, { timeout: 15000, maximumAge: 0, enableHighAccuracy: true });
         } else {
+          alert('Geolocation is not supported by this browser.');
           elements.markAttendanceBtn.disabled = true;
           elements.markAttendanceBtn.classList.remove('enabled');
         }
@@ -477,7 +486,7 @@
         scope: 'profile email'
       });
       google.accounts.id.renderButton(
-        document.getElementById('g_id_onload'),
+        document.querySelector('.g_id_signin'),
         { theme: 'outline', size: 'large', type: 'standard' }
       ); // Render the button manually
     };
