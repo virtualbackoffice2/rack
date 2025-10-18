@@ -137,6 +137,42 @@
       margin: 15px auto;
       display: block;
     }
+    .video-container {
+      position: relative;
+      width: 100%;
+      max-width: 280px;
+      margin: 15px auto;
+    }
+    .video-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 18px;
+      font-weight: 600;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 10px;
+      border-radius: 8px;
+      pointer-events: none;
+    }
+    .flip-camera {
+      background: #667eea;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 8px;
+      margin: 10px auto;
+      font-weight: 500;
+      font-size: 16px;
+      width: auto;
+      display: none;
+      cursor: pointer;
+    }
+    .flip-camera:hover {
+      background: #5a67d8;
+      transform: translateY(-2px);
+    }
     .preview-img {
       max-width: 280px;
       max-height: 210px;
@@ -304,12 +340,14 @@
       video, .preview-img { max-width: 100%; max-height: 200px; }
       select { padding-right: 2rem; font-size: 16px; }
       #datetime { font-size: 12px; margin-bottom: 5px; }
+      .video-text { font-size: 16px; padding: 8px; }
     }
     @media (max-width: 480px) {
       body { padding: 5px; }
       .card { padding: 15px; }
       .header h1 { font-size: 22px; }
       button, input[type="file"] { font-size: 15px; padding: 12px; }
+      .video-text { font-size: 14px; padding: 6px; }
     }
   </style>
 </head>
@@ -319,10 +357,10 @@
       <div id="datetime"></div>
       <h1>👤 Attendance</h1>
       <p>Merotra Cable Network</p>
-     <p style="color:red; font-size:12px; font-style:italic;">
-  * 1.5 hr late is half day<br>
-  * 30 minutes late is half day
-</p>
+      <p style="color:red; font-size:12px; font-style:italic;">
+        * 1.5 hr late is half day<br>
+        * 30 minutes late is half day
+      </p>
     </div>
 
     <div class="welcome" id="welcome">Welcome, <span id="userEmail">Not signed in</span></div>
@@ -365,7 +403,11 @@
 
     <button id="markAttendance" disabled>Click to mark attendance</button>
 
-    <video id="video" autoplay playsinline style="display:none;"></video>
+    <div class="video-container">
+      <video id="video" autoplay playsinline style="display:none;"></video>
+      <div class="video-text" id="videoText" style="display:none;">Click photo of Tools and machines</div>
+    </div>
+    <button id="flipCamera" class="flip-camera">Flip Camera</button>
     <canvas id="canvas" style="display:none;"></canvas>
 
     <div id="previewArea"></div>
@@ -434,7 +476,9 @@
       checkAttendance: document.getElementById('checkAttendance'),
       attendanceModal: document.getElementById('attendanceModal'),
       attendanceFilter: document.getElementById('attendanceFilter'),
-      attendanceTable: document.getElementById('attendanceTable')
+      attendanceTable: document.getElementById('attendanceTable'),
+      flipCamera: document.getElementById('flipCamera'),
+      videoText: document.getElementById('videoText')
     };
 
     let stream = null;
@@ -444,6 +488,7 @@
     let currentLocation = null;
     let verificationMessage = '';
     let attendanceData = [];
+    let currentFacingMode = 'environment'; // Default to back camera
 
     function showModal(message) {
       elements.modalMessage.textContent = message;
@@ -463,20 +508,14 @@
       if (event.target == elements.locationModal) {
         elements.locationModal.style.display = "none";
       }
+      if (event.target == elements.attendanceModal) {
+        elements.attendanceModal.style.display = "none";
+      }
     };
 
     const attendanceModalClose = elements.attendanceModal.querySelector('.close');
     attendanceModalClose.onclick = () => {
       elements.attendanceModal.style.display = "none";
-    };
-
-    window.onclick = (event) => {
-      if (event.target == elements.attendanceModal) {
-        elements.attendanceModal.style.display = "none";
-      }
-      if (event.target == elements.locationModal) {
-        elements.locationModal.style.display = "none";
-      }
     };
 
     function handleCredentialResponse(response) {
@@ -633,6 +672,25 @@
       }
     });
 
+    elements.flipCamera.addEventListener('click', async () => {
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
+      currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: currentFacingMode, width: 320, height: 240 },
+          audio: false
+        });
+        elements.video.srcObject = stream;
+        elements.flipCamera.textContent = `Switch to ${currentFacingMode === 'environment' ? 'Front' : 'Back'} Camera`;
+      } catch (err) {
+        console.error('Camera switch error:', err);
+        alert('Failed to switch camera: ' + err.message);
+      }
+    });
+
     elements.markAttendanceBtn.onclick = async () => {
       if (elements.markAttendanceBtn.disabled || isUploading) return;
       if (!elements.status.value) {
@@ -646,13 +704,14 @@
 
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: 320, height: 240 },
+          video: { facingMode: currentFacingMode, width: 320, height: 240 },
           audio: false
         });
         elements.video.style.display = 'block';
-        elements.video.srcObject = stream;
-
-        elements.markAttendanceBtn.textContent = "Click to mark attendance";
+        elements.videoText.style.display = 'block';
+        elements.flipCamera.style.display = 'block';
+        elements.flipCamera.textContent = `Switch to ${currentFacingMode === 'environment' ? 'Front' : 'Back'} Camera`;
+        elements.markAttendanceBtn.textContent = "Capture Photo";
         elements.markAttendanceBtn.onclick = captureAndSend;
       } catch (err) {
         console.error('Camera error:', err);
@@ -682,13 +741,15 @@
         stream = null;
       }
       elements.video.style.display = 'none';
+      elements.videoText.style.display = 'none';
+      elements.flipCamera.style.display = 'none';
 
       sendAttendance();
     }
 
     async function sendAttendance() {
       if (!lastDataUrl) {
-        alert('Please capture selfie first');
+        alert('Please capture photo first');
         return;
       }
 
@@ -896,7 +957,7 @@
       google.accounts.id.renderButton(
         document.querySelector('.g_id_signin'),
         { theme: 'outline', size: 'large', type: 'standard' }
-      ); // Render the button manually
+      );
     };
   </script>
 </body>
