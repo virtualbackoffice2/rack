@@ -320,7 +320,7 @@
   <div class="card">
     <div class="header">
       <div id="datetime"></div>
-      <h1>Attendance</h1>
+      <h1>👤 Attendance</h1>
       <p>Merotra Cable Network</p>
      <p style="color:red; font-size:12px; font-style:italic;">
   * 1.5 hr late is half day<br>
@@ -513,7 +513,7 @@
       const R = 6371e3;
       const toRad = x => x * Math.PI / 180;
       const dLat = toRad(lat2 - lat1);
-      const dLon = toRad(lon2 - lat1);
+      const dLon = toRad(lon2 - lon1);
       const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
                 Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
                 Math.sin(dLon/2) * Math.sin(dLon/2);
@@ -641,7 +641,7 @@
       }
       lastDataUrl = dataUrl;
       elements.previewArea.innerHTML =
-        `<h4 style="text-align:center; margin:10px 0;">Preview (${(atob(dataUrl.split(',')[1]).length/1024).toFixed(1)}KB)</h4>` +
+        `<h4 style="text-align:center; margin:10px 0;">✅ Preview (${(atob(dataUrl.split(',')[1]).length/1024).toFixed(1)}KB)</h4>` +
         `<img src="${dataUrl}" class="preview-img">`;
       if (stream) {
         stream.getTracks().forEach(t => t.stop());
@@ -657,7 +657,7 @@
         return;
       }
       isUploading = true;
-      elements.markAttendanceBtn.textContent = 'Uploading...';
+      elements.markAttendanceBtn.textContent = '⏳ Uploading...';
       elements.markAttendanceBtn.disabled = true;
       elements.markAttendanceBtn.classList.remove('enabled');
       const statusVal = elements.status.value;
@@ -685,7 +685,7 @@
         });
         elements.statusMsg.style.display = 'block';
         elements.statusMsg.innerHTML =
-          `Done!<br>` +
+          `✅ <strong>Done!</strong><br>` +
           `Time: ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}<br>` +
           `Attendance recorded!`;
         elements.statusMsg.className = 'result success';
@@ -700,7 +700,7 @@
       } catch (err) {
         console.error('Upload error:', err);
         elements.statusMsg.style.display = 'block';
-        elements.statusMsg.textContent = 'Upload failed: ' + err.message;
+        elements.statusMsg.textContent = '❌ Upload failed: ' + err.message;
         elements.statusMsg.className = 'result error';
         elements.markAttendanceBtn.textContent = 'Click to mark attendance';
         updateButtonState();
@@ -767,8 +767,19 @@
     elements.checkAttendance.onclick = async () => {
       if (!userEmailValue) return;
       try {
-        const response = await fetch(`${SCRIPT_URL}?action=getAttendance&email=${encodeURIComponent(userEmailValue)}`);
+        console.log('Fetching attendance for:', userEmailValue);
+        const response = await fetch(`${SCRIPT_URL}?action=getAttendance&email=${encodeURIComponent(userEmailValue)}`, {
+          method: 'GET',
+          mode: 'cors',  // Try cors mode; fallback to no-cors if needed
+          headers: { 'Content-Type': 'application/json' }
+        });
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
         const rawData = await response.json();
+        console.log('Raw data received:', rawData);
         attendanceData = rawData.map(row => ({
           timestamp: parseTimestamp(row[0]),
           type: row[2]
@@ -791,10 +802,27 @@
 
         elements.attendanceModal.style.display = 'flex';
       } catch (err) {
-        console.error('Error fetching attendance:', err);
-        alert('Failed to fetch attendance records.');
+        console.error('Detailed error fetching attendance:', err);
+        let errorMsg = 'Failed to fetch attendance records.';
+        if (err.name === 'TypeError' && err.message.includes('fetch')) {
+          errorMsg += ' (Network error - Check Apps Script deployment & CORS)';
+        } else if (err.message.includes('JSON')) {
+          errorMsg += ' (Invalid response format from server)';
+        } else {
+          errorMsg += ` (${err.message})`;
+        }
+        alert(errorMsg);
+        // Fallback: Show empty table
+        renderEmptyTable();
+        elements.attendanceModal.style.display = 'flex';
       }
     };
+
+    function renderEmptyTable() {
+      const tbody = elements.attendanceTable.querySelector('tbody');
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: #666;">No data available (Server issue - Check console for details)</td></tr>';
+      elements.monthFilter.innerHTML = '<option value="">No months available</option>';
+    }
 
     function populateMonthFilter() {
       elements.monthFilter.innerHTML = '<option value="">Select Month</option>';
