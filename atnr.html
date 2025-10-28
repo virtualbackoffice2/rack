@@ -29,7 +29,7 @@
     }
     .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
     .header p { margin: 5px 0 0; color: #666; font-size: 18px; font-weight: 600; }
-    input[type="date"] {
+    input[type="date"], input[type="text"], select, textarea {
       display: block;
       width: 100%;
       margin: 12px 0;
@@ -40,7 +40,7 @@
       transition: border-color 0.3s;
       font-family: inherit;
     }
-    input[type="date"]:focus {
+    input:focus, select:focus, textarea:focus {
       outline: none;
       border-color: #667eea;
     }
@@ -97,12 +97,30 @@
       top: 0;
       z-index: 1;
     }
+    button {
+      padding: 12px 20px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      margin: 10px 0;
+      font-weight: 600;
+      font-size: 18px;
+      transition: all 0.3s;
+      width: 100%;
+      color: white;
+      background: #48bb78;
+    }
+    button:hover {
+      background: #38a169;
+      transform: translateY(-2px);
+    }
     button.edit-btn {
       background: none;
-      border: none;
+      color: #667eea;
+      width: auto;
+      padding: 2px 6px;
       font-size: 18px;
       cursor: pointer;
-      padding: 2px 6px;
     }
     .modal {
       display: none;
@@ -138,24 +156,24 @@
     .close:hover {
       color: black;
     }
-    #editTable {
+    #editTable, #addTable {
       width: 100%;
       border-collapse: collapse;
       margin-top: 15px;
     }
-    #editTable th, #editTable td {
+    #editTable th, #editTable td, #addTable th, #addTable td {
       border: 1px solid #ddd;
       padding: 8px;
       font-size: 14px;
     }
-    #editTable input {
+    #editTable input, #addTable input {
       width: 100%;
       border: none;
       padding: 6px;
       font-size: 14px;
       background: transparent;
     }
-    #editTable input:focus {
+    #editTable input:focus, #addTable input:focus {
       outline: 2px solid #667eea;
       background: #f0f7ff;
     }
@@ -179,6 +197,16 @@
       color: #666;
       font-style: italic;
     }
+    @media (max-width: 600px) {
+      body { padding: 10px; }
+      .card { padding: 20px; margin: 10px 0; }
+      .header h1 { font-size: 24px; }
+      .header p { font-size: 16px; }
+      button { font-size: 16px; padding: 14px; }
+      .checkbox-container { gap: 8px; }
+      #attendanceTable th, #attendanceTable td { font-size: 12px; padding: 6px; }
+      .modal-content { width: 95%; padding: 15px; }
+    }
   </style>
 </head>
 <body>
@@ -187,6 +215,8 @@
       <h1>All Attendance</h1>
       <p>Merotra Cable Network</p>
     </div>
+
+    <button id="addRecordBtn">Add Record</button>
 
     <div class="filter-group">
       <label for="startDate">Start Date:</label>
@@ -285,6 +315,36 @@
     </div>
   </div>
 
+  <!-- Add Modal -->
+  <div id="addModal" class="modal">
+    <div class="modal-content">
+      <span class="close">x</span>
+      <h2>Add New Record</h2>
+      <label for="addName">Name (Email):</label>
+      <input type="text" id="addName" placeholder="Enter email">
+      <label for="addStatus">Status:</label>
+      <select id="addStatus">
+        <option value="Duty start">Duty start</option>
+        <option value="Lunch start">Lunch start</option>
+        <option value="Lunch done">Lunch done</option>
+        <option value="Duty off">Duty off</option>
+      </select>
+      <label for="addTimestamp">Timestamp (M/d/yyyy H:mm:ss):</label>
+      <input type="text" id="addTimestamp" placeholder="e.g., 10/29/2024 10:00:00">
+      <label for="addRemarks">Remarks:</label>
+      <textarea id="addRemarks" placeholder="Remarks"></textarea>
+      <label for="addSelfieUrl">Selfie URL:</label>
+      <input type="text" id="addSelfieUrl" placeholder="Selfie URL">
+      <label for="addBikeUrl">Bike URL:</label>
+      <input type="text" id="addBikeUrl" placeholder="Bike URL">
+      <label for="addLocation">Location:</label>
+      <input type="text" id="addLocation" placeholder="Location">
+      <label for="addVerification">Verification Message:</label>
+      <input type="text" id="addVerification" placeholder="Verification Message">
+      <button id="saveAddBtn">Save</button>
+    </div>
+  </div>
+
   <div id="toast">Attendance modified!</div>
 
   <script>
@@ -293,6 +353,18 @@
     let uniqueEmails = new Set();
 
     const elements = {
+      addRecordBtn: document.getElementById('addRecordBtn'),
+      addModal: document.getElementById('addModal'),
+      addClose: document.querySelector('#addModal .close'),
+      addName: document.getElementById('addName'),
+      addStatus: document.getElementById('addStatus'),
+      addTimestamp: document.getElementById('addTimestamp'),
+      addRemarks: document.getElementById('addRemarks'),
+      addSelfieUrl: document.getElementById('addSelfieUrl'),
+      addBikeUrl: document.getElementById('addBikeUrl'),
+      addLocation: document.getElementById('addLocation'),
+      addVerification: document.getElementById('addVerification'),
+      saveAddBtn: document.getElementById('saveAddBtn'),
       startDate: document.getElementById('startDate'),
       endDate: document.getElementById('endDate'),
       emailCheckboxes: document.getElementById('emailCheckboxes'),
@@ -312,9 +384,52 @@
       toast: document.getElementById('toast')
     };
 
-    // Close modal
+    // Close modals
     elements.editClose.onclick = () => { elements.editModal.style.display = 'none'; };
-    window.onclick = (e) => { if (e.target === elements.editModal) elements.editModal.style.display = 'none'; };
+    elements.addClose.onclick = () => { elements.addModal.style.display = 'none'; };
+    window.onclick = (e) => {
+      if (e.target === elements.editModal) elements.editModal.style.display = 'none';
+      if (e.target === elements.addModal) elements.addModal.style.display = 'none';
+    };
+
+    // Add record button
+    elements.addRecordBtn.onclick = () => {
+      elements.addModal.style.display = 'flex';
+    };
+
+    // Save new record
+    elements.saveAddBtn.onclick = async () => {
+      const payload = {
+        name: elements.addName.value.trim(),
+        status: elements.addStatus.value,
+        timestamp: elements.addTimestamp.value.trim(),
+        remarks: elements.addRemarks.value.trim() || "N/A",
+        selfieUrl: elements.addSelfieUrl.value.trim() || "N/A",
+        bikeUrl: elements.addBikeUrl.value.trim() || "N/A",
+        location: elements.addLocation.value.trim() || "N/A",
+        verificationMessage: elements.addVerification.value.trim() || "N/A"
+      };
+
+      if (!payload.name || !payload.status || !payload.timestamp) {
+        alert('Name, Status, and Timestamp are required.');
+        return;
+      }
+
+      try {
+        await fetch(SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        showToast();
+        elements.addModal.style.display = 'none';
+        await fetchData();
+        renderTable();
+      } catch (err) {
+        console.error('Add failed:', err);
+        alert('Failed to add record.');
+      }
+    };
 
     // Select All / Deselect All for Emails
     elements.selectAllEmails.onclick = () => {
@@ -363,9 +478,12 @@
         const response = await fetch(`${SCRIPT_URL}?action=getAllAttendance`);
         allData = await response.json();
 
-        // Extract unique emails
+        // Extract unique emails, remove blank
         uniqueEmails = new Set();
-        allData.forEach(row => uniqueEmails.add(row[1].trim()));
+        allData.forEach(row => {
+          const email = row[1].trim();
+          if (email) uniqueEmails.add(email);
+        });
 
         // Populate email checkboxes
         elements.emailCheckboxes.innerHTML = '';
@@ -480,7 +598,7 @@
           let editBtn = '';
           if (row.rawRows.length > 0) {
             const rawRowsStr = JSON.stringify(row.rawRows).replace(/'/g, "\\'").replace(/"/g, '&quot;');
-            editBtn = `<button class="edit-btn" onclick="openEditModal('${row.email.replace(/'/g, "\\'")}', '${row.date.replace(/'/g, "\\'")}', '${rawRowsStr}')">Edit</button>`;
+            editBtn = `<button class="edit-btn" onclick="openEditModal('${row.email.replace(/'/g, "\\'")}', '${row.date.replace(/'/g, "\\'")}', '${rawRowsStr}')">✏️</button>`;
           }
           const tr = document.createElement('tr');
           tr.innerHTML = `
@@ -628,11 +746,11 @@
     // Initialize
     window.onload = async () => {
       const today = new Date();
-      const defaultStart = new Date(today);
-      defaultStart.setDate(today.getDate() - 29);
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
 
       elements.endDate.value = today.toISOString().split('T')[0];
-      elements.startDate.value = defaultStart.toISOString().split('T')[0];
+      elements.startDate.value = yesterday.toISOString().split('T')[0];
 
       elements.startDate.addEventListener('change', renderTable);
       elements.endDate.addEventListener('change', renderTable);
