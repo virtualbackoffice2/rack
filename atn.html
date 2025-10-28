@@ -324,9 +324,7 @@
   * 30 minutes late is late
 </p>
     </div>
-
     <div class="welcome" id="welcome">Welcome, <span id="userEmail">Not signed in</span></div>
-
     <div id="gSignInWrapper" style="text-align:center; margin-bottom:20px;">
       <div id="g_id_onload"
            data-client_id="415169964515-vlf28tsj228j6dma3ot6s10eeudhkas2.apps.googleusercontent.com"
@@ -343,9 +341,7 @@
       </div>
       <p id="signOutBtn" style="display:none;cursor:pointer;color:#667eea;text-decoration:underline;">Change mail ID</p>
     </div>
-
     <button id="checkAttendance">Check my attendance</button>
-
     <select id="status" required disabled>
       <option value="" disabled selected>Select attendance</option>
       <option value="Duty start">Duty start</option>
@@ -353,25 +349,17 @@
       <option value="Lunch done">Lunch done</option>
       <option value="Duty off">Duty off</option>
     </select>
-
     <button id="checkLocation" style="display:none;">Reached office?</button>
-
     <textarea id="remarks" placeholder="Remark and bike reading"></textarea>
-
     <label id="readingPhotoLabel" for="bikePhoto">Bike meter reading photo</label>
     <input type="file" id="bikePhoto" accept="image/*" capture="environment" />
-
     <div id="bikePreviewArea" style="text-align: center;"></div>
-
     <button id="markAttendance" disabled>Click to mark attendance</button>
-
     <video id="video" autoplay playsinline style="display:none;"></video>
     <canvas id="canvas" style="display:none;"></canvas>
-
     <div id="previewArea"></div>
     <div id="statusMsg" class="result" style="display:none;"></div>
   </div>
-
   <!-- Modal for location messages -->
   <div id="locationModal" class="modal">
     <div class="modal-content">
@@ -380,7 +368,6 @@
       <button id="modalOk">OK</button>
     </div>
   </div>
-
   <!-- Modal for attendance records -->
   <div id="attendanceModal" class="modal">
     <div class="modal-content">
@@ -409,12 +396,10 @@
       </table>
     </div>
   </div>
-
   <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykf97Wp9J6fPP_LcpzDy1MhfjlbRJIawIXXuW_zmzbx5f9wstjcTL98DlgiEl4rIhj/exec";
     const allowedOfficeLocation = { lat: 26.818614, lon: 80.866071 };
     const allowedRadiusMeters = 300;
-
     const elements = {
       status: document.getElementById('status'),
       checkLocation: document.getElementById('checkLocation'),
@@ -436,7 +421,6 @@
       attendanceFilter: document.getElementById('attendanceFilter'),
       attendanceTable: document.getElementById('attendanceTable')
     };
-
     let stream = null;
     let lastDataUrl = null;
     let userEmailValue = '';
@@ -444,32 +428,26 @@
     let currentLocation = null;
     let verificationMessage = '';
     let attendanceData = [];
-
     function showModal(message) {
       elements.modalMessage.textContent = message;
       elements.locationModal.style.display = 'flex';
     }
-
     const modalClose = document.getElementsByClassName("close")[0];
     modalClose.onclick = () => {
       elements.locationModal.style.display = "none";
     };
-
     elements.modalOk.onclick = () => {
       elements.locationModal.style.display = "none";
     };
-
     window.onclick = (event) => {
       if (event.target == elements.locationModal) {
         elements.locationModal.style.display = "none";
       }
     };
-
     const attendanceModalClose = elements.attendanceModal.querySelector('.close');
     attendanceModalClose.onclick = () => {
       elements.attendanceModal.style.display = "none";
     };
-
     window.onclick = (event) => {
       if (event.target == elements.attendanceModal) {
         elements.attendanceModal.style.display = "none";
@@ -478,7 +456,6 @@
         elements.locationModal.style.display = "none";
       }
     };
-
     function handleCredentialResponse(response) {
       try {
         const responsePayload = decodeJwtResponse(response.credential);
@@ -503,14 +480,12 @@
         toggleSignIn(true);
       }
     }
-
     function decodeJwtResponse(token) {
       const base64Url = token.split('.')[1];
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
       const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
       return JSON.parse(jsonPayload);
     }
-
     function signOut() {
       google.accounts.id.disableAutoSelect();
       google.accounts.id.revoke(userEmailValue, () => {
@@ -524,14 +499,11 @@
         toggleSignIn(true);
       });
     }
-
     document.getElementById('signOutBtn').addEventListener('click', signOut);
-
     function toggleSignIn(showSignIn) {
       document.querySelector('.g_id_signin').style.display = showSignIn ? 'block' : 'none';
       document.getElementById('signOutBtn').style.display = showSignIn ? 'none' : 'block';
     }
-
     function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
       const R = 6371e3;
       const toRad = x => x * Math.PI / 180;
@@ -543,7 +515,6 @@
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       return R * c;
     }
-
     function updateButtonState() {
       const statusVal = elements.status.value;
       if (!userEmailValue) {
@@ -566,9 +537,7 @@
         elements.markAttendanceBtn.classList.remove('enabled');
       }
     }
-
     elements.status.addEventListener('change', updateButtonState);
-
     elements.checkLocation.onclick = () => {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(pos => {
@@ -604,7 +573,6 @@
         elements.markAttendanceBtn.classList.remove('enabled');
       }
     };
-
     elements.bikePhoto.addEventListener('change', () => {
       const file = elements.bikePhoto.files[0];
       if (file) {
@@ -632,7 +600,6 @@
         reader.readAsDataURL(file);
       }
     });
-
     elements.markAttendanceBtn.onclick = async () => {
       if (elements.markAttendanceBtn.disabled || isUploading) return;
       if (!elements.status.value) {
@@ -643,7 +610,6 @@
         alert('Please sign in');
         return;
       }
-
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment', width: 320, height: 240 },
@@ -651,7 +617,6 @@
         });
         elements.video.style.display = 'block';
         elements.video.srcObject = stream;
-
         elements.markAttendanceBtn.textContent = "Click to mark attendance";
         elements.markAttendanceBtn.onclick = captureAndSend;
       } catch (err) {
@@ -659,13 +624,11 @@
         alert('Camera access denied or unavailable: ' + err.message);
       }
     };
-
     function captureAndSend() {
       elements.canvas.width = 280;
       elements.canvas.height = 210;
       const ctx = elements.canvas.getContext('2d');
       ctx.drawImage(elements.video, 0, 0, 280, 210);
-
       let quality = 0.8;
       let dataUrl = elements.canvas.toDataURL('image/jpeg', quality);
       while (atob(dataUrl.split(',')[1]).length > 90 * 1024 && quality > 0.2) {
@@ -676,36 +639,29 @@
       elements.previewArea.innerHTML =
         `<h4 style="text-align:center; margin:10px 0;">✅ Preview (${(atob(dataUrl.split(',')[1]).length/1024).toFixed(1)}KB)</h4>` +
         `<img src="${dataUrl}" class="preview-img">`;
-
       if (stream) {
         stream.getTracks().forEach(t => t.stop());
         stream = null;
       }
       elements.video.style.display = 'none';
-
       sendAttendance();
     }
-
     async function sendAttendance() {
       if (!lastDataUrl) {
         alert('Please capture selfie first');
         return;
       }
-
       isUploading = true;
       elements.markAttendanceBtn.textContent = '⏳ Uploading...';
       elements.markAttendanceBtn.disabled = true;
       elements.markAttendanceBtn.classList.remove('enabled');
-
       const statusVal = elements.status.value;
       const remarksVal = elements.remarks.value.trim() || "N/A";
       const bikePhotoFile = elements.bikePhoto.files[0];
       let bikePhotoData = null;
-
       if (bikePhotoFile) {
         bikePhotoData = await compressAndBase64(bikePhotoFile);
       }
-
       const payload = {
         name: userEmailValue,
         status: statusVal,
@@ -715,7 +671,6 @@
         location: currentLocation || "",
         verificationMessage: verificationMessage || ""
       };
-
       try {
         await fetch(SCRIPT_URL, {
           method: "POST",
@@ -723,14 +678,12 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
-
         elements.statusMsg.style.display = 'block';
         elements.statusMsg.innerHTML =
           `✅ <strong>Done!</strong><br>` +
           `Time: ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}<br>` +
           `Attendance recorded!`;
         elements.statusMsg.className = 'result success';
-
         elements.status.selectedIndex = 0;
         elements.remarks.value = '';
         elements.bikePhoto.value = '';
@@ -750,7 +703,6 @@
         isUploading = false;
       }
     }
-
     async function compressAndBase64(file) {
       return new Promise((resolve) => {
         const reader = new FileReader();
@@ -788,17 +740,14 @@
         reader.readAsDataURL(file);
       });
     }
-
     function updateDateTime() {
       const now = new Date();
       const date = now.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
       const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       document.getElementById('datetime').textContent = `${date} ${time}`;
     }
-
     setInterval(updateDateTime, 1000);
     updateDateTime();
-
     elements.checkAttendance.onclick = async () => {
       if (!userEmailValue) return;
       try {
@@ -811,21 +760,33 @@
         alert('Failed to fetch attendance records.');
       }
     };
-
     elements.attendanceFilter.addEventListener('change', (e) => {
       renderAttendanceTable(e.target.value);
     });
-
     function renderAttendanceTable(filter) {
       const tbody = elements.attendanceTable.querySelector('tbody');
       tbody.innerHTML = '';
       const dateGroups = groupByDate(attendanceData);
+      const today = new Date();
+      const dates = [];
+      for (let i = 0; i < 45; i++) {
+        const d = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
+        const dateKey = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        dates.push(dateKey);
+      }
       const rows = [];
-      dateGroups.forEach((group, date) => {
+      dates.forEach((dateKey, index) => {
+        const group = dateGroups.get(dateKey) || {
+          dutyStart: null,
+          lunchStart: null,
+          lunchDone: null,
+          dutyOff: null,
+          tsMap: new Map()
+        };
         const attendance = computeAttendance(group);
         if (filter === 'All' || attendance === filter) {
           rows.push({
-            date,
+            date: dateKey,
             dutyStart: group.dutyStart || '--',
             lunchStart: group.lunchStart || '--',
             lunchDone: group.lunchDone || '--',
@@ -848,7 +809,6 @@
         tbody.appendChild(tr);
       });
     }
-
     function groupByDate(data) {
       const groups = new Map();
       data.forEach(row => {
@@ -869,7 +829,6 @@
       });
       return groups;
     }
-
     // ---------- UPDATED computeAttendance (only this function changed) ----------
     function computeAttendance(group) {
       // Check which timestamps exist
@@ -877,12 +836,10 @@
       const hasDutyOff = !!group.tsMap.get('Duty off');
       const hasLunchStart = !!group.tsMap.get('Lunch start');
       const hasLunchDone = !!group.tsMap.get('Lunch done');
-
       // No punches at all -> Off
       if (!hasDutyStart && !hasDutyOff && !hasLunchStart && !hasLunchDone) {
         return 'Off';
       }
-
       // Incomplete attendance cases:
       // - Duty pair incomplete (one exists without the other)
       if ((hasDutyStart && !hasDutyOff) || (!hasDutyStart && hasDutyOff)) {
@@ -892,21 +849,17 @@
       if ((hasLunchStart && !hasLunchDone) || (!hasLunchStart && hasLunchDone)) {
         return 'Incomplete attendance';
       }
-
       // By now dutyStart && dutyOff exist (otherwise would have returned above).
       const dutyStartTs = group.tsMap.get('Duty start');
       const dutyOffTs = group.tsMap.get('Duty off');
-
       if (!dutyStartTs || !dutyOffTs) {
         // Safety fallback
         return 'Incomplete attendance';
       }
-
       // totalHours calculation:
       // if lunch both present -> subtract lunch duration
       // if lunch absent -> use dutyOff - dutyStart
       let totalHours = (dutyOffTs - dutyStartTs) / 3600000;
-
       if (hasLunchStart && hasLunchDone) {
         const lunchStartTs = group.tsMap.get('Lunch start');
         const lunchDoneTs = group.tsMap.get('Lunch done');
@@ -915,19 +868,16 @@
           totalHours = totalHours - lunchHours;
         }
       }
-
       // If total hours is zero or negative, treat as Off (or could be invalid data)
       if (!(totalHours > 0)) {
         return 'Off';
       }
-
       // Classification rules
       if (totalHours >= 8.5) return 'Full day';
       if (totalHours >= 7.5 && totalHours < 8.5) return 'Late';
       return 'Half day';
     }
     // ---------------------------------------------------------------------------
-
     window.onload = () => {
       google.accounts.id.initialize({
         client_id: '415169964515-vlf28tsj228j6dma3ot6s10eeudhkas2.apps.googleusercontent.com',
