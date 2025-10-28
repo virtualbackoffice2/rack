@@ -870,47 +870,32 @@
       return groups;
     }
 
-    function computeAttendance(groupedData) {
-  const result = [];
+    // ---------- UPDATED computeAttendance (only this function changed) ----------
+    function computeAttendance(group) {
+      // If any punch missing -> Off
+      if (!group.dutyStart || !group.lunchStart || !group.lunchDone || !group.dutyOff) return 'Off';
 
-  for (const date in groupedData) {
-    const punches = groupedData[date];
+      const dutyStartTs = group.tsMap.get('Duty start');
+      const lunchStartTs = group.tsMap.get('Lunch start');
+      const lunchDoneTs = group.tsMap.get('Lunch done');
+      const dutyOffTs = group.tsMap.get('Duty off');
 
-    // Extract 4 punch types
-    const dutyStart = punches.find(p => p.Type === "Duty start");
-    const lunchStart = punches.find(p => p.Type === "Lunch start");
-    const lunchDone  = punches.find(p => p.Type === "Lunch done");
-    const dutyOff    = punches.find(p => p.Type === "Duty off");
+      // morning and afternoon durations in hours
+      const morningHours = (lunchStartTs - dutyStartTs) / 3600000;
+      const afternoonHours = (dutyOffTs - lunchDoneTs) / 3600000;
+      const totalHours = morningHours + afternoonHours;
 
-    let status = "Off";
-    let totalHours = 0;
-
-    // If all required punches are present
-    if (dutyStart && lunchStart && lunchDone && dutyOff) {
-      const start = new Date(dutyStart.Time);
-      const lunchS = new Date(lunchStart.Time);
-      const lunchE = new Date(lunchDone.Time);
-      const end = new Date(dutyOff.Time);
-
-      // Total work hours = (DutyOff - DutyStart) - (LunchDone - LunchStart)
-      totalHours = ((end - start) - (lunchE - lunchS)) / (1000 * 60 * 60);
-
-      if (totalHours >= 8.5) status = "Full day";
-      else if (totalHours >= 7.5) status = "Late";
-      else if (totalHours > 0) status = "Half day";
-      else status = "Off";
+      // New rules:
+      // >= 8.5 => Full day
+      // >= 7.5 and < 8.5 => Late
+      // > 0 and < 7.5 => Half day
+      // otherwise Off
+      if (totalHours >= 8.5) return 'Full day';
+      if (totalHours >= 7.5 && totalHours < 8.5) return 'Late';
+      if (totalHours > 0 && totalHours < 7.5) return 'Half day';
+      return 'Off';
     }
-
-    result.push({
-      date,
-      totalHours: totalHours.toFixed(2),
-      status
-    });
-  }
-
-  return result;
-}
-
+    // ---------------------------------------------------------------------------
 
     window.onload = () => {
       google.accounts.id.initialize({
