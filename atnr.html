@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>All Employee Attendance System</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 15px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 25px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      margin: 20px 0;
+    }
+    .header {
+      text-align: center;
+      color: #667eea;
+      margin-bottom: 25px;
+    }
+    .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
+    .header p { margin: 5px 0 0; color: #666; font-size: 18px; font-weight: 600; }
+    select, input[type="date"] {
+      display: block;
+      width: 100%;
+      margin: 12px 0;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 16px;
+      transition: border-color 0.3s;
+      font-family: inherit;
+    }
+    select:focus, input[type="date"]:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    label {
+      font-weight: 600;
+      color: #4a5568;
+      margin-bottom: 4px;
+    }
+    #attendanceTable {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    #attendanceTable th, #attendanceTable td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    #attendanceTable th {
+      background-color: #f2f2f2;
+    }
+    button {
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.4);
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background-color: #fefefe;
+      margin: auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 90%;
+      max-width: 800px;
+      border-radius: 10px;
+      text-align: center;
+      overflow-x: auto;
+    }
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .close:hover {
+      color: black;
+    }
+    #editTable {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    #editTable th, #editTable td {
+      border: 1px solid #ddd;
+      padding: 8px;
+    }
+    #editTable input {
+      width: 100%;
+      border: none;
+      padding: 5px;
+    }
+    #toast {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #48bb78;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 5px;
+      z-index: 2;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <h1>All Attendance</h1>
+      <p>Merotra Cable Network</p>
+    </div>
+    <label for="startDate">Start Date:</label>
+    <input type="date" id="startDate">
+    <label for="endDate">End Date:</label>
+    <input type="date" id="endDate">
+    <label for="emailFilter">Select Emails (multiple):</label>
+    <select id="emailFilter" multiple></select>
+    <label for="attendanceFilter">Select Attendance Types (multiple):</label>
+    <select id="attendanceFilter" multiple>
+      <option value="All">All</option>
+      <option value="Full day">Full day</option>
+      <option value="Late">Late</option>
+      <option value="Half day">Half day</option>
+      <option value="Off">Off</option>
+      <option value="Incomplete attendance">Incomplete attendance</option>
+    </select>
+    <table id="attendanceTable">
+      <thead>
+        <tr>
+          <th>Edit</th>
+          <th>Serial</th>
+          <th>Date</th>
+          <th>Email</th>
+          <th>Duty Start</th>
+          <th>Lunch Start</th>
+          <th>Lunch Done</th>
+          <th>Duty Off</th>
+          <th>Attendance</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Edit Attendance for <span id="editDate"></span> - <span id="editEmail"></span></h2>
+      <table id="editTable">
+        <thead>
+          <tr>
+            <th>Row</th>
+            <th>Timestamp</th>
+            <th>Status</th>
+            <th>Remarks</th>
+            <th>Selfie URL</th>
+            <th>Bike URL</th>
+            <th>Location</th>
+            <th>Verification Message</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+  <div id="toast">Attendance modified!</div>
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykf97Wp9J6fPP_LcpzDy1MhfjlbRJIawIXXuW_zmzbx5f9wstjcTL98DlgiEl4rIhj/exec";
+    let allData = [];
+    let uniqueEmails = new Set();
+    const emailFilter = document.getElementById('emailFilter');
+    const attendanceFilter = document.getElementById('attendanceFilter');
+    const startDateInput = document.getElementById('startDate');
+    const endDateInput = document.getElementById('endDate');
+    const editModal = document.getElementById('editModal');
+    const editClose = editModal.querySelector('.close');
+    const toast = document.getElementById('toast');
+    editClose.onclick = () => { editModal.style.display = 'none'; };
+    window.onclick = (event) => {
+      if (event.target == editModal) {
+        editModal.style.display = 'none';
+      }
+    };
+    async function fetchData() {
+      try {
+        const response = await fetch(`${SCRIPT_URL}?action=getAllAttendance`);
+        allData = await response.json();
+        if (uniqueEmails.size === 0) {
+          allData.forEach(row => uniqueEmails.add(row[1].trim()));
+          Array.from(uniqueEmails).sort().forEach(email => {
+            const opt = document.createElement('option');
+            opt.value = email;
+            opt.text = email;
+            emailFilter.add(opt);
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching data:', err);
+      }
+    }
+    function renderTable() {
+      const startStr = startDateInput.value;
+      const endStr = endDateInput.value;
+      if (!startStr || !endStr) return;
+      const startDate = new Date(startStr);
+      const endDate = new Date(endStr);
+      const selectedEmails = Array.from(emailFilter.selectedOptions).map(opt => opt.value);
+      const emailsToShow = selectedEmails.length > 0 ? selectedEmails : Array.from(uniqueEmails);
+      const selectedAttTypes = Array.from(attendanceFilter.selectedOptions).map(opt => opt.value);
+      const includeAllAtt = selectedAttTypes.includes('All') || selectedAttTypes.length === 0;
+      // Group data
+      const groupsByEmail = new Map();
+      allData.forEach(row => {
+        const tsStr = row[0];
+        const ts = new Date(tsStr);
+        const dateKey = ts.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const email = row[1].trim();
+        if (!groupsByEmail.has(email)) groupsByEmail.set(email, new Map());
+        const dateGroups = groupsByEmail.get(email);
+        if (!dateGroups.has(dateKey)) dateGroups.set(dateKey, { dutyStart: null, lunchStart: null, lunchDone: null, dutyOff: null, tsMap: new Map(), rawRows: [] });
+        const group = dateGroups.get(dateKey);
+        const type = row[2];
+        const time = ts.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+        if (type === 'Duty start') group.dutyStart = time;
+        if (type === 'Lunch start') group.lunchStart = time;
+        if (type === 'Lunch done') group.lunchDone = time;
+        if (type === 'Duty off') group.dutyOff = time;
+        group.tsMap.set(type, ts);
+        group.rawRows.push(row);
+      });
+      // Generate date list (latest first)
+      const dateList = [];
+      let current = new Date(endDate);
+      while (current >= startDate) {
+        dateList.push(current.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+        current.setDate(current.getDate() - 1);
+      }
+      // Build rows
+      const rows = [];
+      emailsToShow.forEach(email => {
+        dateList.forEach(dateKey => {
+          const dateGroups = groupsByEmail.get(email) || new Map();
+          const group = dateGroups.get(dateKey) || { dutyStart: '--', lunchStart: '--', lunchDone: '--', dutyOff: '--', attendance: 'Off', rawRows: [] };
+          const attendance = computeAttendance(group);
+          if (includeAllAtt || selectedAttTypes.includes(attendance)) {
+            rows.push({ email, date: dateKey, dutyStart: group.dutyStart, lunchStart: group.lunchStart, lunchDone: group.lunchDone, dutyOff: group.dutyOff, attendance, rawRows: group.rawRows });
+          }
+        });
+      });
+      // Render
+      const tbody = document.getElementById('attendanceTable').querySelector('tbody');
+      tbody.innerHTML = '';
+      rows.forEach((row, index) => {
+        const tr = document.createElement('tr');
+        const editTd = document.createElement('td');
+        if (row.rawRows.length > 0) {
+          const pencil = document.createElement('button');
+          pencil.textContent = '✏️';
+          pencil.onclick = () => openEditModal(row.email, row.date, row.rawRows);
+          editTd.appendChild(pencil);
+        }
+        tr.appendChild(editTd);
+        tr.innerHTML += `
+          <td>${index + 1}</td>
+          <td>${row.date}</td>
+          <td>${row.email}</td>
+          <td>${row.dutyStart}</td>
+          <td>${row.lunchStart}</td>
+          <td>${row.lunchDone}</td>
+          <td>${row.dutyOff}</td>
+          <td>${row.attendance}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+    function computeAttendance(group) {
+      const hasDutyStart = !!group.tsMap.get('Duty start');
+      const hasDutyOff = !!group.tsMap.get('Duty off');
+      const hasLunchStart = !!group.tsMap.get('Lunch start');
+      const hasLunchDone = !!group.tsMap.get('Lunch done');
+      if (!hasDutyStart && !hasDutyOff && !hasLunchStart && !hasLunchDone) {
+        return 'Off';
+      }
+      if ((hasDutyStart && !hasDutyOff) || (!hasDutyStart && hasDutyOff)) {
+        return 'Incomplete attendance';
+      }
+      if ((hasLunchStart && !hasLunchDone) || (!hasLunchStart && hasLunchDone)) {
+        return 'Incomplete attendance';
+      }
+      const dutyStartTs = group.tsMap.get('Duty start');
+      const dutyOffTs = group.tsMap.get('Duty off');
+      if (!dutyStartTs || !dutyOffTs) {
+        return 'Incomplete attendance';
+      }
+      let totalHours = (dutyOffTs - dutyStartTs) / 3600000;
+      if (hasLunchStart && hasLunchDone) {
+        const lunchStartTs = group.tsMap.get('Lunch start');
+        const lunchDoneTs = group.tsMap.get('Lunch done');
+        if (lunchStartTs && lunchDoneTs) {
+          const lunchHours = (lunchDoneTs - lunchStartTs) / 3600000;
+          totalHours -= lunchHours;
+        }
+      }
+      if (!(totalHours > 0)) {
+        return 'Off';
+      }
+      if (totalHours >= 8.5) return 'Full day';
+      if (totalHours >= 7.5 && totalHours < 8.5) return 'Late';
+      return 'Half day';
+    }
+    function openEditModal(email, date, rawRows) {
+      document.getElementById('editDate').textContent = date;
+      document.getElementById('editEmail').textContent = email;
+      const tbody = document.getElementById('editTable').querySelector('tbody');
+      tbody.innerHTML = '';
+      rawRows.forEach(row => {
+        const [ts, name, status, remarks, selfie, bike, loc, verif, rowIndex] = row;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${rowIndex}</td>
+          <td><input type="text" value="${ts}" data-field="timestamp" data-rowindex="${rowIndex}"></td>
+          <td><input type="text" value="${status}" data-field="status" data-rowindex="${rowIndex}"></td>
+          <td><input type="text" value="${remarks}" data-field="remarks" data-rowindex="${rowIndex}"></td>
+          <td><input type="text" value="${selfie}" data-field="selfieUrl" data-rowindex="${rowIndex}"></td>
+          <td><input type="text" value="${bike}" data-field="bikeUrl" data-rowindex="${rowIndex}"></td>
+          <td><input type="text" value="${loc}" data-field="location" data-rowindex="${rowIndex}"></td>
+          <td><input type="text" value="${verif}" data-field="verificationMessage" data-rowindex="${rowIndex}"></td>
+        `;
+        tbody.appendChild(tr);
+      });
+      const inputs = tbody.querySelectorAll('input');
+      inputs.forEach(input => {
+        input.addEventListener('blur', handleUpdate);
+      });
+      editModal.style.display = 'flex';
+    }
+    async function handleUpdate(e) {
+      const input = e.target;
+      const tr = input.closest('tr');
+      const rowIndex = input.dataset.rowindex;
+      const email = document.getElementById('editEmail').textContent;
+      const payload = {
+        action: 'updateRecord',
+        rowIndex: rowIndex,
+        name: email,
+        timestamp: tr.querySelector('[data-field="timestamp"]').value,
+        status: tr.querySelector('[data-field="status"]').value,
+        remarks: tr.querySelector('[data-field="remarks"]').value,
+        selfieUrl: tr.querySelector('[data-field="selfieUrl"]').value,
+        bikeUrl: tr.querySelector('[data-field="bikeUrl"]').value,
+        location: tr.querySelector('[data-field="location"]').value,
+        verificationMessage: tr.querySelector('[data-field="verificationMessage"]').value
+      };
+      try {
+        await fetch(SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        showToast();
+        await fetchData();
+        renderTable();
+        // Reopen the modal with updated data
+        const updatedRawRows = allData.filter(r => r[8] === Number(rowIndex)).map(r => r); // Wait, better refetch and reopen
+        // But for simplicity, close modal
+        editModal.style.display = 'none';
+      } catch (err) {
+        console.error('Update error:', err);
+      }
+    }
+    function showToast() {
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 3000);
+    }
+    // Event listeners
+    startDateInput.addEventListener('change', renderTable);
+    endDateInput.addEventListener('change', renderTable);
+    emailFilter.addEventListener('change', renderTable);
+    attendanceFilter.addEventListener('change', renderTable);
+    // Initial load
+    window.onload = async () => {
+      const today = new Date();
+      const defaultStart = new Date(today);
+      defaultStart.setDate(today.getDate() - 29);
+      endDateInput.value = today.toISOString().split('T')[0];
+      startDateInput.value = defaultStart.toISOString().split('T')[0];
+      await fetchData();
+      renderTable();
+    };
+  </script>
+</body>
+</html>
