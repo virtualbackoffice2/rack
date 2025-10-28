@@ -560,7 +560,7 @@
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${rowIndex}</td>
-          <td><input type="text" value="${formattedTs}" data-field="timestamp" data-row="${rowIndex}" data-original="${timestamp}"></td>
+          <td><input type="text" value="${formattedTs}" data-field="timestamp" data-row="${rowIndex}"></td>
           <td><input type="text" value="${name}" data-field="name" data-row="${rowIndex}"></td>
           <td><input type="text" value="${status}" data-field="status" data-row="${rowIndex}"></td>
           <td><input type="text" value="${remarks}" data-field="remarks" data-row="${rowIndex}"></td>
@@ -595,45 +595,32 @@
       const rowInputs = elements.editTbody.querySelectorAll(`input[data-row="${rowIndex}"]`);
       rowInputs.forEach(inp => {
         let value = inp.value.trim();
-        if (inp.dataset.field === 'timestamp') {
-          // Convert back to original string format for GAS
-          const original = inp.dataset.original;
-          payload[inp.dataset.field] = original;
-        } else {
-          payload[inp.dataset.field] = value;
-        }
+        payload[inp.dataset.field] = value;
       });
 
       try {
-        const response = await fetch(SCRIPT_URL, {
+        await fetch(SCRIPT_URL, {
           method: 'POST',
+          mode: 'no-cors',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        const result = await response.json();
-        if (result.success) {
-          showToast();
-          await fetchData();
-          renderTable();
-          // Re-open modal with fresh data
-          const freshRawRows = allData.filter(row => {
-            const rowDate = new Date(row[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            return row[1].trim() === elements.editEmail.textContent && rowDate === elements.editDate.textContent;
-          });
-          if (freshRawRows.length > 0) {
-            const freshStr = JSON.stringify(freshRawRows).replace(/'/g, "\\'").replace(/"/g, '&quot;');
-            openEditModal(elements.editEmail.textContent, elements.editDate.textContent, freshStr);
-          } else {
-            elements.editModal.style.display = 'none';
-          }
+        showToast();
+        await fetchData();
+        renderTable();
+        // Re-open modal with fresh data
+        const freshRawRows = allData.filter(row => {
+          const rowDate = new Date(row[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          return row[1].trim() === elements.editEmail.textContent && rowDate === elements.editDate.textContent;
+        });
+        if (freshRawRows.length > 0) {
+          const freshStr = JSON.stringify(freshRawRows).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+          openEditModal(elements.editEmail.textContent, elements.editDate.textContent, freshStr);
         } else {
-          console.error('Update failed:', result.error);
-          alert('Update failed: ' + result.error);
+          elements.editModal.style.display = 'none';
         }
       } catch (err) {
-        console.error
-
-('Update failed:', err);
+        console.error('Update failed:', err);
         alert('Network error: ' + err.message);
       }
     }
