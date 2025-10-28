@@ -29,7 +29,7 @@
     }
     .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
     .header p { margin: 5px 0 0; color: #666; font-size: 18px; font-weight: 600; }
-    select, input[type="date"] {
+    input[type="date"] {
       display: block;
       width: 100%;
       margin: 12px 0;
@@ -40,7 +40,7 @@
       transition: border-color 0.3s;
       font-family: inherit;
     }
-    select:focus, input[type="date"]:focus {
+    input[type="date"]:focus {
       outline: none;
       border-color: #667eea;
     }
@@ -48,6 +48,37 @@
       font-weight: 600;
       color: #4a5568;
       margin-bottom: 4px;
+      display: block;
+    }
+    .filter-group {
+      margin: 15px 0;
+      padding: 15px;
+      background: #f8fafc;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+    }
+    .checkbox-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+    }
+    .checkbox-item input {
+      margin: 0;
+    }
+    .select-all {
+      font-weight: 600;
+      color: #667eea;
+      cursor: pointer;
+      text-decoration: underline;
+      margin-left: 10px;
+      font-size: 13px;
     }
     #attendanceTable {
       width: 100%;
@@ -58,18 +89,25 @@
       border: 1px solid #ddd;
       padding: 8px;
       text-align: left;
+      font-size: 14px;
     }
     #attendanceTable th {
       background-color: #f2f2f2;
+      position: sticky;
+      top: 0;
+      z-index: 1;
     }
-    button {
-      padding: 5px 10px;
+    button.edit-btn {
+      background: none;
+      border: none;
+      font-size: 18px;
       cursor: pointer;
+      padding: 2px 6px;
     }
     .modal {
       display: none;
       position: fixed;
-      z-index: 1;
+      z-index: 1000;
       left: 0;
       top: 0;
       width: 100%;
@@ -85,10 +123,10 @@
       padding: 20px;
       border: 1px solid #888;
       width: 90%;
-      max-width: 800px;
+      max-width: 900px;
       border-radius: 10px;
-      text-align: center;
-      overflow-x: auto;
+      max-height: 90vh;
+      overflow-y: auto;
     }
     .close {
       color: #aaa;
@@ -103,15 +141,23 @@
     #editTable {
       width: 100%;
       border-collapse: collapse;
+      margin-top: 15px;
     }
     #editTable th, #editTable td {
       border: 1px solid #ddd;
       padding: 8px;
+      font-size: 14px;
     }
     #editTable input {
       width: 100%;
       border: none;
-      padding: 5px;
+      padding: 6px;
+      font-size: 14px;
+      background: transparent;
+    }
+    #editTable input:focus {
+      outline: 2px solid #667eea;
+      background: #f0f7ff;
     }
     #toast {
       display: none;
@@ -121,9 +167,17 @@
       transform: translateX(-50%);
       background: #48bb78;
       color: white;
-      padding: 10px 20px;
-      border-radius: 5px;
-      z-index: 2;
+      padding: 12px 24px;
+      border-radius: 8px;
+      z-index: 2000;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+      font-style: italic;
     }
   </style>
 </head>
@@ -133,26 +187,67 @@
       <h1>All Attendance</h1>
       <p>Merotra Cable Network</p>
     </div>
-    <label for="startDate">Start Date:</label>
-    <input type="date" id="startDate">
-    <label for="endDate">End Date:</label>
-    <input type="date" id="endDate">
-    <label for="emailFilter">Select Emails (multiple):</label>
-    <select id="emailFilter" multiple></select>
-    <label for="attendanceFilter">Select Attendance Types (multiple):</label>
-    <select id="attendanceFilter" multiple>
-      <option value="All">All</option>
-      <option value="Full day">Full day</option>
-      <option value="Late">Late</option>
-      <option value="Half day">Half day</option>
-      <option value="Off">Off</option>
-      <option value="Incomplete attendance">Incomplete attendance</option>
-    </select>
-    <table id="attendanceTable">
+
+    <div class="filter-group">
+      <label for="startDate">Start Date:</label>
+      <input type="date" id="startDate">
+    </div>
+
+    <div class="filter-group">
+      <label for="endDate">End Date:</label>
+      <input type="date" id="endDate">
+    </div>
+
+    <div class="filter-group">
+      <label>Select Emails:</label>
+      <div class="checkbox-container" id="emailCheckboxes"></div>
+      <div>
+        <span class="select-all" id="selectAllEmails">Select All</span> | 
+        <span class="select-all" id="deselectAllEmails">Deselect All</span>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label>Select Attendance Types:</label>
+      <div class="checkbox-container" id="attendanceCheckboxes">
+        <div class="checkbox-item">
+          <input type="checkbox" id="attAll" value="All" checked>
+          <label for="attAll">All</label>
+        </div>
+        <div class="checkbox-item">
+          <input type="checkbox" id="attFull" value="Full day">
+          <label for="attFull">Full day</label>
+        </div>
+        <div class="checkbox-item">
+          <input type="checkbox" id="attLate" value="Late">
+          <label for="attLate">Late</label>
+        </div>
+        <div class="checkbox-item">
+          <input type="checkbox" id="attHalf" value="Half day">
+          <label for="attHalf">Half day</label>
+        </div>
+        <div class="checkbox-item">
+          <input type="checkbox" id="attOff" value="Off">
+          <label for="attOff">Off</label>
+        </div>
+        <div class="checkbox-item">
+          <input type="checkbox" id="attIncomplete" value="Incomplete attendance">
+          <label for="attIncomplete">Incomplete</label>
+        </div>
+      </div>
+      <div>
+        <span class="select-all" id="selectAllAtt">Select All</span> | 
+        <span class="select-all" id="deselectAllAtt">Deselect All</span>
+      </div>
+    </div>
+
+    <div id="loadingMessage" class="loading">Loading attendance data...</div>
+
+    <table id="attendanceTable" style="display:none;">
       <thead>
         <tr>
           <th>Edit</th>
-          <th>Serial</th>
+          <th>Sr.</th>
           <th>Date</th>
           <th>Email</th>
           <th>Duty Start</th>
@@ -165,92 +260,174 @@
       <tbody></tbody>
     </table>
   </div>
+
+  <!-- Edit Modal -->
   <div id="editModal" class="modal">
     <div class="modal-content">
-      <span class="close">&times;</span>
-      <h2>Edit Attendance for <span id="editDate"></span> - <span id="editEmail"></span></h2>
+      <span class="close">x</span>
+      <h2>Edit Attendance: <span id="editDate"></span> - <span id="editEmail"></span></h2>
       <table id="editTable">
         <thead>
           <tr>
-            <th>Row</th>
+            <th>Row #</th>
             <th>Timestamp</th>
             <th>Status</th>
             <th>Remarks</th>
             <th>Selfie URL</th>
             <th>Bike URL</th>
             <th>Location</th>
-            <th>Verification Message</th>
+            <th>Verification</th>
           </tr>
         </thead>
         <tbody></tbody>
       </table>
     </div>
   </div>
+
   <div id="toast">Attendance modified!</div>
+
   <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykf97Wp9J6fPP_LcpzDy1MhfjlbRJIawIXXuW_zmzbx5f9wstjcTL98DlgiEl4rIhj/exec";
     let allData = [];
     let uniqueEmails = new Set();
-    const emailFilter = document.getElementById('emailFilter');
-    const attendanceFilter = document.getElementById('attendanceFilter');
-    const startDateInput = document.getElementById('startDate');
-    const endDateInput = document.getElementById('endDate');
-    const editModal = document.getElementById('editModal');
-    const editClose = editModal.querySelector('.close');
-    const toast = document.getElementById('toast');
-    editClose.onclick = () => { editModal.style.display = 'none'; };
-    window.onclick = (event) => {
-      if (event.target == editModal) {
-        editModal.style.display = 'none';
-      }
+
+    const elements = {
+      startDate: document.getElementById('startDate'),
+      endDate: document.getElementById('endDate'),
+      emailCheckboxes: document.getElementById('emailCheckboxes'),
+      attendanceCheckboxes: document.getElementById('attendanceCheckboxes'),
+      selectAllEmails: document.getElementById('selectAllEmails'),
+      deselectAllEmails: document.getElementById('deselectAllEmails'),
+      selectAllAtt: document.getElementById('selectAllAtt'),
+      deselectAllAtt: document.getElementById('deselectAllAtt'),
+      loadingMessage: document.getElementById('loadingMessage'),
+      attendanceTable: document.getElementById('attendanceTable'),
+      tbody: document.getElementById('attendanceTable').querySelector('tbody'),
+      editModal: document.getElementById('editModal'),
+      editClose: document.querySelector('#editModal .close'),
+      editDate: document.getElementById('editDate'),
+      editEmail: document.getElementById('editEmail'),
+      editTbody: document.getElementById('editTable').querySelector('tbody'),
+      toast: document.getElementById('toast')
     };
+
+    // Close modal
+    elements.editClose.onclick = () => { elements.editModal.style.display = 'none'; };
+    window.onclick = (e) => { if (e.target === elements.editModal) elements.editModal.style.display = 'none'; };
+
+    // Select All / Deselect All for Emails
+    elements.selectAllEmails.onclick = () => {
+      document.querySelectorAll('#emailCheckboxes input[type="checkbox"]').forEach(cb => cb.checked = true);
+      renderTable();
+    };
+    elements.deselectAllEmails.onclick = () => {
+      document.querySelectorAll('#emailCheckboxes input[type="checkbox"]').forEach(cb => cb.checked = false);
+      renderTable();
+    };
+
+    // Select All / Deselect All for Attendance Types
+    elements.selectAllAtt.onclick = () => {
+      document.querySelectorAll('#attendanceCheckboxes input[type="checkbox"]').forEach(cb => cb.checked = true);
+      renderTable();
+    };
+    elements.deselectAllAtt.onclick = () => {
+      document.querySelectorAll('#attendanceCheckboxes input[type="checkbox"]').forEach(cb => cb.checked = false);
+      renderTable();
+    };
+
+    // Show toast
+    function showToast() {
+      elements.toast.style.display = 'block';
+      setTimeout(() => elements.toast.style.display = 'none', 3000);
+    }
+
+    // Fetch all data
     async function fetchData() {
       try {
+        elements.loadingMessage.style.display = 'block';
+        elements.attendanceTable.style.display = 'none';
+
         const response = await fetch(`${SCRIPT_URL}?action=getAllAttendance`);
         allData = await response.json();
-        if (uniqueEmails.size === 0) {
-          allData.forEach(row => uniqueEmails.add(row[1].trim()));
-          Array.from(uniqueEmails).sort().forEach(email => {
-            const opt = document.createElement('option');
-            opt.value = email;
-            opt.text = email;
-            emailFilter.add(opt);
-          });
-        }
+
+        // Extract unique emails
+        uniqueEmails = new Set();
+        allData.forEach(row => uniqueEmails.add(row[1].trim()));
+
+        // Populate email checkboxes
+        elements.emailCheckboxes.innerHTML = '';
+        Array.from(uniqueEmails).sort().forEach(email => {
+          const div = document.createElement('div');
+          div.className = 'checkbox-item';
+          div.innerHTML = `
+            <input type="checkbox" id="email_${email}" value="${email}" checked>
+            <label for="email_${email}">${email}</label>
+          `;
+          elements.emailCheckboxes.appendChild(div);
+        });
+
+        // Add event listeners
+        document.querySelectorAll('#emailCheckboxes input').forEach(cb => cb.addEventListener('change', renderTable));
+        document.querySelectorAll('#attendanceCheckboxes input').forEach(cb => cb.addEventListener('change', renderTable));
+
+        renderTable();
       } catch (err) {
-        console.error('Error fetching data:', err);
+        console.error('Error:', err);
+        elements.loadingMessage.textContent = 'Failed to load data. Please try again.';
       }
     }
+
+    // Render table
     function renderTable() {
-      const startStr = startDateInput.value;
-      const endStr = endDateInput.value;
+      const startStr = elements.startDate.value;
+      const endStr = elements.endDate.value;
       if (!startStr || !endStr) return;
+
       const startDate = new Date(startStr);
       const endDate = new Date(endStr);
-      const selectedEmails = Array.from(emailFilter.selectedOptions).map(opt => opt.value);
-      const emailsToShow = selectedEmails.length > 0 ? selectedEmails : Array.from(uniqueEmails);
-      const selectedAttTypes = Array.from(attendanceFilter.selectedOptions).map(opt => opt.value);
+      if (startDate > endDate) return;
+
+      const selectedEmails = Array.from(document.querySelectorAll('#emailCheckboxes input:checked'))
+        .map(cb => cb.value);
+      if (selectedEmails.length === 0) {
+        elements.tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">No employees selected.</td></tr>';
+        elements.attendanceTable.style.display = 'table';
+        elements.loadingMessage.style.display = 'none';
+        return;
+      }
+
+      const selectedAttTypes = Array.from(document.querySelectorAll('#attendanceCheckboxes input:checked'))
+        .map(cb => cb.value);
       const includeAllAtt = selectedAttTypes.includes('All') || selectedAttTypes.length === 0;
-      // Group data
+
+      // Group data by email and date
       const groupsByEmail = new Map();
       allData.forEach(row => {
-        const tsStr = row[0];
-        const ts = new Date(tsStr);
-        const dateKey = ts.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const email = row[1].trim();
+        const [ts, email, status, remarks, selfie, bike, loc, verif, rowIndex] = row;
+        const dateObj = new Date(ts);
+        if (dateObj < startDate || dateObj > endDate) return;
+        const dateKey = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
         if (!groupsByEmail.has(email)) groupsByEmail.set(email, new Map());
-        const dateGroups = groupsByEmail.get(email);
-        if (!dateGroups.has(dateKey)) dateGroups.set(dateKey, { dutyStart: null, lunchStart: null, lunchDone: null, dutyOff: null, tsMap: new Map(), rawRows: [] });
-        const group = dateGroups.get(dateKey);
-        const type = row[2];
-        const time = ts.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
-        if (type === 'Duty start') group.dutyStart = time;
-        if (type === 'Lunch start') group.lunchStart = time;
-        if (type === 'Lunch done') group.lunchDone = time;
-        if (type === 'Duty off') group.dutyOff = time;
-        group.tsMap.set(type, ts);
+        const emailGroups = groupsByEmail.get(email);
+        if (!emailGroups.has(dateKey)) {
+          emailGroups.set(dateKey, {
+            dutyStart: null, lunchStart: null, lunchDone: null, dutyOff: null,
+            tsMap: new Map(), rawRows: []
+          });
+        }
+        const group = emailGroups.get(dateKey);
+        const timeStr = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+        if (status === 'Duty start') group.dutyStart = timeStr;
+        if (status === 'Lunch start') group.lunchStart = timeStr;
+        if (status === 'Lunch done') group.lunchDone = timeStr;
+        if (status === 'Duty off') group.dutyOff = timeStr;
+
+        group.tsMap.set(status, dateObj);
         group.rawRows.push(row);
       });
+
       // Generate date list (latest first)
       const dateList = [];
       let current = new Date(endDate);
@@ -258,122 +435,129 @@
         dateList.push(current.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
         current.setDate(current.getDate() - 1);
       }
+
       // Build rows
       const rows = [];
-      emailsToShow.forEach(email => {
+      selectedEmails.forEach(email => {
         dateList.forEach(dateKey => {
-          const dateGroups = groupsByEmail.get(email) || new Map();
-          const group = dateGroups.get(dateKey) || { dutyStart: '--', lunchStart: '--', lunchDone: '--', dutyOff: '--', attendance: 'Off', rawRows: [] };
+          const emailGroups = groupsByEmail.get(email) || new Map();
+          const group = emailGroups.get(dateKey) || {
+            dutyStart: '--', lunchStart: '--', lunchDone: '--', dutyOff: '--',
+            tsMap: new Map(), rawRows: []
+          };
           const attendance = computeAttendance(group);
           if (includeAllAtt || selectedAttTypes.includes(attendance)) {
-            rows.push({ email, date: dateKey, dutyStart: group.dutyStart, lunchStart: group.lunchStart, lunchDone: group.lunchDone, dutyOff: group.dutyOff, attendance, rawRows: group.rawRows });
+            rows.push({
+              email, date: dateKey,
+              dutyStart: group.dutyStart, lunchStart: group.lunchStart,
+              lunchDone: group.lunchDone, dutyOff: group.dutyOff,
+              attendance, rawRows: group.rawRows
+            });
           }
         });
       });
+
       // Render
-      const tbody = document.getElementById('attendanceTable').querySelector('tbody');
-      tbody.innerHTML = '';
-      rows.forEach((row, index) => {
-        const tr = document.createElement('tr');
-        const editTd = document.createElement('td');
-        if (row.rawRows.length > 0) {
-          const pencil = document.createElement('button');
-          pencil.textContent = '✏️';
-          pencil.onclick = () => openEditModal(row.email, row.date, row.rawRows);
-          editTd.appendChild(pencil);
-        }
-        tr.appendChild(editTd);
-        tr.innerHTML += `
-          <td>${index + 1}</td>
-          <td>${row.date}</td>
-          <td>${row.email}</td>
-          <td>${row.dutyStart}</td>
-          <td>${row.lunchStart}</td>
-          <td>${row.lunchDone}</td>
-          <td>${row.dutyOff}</td>
-          <td>${row.attendance}</td>
-        `;
-        tbody.appendChild(tr);
-      });
+      elements.tbody.innerHTML = '';
+      if (rows.length === 0) {
+        elements.tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">No records found for selected filters.</td></tr>';
+      } else {
+        rows.forEach((row, idx) => {
+          const tr = document.createElement('tr');
+          const editBtn = row.rawRows.length > 0
+            ? `<button class="edit-btn" onclick="openEditModal('${row.email}', '${row.date}', ${JSON.stringify(row.rawRows).replace(/'/g, "\\'")})">Edit</button>`
+            : '';
+          tr.innerHTML = `
+            <td>${editBtn}</td>
+            <td>${idx + 1}</td>
+            <td>${row.date}</td>
+            <td>${row.email}</td>
+            <td>${row.dutyStart}</td>
+            <td>${row.lunchStart}</td>
+            <td>${row.lunchDone}</td>
+            <td>${row.dutyOff}</td>
+            <td>${row.attendance}</td>
+          `;
+          elements.tbody.appendChild(tr);
+        });
+      }
+
+      elements.attendanceTable.style.display = 'table';
+      elements.loadingMessage.style.display = 'none';
     }
+
+    // Compute attendance status
     function computeAttendance(group) {
-      const hasDutyStart = !!group.tsMap.get('Duty start');
-      const hasDutyOff = !!group.tsMap.get('Duty off');
-      const hasLunchStart = !!group.tsMap.get('Lunch start');
-      const hasLunchDone = !!group.tsMap.get('Lunch done');
-      if (!hasDutyStart && !hasDutyOff && !hasLunchStart && !hasLunchDone) {
-        return 'Off';
+      const has = (status) => group.tsMap.has(status);
+      const get = (status) => group.tsMap.get(status);
+
+      if (!has('Duty start') && !has('Duty off') && !has('Lunch start') && !has('Lunch done')) return 'Off';
+      if ((has('Duty start') && !has('Duty off')) || (!has('Duty start') && has('Duty off'))) return 'Incomplete attendance';
+      if ((has('Lunch start') && !has('Lunch done')) || (!has('Lunch start') && has('Lunch done'))) return 'Incomplete attendance';
+
+      const dutyStart = get('Duty start');
+      const dutyOff = get('Duty off');
+      let totalHours = (dutyOff - dutyStart) / 3600000;
+
+      if (has('Lunch start') && has('Lunch done')) {
+        const lunchHours = (get('Lunch done') - get('Lunch start')) / 3600000;
+        totalHours -= lunchHours;
       }
-      if ((hasDutyStart && !hasDutyOff) || (!hasDutyStart && hasDutyOff)) {
-        return 'Incomplete attendance';
-      }
-      if ((hasLunchStart && !hasLunchDone) || (!hasLunchStart && hasLunchDone)) {
-        return 'Incomplete attendance';
-      }
-      const dutyStartTs = group.tsMap.get('Duty start');
-      const dutyOffTs = group.tsMap.get('Duty off');
-      if (!dutyStartTs || !dutyOffTs) {
-        return 'Incomplete attendance';
-      }
-      let totalHours = (dutyOffTs - dutyStartTs) / 3600000;
-      if (hasLunchStart && hasLunchDone) {
-        const lunchStartTs = group.tsMap.get('Lunch start');
-        const lunchDoneTs = group.tsMap.get('Lunch done');
-        if (lunchStartTs && lunchDoneTs) {
-          const lunchHours = (lunchDoneTs - lunchStartTs) / 3600000;
-          totalHours -= lunchHours;
-        }
-      }
-      if (!(totalHours > 0)) {
-        return 'Off';
-      }
+
+      if (totalHours <= 0) return 'Off';
       if (totalHours >= 8.5) return 'Full day';
-      if (totalHours >= 7.5 && totalHours < 8.5) return 'Late';
+      if (totalHours >= 7.5) return 'Late';
       return 'Half day';
     }
-    function openEditModal(email, date, rawRows) {
-      document.getElementById('editDate').textContent = date;
-      document.getElementById('editEmail').textContent = email;
-      const tbody = document.getElementById('editTable').querySelector('tbody');
-      tbody.innerHTML = '';
-      rawRows.forEach(row => {
-        const [ts, name, status, remarks, selfie, bike, loc, verif, rowIndex] = row;
+
+    // Open edit modal
+    window.openEditModal = function(email, date, rawRows) {
+      elements.editDate.textContent = date;
+      elements.editEmail.textContent = email;
+      elements.editTbody.innerHTML = '';
+
+      rawRows.forEach(([ts, name, status, remarks, selfie, bike, loc, verif, rowIndex]) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${rowIndex}</td>
-          <td><input type="text" value="${ts}" data-field="timestamp" data-rowindex="${rowIndex}"></td>
-          <td><input type="text" value="${status}" data-field="status" data-rowindex="${rowIndex}"></td>
-          <td><input type="text" value="${remarks}" data-field="remarks" data-rowindex="${rowIndex}"></td>
-          <td><input type="text" value="${selfie}" data-field="selfieUrl" data-rowindex="${rowIndex}"></td>
-          <td><input type="text" value="${bike}" data-field="bikeUrl" data-rowindex="${rowIndex}"></td>
-          <td><input type="text" value="${loc}" data-field="location" data-rowindex="${rowIndex}"></td>
-          <td><input type="text" value="${verif}" data-field="verificationMessage" data-rowindex="${rowIndex}"></td>
+          <td><input type="text" value="${ts}" data-field="timestamp" data-row="${rowIndex}"></td>
+          <td><input type="text" value="${status}" data-field="status" data-row="${rowIndex}"></td>
+          <td><input type="text" value="${remarks}" data-field="remarks" data-row="${rowIndex}"></td>
+          <td><input type="text" value="${selfie}" data-field="selfieUrl" data-row="${rowIndex}"></td>
+          <td><input type="text" value="${bike}" data-field="bikeUrl" data-row="${rowIndex}"></td>
+          <td><input type="text" value="${loc}" data-field="location" data-row="${rowIndex}"></td>
+          <td><input type="text" value="${verif}" data-field="verificationMessage" data-row="${rowIndex}"></td>
         `;
-        tbody.appendChild(tr);
+        elements.editTbody.appendChild(tr);
       });
-      const inputs = tbody.querySelectorAll('input');
-      inputs.forEach(input => {
-        input.addEventListener('blur', handleUpdate);
+
+      // Add blur listeners
+      elements.editTbody.querySelectorAll('input').forEach(input => {
+        input.addEventListener('blur', handleFieldUpdate);
       });
-      editModal.style.display = 'flex';
-    }
-    async function handleUpdate(e) {
+
+      elements.editModal.style.display = 'flex';
+    };
+
+    // Handle field update
+    async function handleFieldUpdate(e) {
       const input = e.target;
-      const tr = input.closest('tr');
-      const rowIndex = input.dataset.rowindex;
-      const email = document.getElementById('editEmail').textContent;
+      const rowIndex = input.dataset.row;
+      const field = input.dataset.field;
+      const value = input.value.trim();
+
       const payload = {
         action: 'updateRecord',
-        rowIndex: rowIndex,
-        name: email,
-        timestamp: tr.querySelector('[data-field="timestamp"]').value,
-        status: tr.querySelector('[data-field="status"]').value,
-        remarks: tr.querySelector('[data-field="remarks"]').value,
-        selfieUrl: tr.querySelector('[data-field="selfieUrl"]').value,
-        bikeUrl: tr.querySelector('[data-field="bikeUrl"]').value,
-        location: tr.querySelector('[data-field="location"]').value,
-        verificationMessage: tr.querySelector('[data-field="verificationMessage"]').value
+        rowIndex: parseInt(rowIndex),
+        name: elements.editEmail.textContent
       };
+
+      const rowInputs = elements.editTbody.querySelectorAll(`input[data-row="${rowIndex}"]`);
+      rowInputs.forEach(inp => {
+        const f = inp.dataset.field;
+        payload[f] = inp.value.trim();
+      });
+
       try {
         await fetch(SCRIPT_URL, {
           method: 'POST',
@@ -381,34 +565,25 @@
           body: JSON.stringify(payload)
         });
         showToast();
-        await fetchData();
-        renderTable();
-        // Reopen the modal with updated data
-        const updatedRawRows = allData.filter(r => r[8] === Number(rowIndex)).map(r => r); // Wait, better refetch and reopen
-        // But for simplicity, close modal
-        editModal.style.display = 'none';
+        fetchData(); // Refresh data
       } catch (err) {
-        console.error('Update error:', err);
+        console.error('Update failed:', err);
       }
     }
-    function showToast() {
-      toast.style.display = 'block';
-      setTimeout(() => { toast.style.display = 'none'; }, 3000);
-    }
-    // Event listeners
-    startDateInput.addEventListener('change', renderTable);
-    endDateInput.addEventListener('change', renderTable);
-    emailFilter.addEventListener('change', renderTable);
-    attendanceFilter.addEventListener('change', renderTable);
-    // Initial load
+
+    // Initialize
     window.onload = async () => {
       const today = new Date();
       const defaultStart = new Date(today);
       defaultStart.setDate(today.getDate() - 29);
-      endDateInput.value = today.toISOString().split('T')[0];
-      startDateInput.value = defaultStart.toISOString().split('T')[0];
+
+      elements.endDate.value = today.toISOString().split('T')[0];
+      elements.startDate.value = defaultStart.toISOString().split('T')[0];
+
+      elements.startDate.addEventListener('change', renderTable);
+      elements.endDate.addEventListener('change', renderTable);
+
       await fetchData();
-      renderTable();
     };
   </script>
 </body>
