@@ -97,7 +97,7 @@
       visibility: hidden;
     }
     input[type="file"]::before {
-      content: "Bike meter reading photo";
+      content: "🏍️ Bike meter reading photo";
       display: inline-block;
       background: #48bb78;
       border-radius: 10px;
@@ -322,10 +322,10 @@
       <div id="datetime"></div>
       <h1>👤 Attendance</h1>
       <p>Merotra Cable Network</p>
-     <p style="color:red; font-size:12px; font-style:italic;">
-  * 1.5 hr late is half day<br>
-  * 30 minutes late is late
-</p>
+      <p style="color:red; font-size:12px; font-style:italic;">
+        * 1.5 hr late is half day<br>
+        * 30 minutes late is late
+      </p>
     </div>
     <div class="welcome" id="welcome">Welcome, <span id="userEmail">Not signed in</span></div>
     <div id="gSignInWrapper" style="text-align:center; margin-bottom:20px;">
@@ -399,9 +399,11 @@
   </div>
 
   <script>
+    // UPDATE THIS WITH YOUR NEW GAS URL AFTER DEPLOYMENT
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykf97Wp9J6fPP_LcpzDy1MhfjlbRJIawIXXuW_zmzbx5f9wstjcTL98DlgiEl4rIhj/exec";
     const allowedOfficeLocation = { lat: 26.818614, lon: 80.866071 };
     const allowedRadiusMeters = 300;
+    const CORS_PROXY = "https://api.allorigins.win/raw?url=";  // Free CORS proxy for GET
     const elements = {
       status: document.getElementById('status'),
       checkLocation: document.getElementById('checkLocation'),
@@ -680,7 +682,7 @@
         await fetch(SCRIPT_URL, {
           method: "POST",
           mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "text/plain;charset=utf-8" },  // Avoid preflight
           body: JSON.stringify(payload)
         });
         elements.statusMsg.style.display = 'block';
@@ -768,19 +770,21 @@
       if (!userEmailValue) return;
       try {
         console.log('Fetching attendance for:', userEmailValue);
-        const response = await fetch(`${SCRIPT_URL}?action=getAttendance&email=${encodeURIComponent(userEmailValue)}`, {
-          method: 'GET',
-          mode: 'cors',  // Try cors mode; fallback to no-cors if needed
-          headers: { 'Content-Type': 'application/json' }
+        // Use CORS proxy for GET to bypass GAS limitations
+        const gasUrl = `${SCRIPT_URL}?action=getAttendance&email=${encodeURIComponent(userEmailValue)}`;
+        const proxyUrl = `${CORS_PROXY}${encodeURIComponent(gasUrl)}`;
+        const response = await fetch(proxyUrl, {
+          method: 'GET'
+          // No Content-Type — keeps it simple request
         });
-        console.log('Response status:', response.status);
-        console.log('Response ok:', response.ok);
+        console.log('Proxy response ok:', response.ok);
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        const rawData = await response.json();
-        console.log('Raw data received:', rawData);
-        attendanceData = rawData.map(row => ({
+        const rawData = await response.text();  // Proxy returns text
+        const parsedData = JSON.parse(rawData);  // Parse JSON
+        console.log('Raw data received:', parsedData);
+        attendanceData = parsedData.map(row => ({
           timestamp: parseTimestamp(row[0]),
           type: row[2]
         }));
@@ -794,9 +798,12 @@
         allMonths = Array.from(monthSet).sort().reverse();
         populateMonthFilter();
 
-        // Default: show current month
+        // Default: show current month (add if not present)
         const today = new Date();
         const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+        if (!allMonths.includes(currentMonthKey)) {
+          allMonths.unshift(currentMonthKey);  // Add current month
+        }
         elements.monthFilter.value = currentMonthKey;
         renderAttendanceForMonth(currentMonthKey);
 
@@ -805,23 +812,28 @@
         console.error('Detailed error fetching attendance:', err);
         let errorMsg = 'Failed to fetch attendance records.';
         if (err.name === 'TypeError' && err.message.includes('fetch')) {
-          errorMsg += ' (Network error - Check Apps Script deployment & CORS)';
+          errorMsg += ' (Network/proxy error — retry or check GAS deployment)';
         } else if (err.message.includes('JSON')) {
-          errorMsg += ' (Invalid response format from server)';
+          errorMsg += ' (Invalid data format — check sheet)';
         } else {
           errorMsg += ` (${err.message})`;
         }
         alert(errorMsg);
-        // Fallback: Show empty table
+        // Fallback: Show empty table for current month
         renderEmptyTable();
+        const today = new Date();
+        const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+        elements.monthFilter.value = currentMonthKey;
+        renderAttendanceForMonth(currentMonthKey);  // Shows Off days
         elements.attendanceModal.style.display = 'flex';
       }
     };
 
     function renderEmptyTable() {
       const tbody = elements.attendanceTable.querySelector('tbody');
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: #666;">No data available (Server issue - Check console for details)</td></tr>';
-      elements.monthFilter.innerHTML = '<option value="">No months available</option>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: #666;">Loading data... (or no records yet)</td></tr>';
+      elements.monthFilter.innerHTML = '<option value="">Select Month</option>';
+      attendanceData = [];  // Clear for fallback rendering
     }
 
     function populateMonthFilter() {
@@ -851,7 +863,7 @@
       const daysInMonth = new Date(year, month, 0).getDate();
       const monthData = {};
 
-      // Initialize all days as Off
+      // Initialize all days as Off (works even with empty data)
       for (let day = 1; day <= daysInMonth; day++) {
         const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         monthData[dateKey] = {
@@ -860,7 +872,7 @@
         };
       }
 
-      // Fill actual punches
+      // Fill actual punches (if any)
       attendanceData.forEach(row => {
         const d = row.timestamp;
         if (d.getFullYear() === year && d.getMonth() + 1 === month) {
