@@ -872,28 +872,59 @@
 
     // ---------- UPDATED computeAttendance (only this function changed) ----------
     function computeAttendance(group) {
-      // If any punch missing -> Off
-      if (!group.dutyStart || !group.lunchStart || !group.lunchDone || !group.dutyOff) return 'Off';
+      // Check which timestamps exist
+      const hasDutyStart = !!group.tsMap.get('Duty start');
+      const hasDutyOff = !!group.tsMap.get('Duty off');
+      const hasLunchStart = !!group.tsMap.get('Lunch start');
+      const hasLunchDone = !!group.tsMap.get('Lunch done');
 
+      // No punches at all -> Off
+      if (!hasDutyStart && !hasDutyOff && !hasLunchStart && !hasLunchDone) {
+        return 'Off';
+      }
+
+      // Incomplete attendance cases:
+      // - Duty pair incomplete (one exists without the other)
+      if ((hasDutyStart && !hasDutyOff) || (!hasDutyStart && hasDutyOff)) {
+        return 'Incomplete attendance';
+      }
+      // - Lunch pair incomplete (one exists without the other)
+      if ((hasLunchStart && !hasLunchDone) || (!hasLunchStart && hasLunchDone)) {
+        return 'Incomplete attendance';
+      }
+
+      // By now dutyStart && dutyOff exist (otherwise would have returned above).
       const dutyStartTs = group.tsMap.get('Duty start');
-      const lunchStartTs = group.tsMap.get('Lunch start');
-      const lunchDoneTs = group.tsMap.get('Lunch done');
       const dutyOffTs = group.tsMap.get('Duty off');
 
-      // morning and afternoon durations in hours
-      const morningHours = (lunchStartTs - dutyStartTs) / 3600000;
-      const afternoonHours = (dutyOffTs - lunchDoneTs) / 3600000;
-      const totalHours = morningHours + afternoonHours;
+      if (!dutyStartTs || !dutyOffTs) {
+        // Safety fallback
+        return 'Incomplete attendance';
+      }
 
-      // New rules:
-      // >= 8.5 => Full day
-      // >= 7.5 and < 8.5 => Late
-      // > 0 and < 7.5 => Half day
-      // otherwise Off
+      // totalHours calculation:
+      // if lunch both present -> subtract lunch duration
+      // if lunch absent -> use dutyOff - dutyStart
+      let totalHours = (dutyOffTs - dutyStartTs) / 3600000;
+
+      if (hasLunchStart && hasLunchDone) {
+        const lunchStartTs = group.tsMap.get('Lunch start');
+        const lunchDoneTs = group.tsMap.get('Lunch done');
+        if (lunchStartTs && lunchDoneTs) {
+          const lunchHours = (lunchDoneTs - lunchStartTs) / 3600000;
+          totalHours = totalHours - lunchHours;
+        }
+      }
+
+      // If total hours is zero or negative, treat as Off (or could be invalid data)
+      if (!(totalHours > 0)) {
+        return 'Off';
+      }
+
+      // Classification rules
       if (totalHours >= 8.5) return 'Full day';
       if (totalHours >= 7.5 && totalHours < 8.5) return 'Late';
-      if (totalHours > 0 && totalHours < 7.5) return 'Half day';
-      return 'Off';
+      return 'Half day';
     }
     // ---------------------------------------------------------------------------
 
