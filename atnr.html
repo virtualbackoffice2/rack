@@ -5,54 +5,55 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>All Employee Attendance System</title>
   <style>
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 15px;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
       color: #333;
+      min-height: 100vh;
+      padding: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
     }
-    .card {
+    .container {
+      max-width: 1200px;
+      width: 100%;
       background: white;
       border-radius: 16px;
-      padding: 25px;
+      padding: 20px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-      margin: 20px 0;
     }
     .header {
       text-align: center;
       color: #667eea;
-      margin-bottom: 25px;
+      margin-bottom: 20px;
     }
-    .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
-    .header p { margin: 5px 0 0; color: #666; font-size: 18px; font-weight: 600; }
-    input[type="date"], input[type="text"], select, textarea {
-      display: block;
-      width: 100%;
-      margin: 12px 0;
-      padding: 12px;
-      border: 2px solid #e2e8f0;
-      border-radius: 10px;
-      font-size: 16px;
-      transition: border-color 0.3s;
-      font-family: inherit;
+    .header h1 { font-size: 24px; font-weight: 700; margin-bottom: 5px; }
+    .header p { font-size: 16px; color: #666; font-weight: 600; }
+    .date-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
     }
-    input:focus, select:focus, textarea:focus {
-      outline: none;
-      border-color: #667eea;
-    }
-    label {
+    .date-group label {
+      flex: 1 0 auto;
       font-weight: 600;
       color: #4a5568;
-      margin-bottom: 4px;
-      display: block;
+      margin-bottom: 0;
+      align-self: center;
+    }
+    .date-group input[type="date"] {
+      flex: 1;
+      margin: 0;
+      padding: 8px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
     }
     .filter-group {
-      margin: 15px 0;
-      padding: 15px;
+      margin-bottom: 15px;
+      padding: 12px;
       background: #f8fafc;
       border-radius: 10px;
       border: 1px solid #e2e8f0;
@@ -60,36 +61,54 @@
     .checkbox-container {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 8px;
+      gap: 8px;
     }
     .checkbox-item {
       display: flex;
       align-items: center;
-      gap: 6px;
-      font-size: 14px;
-    }
-    .checkbox-item input {
-      margin: 0;
+      gap: 4px;
+      font-size: 13px;
+      flex: 1 0 auto;
     }
     .select-all {
       font-weight: 600;
       color: #667eea;
       cursor: pointer;
       text-decoration: underline;
-      margin-left: 10px;
-      font-size: 13px;
+      font-size: 12px;
+      margin-top: 5px;
+    }
+    button {
+      padding: 10px 18px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 16px;
+      transition: all 0.3s;
+      color: white;
+      background: #48bb78;
+      display: block;
+      width: 100%;
+      margin-bottom: 15px;
+    }
+    button:hover {
+      background: #38a169;
+      transform: translateY(-1px);
+    }
+    .table-wrapper {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
     #attendanceTable {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 20px;
     }
     #attendanceTable th, #attendanceTable td {
       border: 1px solid #ddd;
-      padding: 8px;
+      padding: 6px 8px;
       text-align: left;
-      font-size: 14px;
+      font-size: 13px;
     }
     #attendanceTable th {
       background-color: #f2f2f2;
@@ -97,30 +116,14 @@
       top: 0;
       z-index: 1;
     }
-    button {
-      padding: 12px 20px;
-      border-radius: 10px;
-      border: none;
-      cursor: pointer;
-      margin: 10px 0;
-      font-weight: 600;
-      font-size: 18px;
-      transition: all 0.3s;
-      width: 100%;
-      color: white;
-      background: #48bb78;
-    }
-    button:hover {
-      background: #38a169;
-      transform: translateY(-2px);
-    }
     button.edit-btn {
       background: none;
       color: #667eea;
       width: auto;
-      padding: 2px 6px;
-      font-size: 18px;
+      padding: 0;
+      font-size: 16px;
       cursor: pointer;
+      margin: 0;
     }
     .modal {
       display: none;
@@ -138,18 +141,18 @@
     .modal-content {
       background-color: #fefefe;
       margin: auto;
-      padding: 20px;
+      padding: 15px;
       border: 1px solid #888;
-      width: 90%;
-      max-width: 900px;
+      width: 95%;
+      max-width: 800px;
       border-radius: 10px;
-      max-height: 90vh;
+      max-height: 85vh;
       overflow-y: auto;
     }
     .close {
       color: #aaa;
       float: right;
-      font-size: 28px;
+      font-size: 24px;
       font-weight: bold;
       cursor: pointer;
     }
@@ -159,21 +162,21 @@
     #editTable, #addTable {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 15px;
+      margin-top: 10px;
     }
     #editTable th, #editTable td, #addTable th, #addTable td {
       border: 1px solid #ddd;
-      padding: 8px;
-      font-size: 14px;
+      padding: 6px;
+      font-size: 13px;
     }
-    #editTable input, #addTable input {
+    #editTable input, #addTable input, #addTable select, #addTable textarea {
       width: 100%;
       border: none;
-      padding: 6px;
-      font-size: 14px;
+      padding: 4px;
+      font-size: 13px;
       background: transparent;
     }
-    #editTable input:focus, #addTable input:focus {
+    #editTable input:focus, #addTable input:focus, #addTable select:focus, #addTable textarea:focus {
       outline: 2px solid #667eea;
       background: #f0f7ff;
     }
@@ -185,7 +188,7 @@
       transform: translateX(-50%);
       background: #48bb78;
       color: white;
-      padding: 12px 24px;
+      padding: 10px 20px;
       border-radius: 8px;
       z-index: 2000;
       font-weight: 600;
@@ -193,24 +196,24 @@
     }
     .loading {
       text-align: center;
-      padding: 40px;
+      padding: 30px;
       color: #666;
       font-style: italic;
+      font-size: 14px;
     }
     @media (max-width: 600px) {
-      body { padding: 10px; }
-      .card { padding: 20px; margin: 10px 0; }
-      .header h1 { font-size: 24px; }
-      .header p { font-size: 16px; }
-      button { font-size: 16px; padding: 14px; }
-      .checkbox-container { gap: 8px; }
-      #attendanceTable th, #attendanceTable td { font-size: 12px; padding: 6px; }
-      .modal-content { width: 95%; padding: 15px; }
+      .container { padding: 15px; }
+      .date-group { flex-direction: column; gap: 5px; }
+      .date-group input { margin: 0; }
+      .checkbox-container { gap: 6px; flex-direction: column; }
+      .checkbox-item { font-size: 13px; }
+      #attendanceTable th, #attendanceTable td { font-size: 12px; padding: 5px; }
+      button { font-size: 15px; padding: 10px; }
     }
   </style>
 </head>
 <body>
-  <div class="card">
+  <div class="container">
     <div class="header">
       <h1>All Attendance</h1>
       <p>Merotra Cable Network</p>
@@ -218,13 +221,10 @@
 
     <button id="addRecordBtn">Add Record</button>
 
-    <div class="filter-group">
-      <label for="startDate">Start Date:</label>
+    <div class="date-group">
+      <label for="startDate">Start:</label>
       <input type="date" id="startDate">
-    </div>
-
-    <div class="filter-group">
-      <label for="endDate">End Date:</label>
+      <label for="endDate">End:</label>
       <input type="date" id="endDate">
     </div>
 
@@ -273,22 +273,24 @@
 
     <div id="loadingMessage" class="loading">Loading attendance data...</div>
 
-    <table id="attendanceTable" style="display:none;">
-      <thead>
-        <tr>
-          <th>Edit</th>
-          <th>Sr.</th>
-          <th>Date</th>
-          <th>Email</th>
-          <th>Duty Start</th>
-          <th>Lunch Start</th>
-          <th>Lunch Done</th>
-          <th>Duty Off</th>
-          <th>Attendance</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <div class="table-wrapper">
+      <table id="attendanceTable" style="display:none;">
+        <thead>
+          <tr>
+            <th>Edit</th>
+            <th>Sr.</th>
+            <th>Date</th>
+            <th>Email</th>
+            <th>Duty Start</th>
+            <th>Lunch Start</th>
+            <th>Lunch Done</th>
+            <th>Duty Off</th>
+            <th>Attendance</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </div>
 
   <!-- Edit Modal -->
