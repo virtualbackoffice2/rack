@@ -264,13 +264,14 @@
   <!-- Edit Modal -->
   <div id="editModal" class="modal">
     <div class="modal-content">
-      <span class="close">x</span>
+      <span class="close">×</span>
       <h2>Edit Attendance: <span id="editDate"></span> - <span id="editEmail"></span></h2>
       <table id="editTable">
         <thead>
           <tr>
             <th>Row #</th>
             <th>Timestamp</th>
+            <th>Name</th>
             <th>Status</th>
             <th>Remarks</th>
             <th>Selfie URL</th>
@@ -357,11 +358,12 @@
         // Populate email checkboxes
         elements.emailCheckboxes.innerHTML = '';
         Array.from(uniqueEmails).sort().forEach(email => {
+          const safeId = email.replace(/[^a-zA-Z0-9]/g, '_');
           const div = document.createElement('div');
           div.className = 'checkbox-item';
           div.innerHTML = `
-            <input type="checkbox" id="email_${email.replace(/[^a-zA-Z0-9]/g, '_')}" value="${email}" checked>
-            <label for="email_${email.replace(/[^a-zA-Z0-9]/g, '_')}">${email}</label>
+            <input type="checkbox" id="email_${safeId}" value="${email}" checked>
+            <label for="email_${safeId}">${email}</label>
           `;
           elements.emailCheckboxes.appendChild(div);
         });
@@ -383,8 +385,8 @@
       const endStr = elements.endDate.value;
       if (!startStr || !endStr) return;
 
-      const startDate = new Date(startStr);
-      const endDate = new Date(endStr);
+      const startDate = new Date(startStr + 'T00:00:00');
+      const endDate = new Date(endStr + 'T23:59:59');
       if (startDate > endDate) return;
 
       const selectedEmails = Array.from(document.querySelectorAll('#emailCheckboxes input:checked'))
@@ -400,13 +402,13 @@
         .map(cb => cb.value);
       const includeAllAtt = selectedAttTypes.includes('All') || selectedAttTypes.length === 0;
 
-      // Group data by email and date
+      // Group data by email and date (like in popup)
       const groupsByEmail = new Map();
       allData.forEach(row => {
-        const [ts, email, status, remarks, selfie, bike, loc, verif, rowIndex] = row;
-        const dateObj = new Date(ts);
-        if (dateObj < startDate || dateObj > endDate) return;
-        const dateKey = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const [tsStr, email, status, remarks, selfie, bike, loc, verif, rowIndex] = row;
+        const ts = new Date(tsStr);
+        if (ts < startDate || ts > endDate) return;
+        const dateKey = ts.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
         if (!groupsByEmail.has(email)) groupsByEmail.set(email, new Map());
         const emailGroups = groupsByEmail.get(email);
@@ -417,18 +419,18 @@
           });
         }
         const group = emailGroups.get(dateKey);
-        const timeStr = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+        const timeStr = ts.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
 
         if (status === 'Duty start') group.dutyStart = timeStr;
         if (status === 'Lunch start') group.lunchStart = timeStr;
         if (status === 'Lunch done') group.lunchDone = timeStr;
         if (status === 'Duty off') group.dutyOff = timeStr;
 
-        group.tsMap.set(status, dateObj);
+        group.tsMap.set(status, ts);
         group.rawRows.push(row);
       });
 
-      // Generate date list (latest first)
+      // Generate date list (latest first, like popup)
       const dateList = [];
       let current = new Date(endDate);
       while (current >= startDate) {
@@ -436,7 +438,7 @@
         current.setDate(current.getDate() - 1);
       }
 
-      // Build rows
+      // Build rows (one per date per email, aggregated like popup)
       const rows = [];
       selectedEmails.forEach(email => {
         dateList.forEach(dateKey => {
@@ -449,15 +451,15 @@
           if (includeAllAtt || selectedAttTypes.includes(attendance)) {
             rows.push({
               email, date: dateKey,
-              dutyStart: group.dutyStart, lunchStart: group.lunchStart,
-              lunchDone: group.lunchDone, dutyOff: group.dutyOff,
+              dutyStart: group.dutyStart || '--', lunchStart: group.lunchStart || '--',
+              lunchDone: group.lunchDone || '--', dutyOff: group.dutyOff || '--',
               attendance, rawRows: group.rawRows
             });
           }
         });
       });
 
-      // Render
+      // Render (like popup, serial per row)
       elements.tbody.innerHTML = '';
       if (rows.length === 0) {
         elements.tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">No records found for selected filters.</td></tr>';
@@ -465,8 +467,8 @@
         rows.forEach((row, idx) => {
           let editBtn = '';
           if (row.rawRows.length > 0) {
-            const rawRowsStr = JSON.stringify(row.rawRows);
-            editBtn = `<button class="edit-btn" onclick="openEditModal('${row.email.replace(/'/g, "\\'")}', '${row.date.replace(/'/g, "\\'")}', '${rawRowsStr.replace(/'/g, "\\'")}')">✏️</button>`;
+            const rawRowsStr = JSON.stringify(row.rawRows).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            editBtn = `<button class="edit-btn" onclick="openEditModal('${row.email.replace(/'/g, "\\'")}', '${row.date.replace(/'/g, "\\'")}', '${rawRowsStr}')">✏️</button>`;
           }
           const tr = document.createElement('tr');
           tr.innerHTML = `
@@ -488,74 +490,93 @@
       elements.loadingMessage.style.display = 'none';
     }
 
-    // Compute attendance status
+    // Compute attendance status (exact copy from popup)
     function computeAttendance(group) {
-      const has = (status) => group.tsMap.has(status);
-      const get = (status) => group.tsMap.get(status);
-
-      if (!has('Duty start') && !has('Duty off') && !has('Lunch start') && !has('Lunch done')) return 'Off';
-      if ((has('Duty start') && !has('Duty off')) || (!has('Duty start') && has('Duty off'))) return 'Incomplete attendance';
-      if ((has('Lunch start') && !has('Lunch done')) || (!has('Lunch start') && has('Lunch done'))) return 'Incomplete attendance';
-
-      const dutyStart = get('Duty start');
-      const dutyOff = get('Duty off');
-      let totalHours = (dutyOff - dutyStart) / 3600000;
-
-      if (has('Lunch start') && has('Lunch done')) {
-        const lunchHours = (get('Lunch done') - get('Lunch start')) / 3600000;
-        totalHours -= lunchHours;
+      const hasDutyStart = !!group.tsMap.get('Duty start');
+      const hasDutyOff = !!group.tsMap.get('Duty off');
+      const hasLunchStart = !!group.tsMap.get('Lunch start');
+      const hasLunchDone = !!group.tsMap.get('Lunch done');
+      if (!hasDutyStart && !hasDutyOff && !hasLunchStart && !hasLunchDone) {
+        return 'Off';
       }
-
-      if (totalHours <= 0) return 'Off';
+      if ((hasDutyStart && !hasDutyOff) || (!hasDutyStart && hasDutyOff)) {
+        return 'Incomplete attendance';
+      }
+      if ((hasLunchStart && !hasLunchDone) || (!hasLunchStart && hasLunchDone)) {
+        return 'Incomplete attendance';
+      }
+      const dutyStartTs = group.tsMap.get('Duty start');
+      const dutyOffTs = group.tsMap.get('Duty off');
+      if (!dutyStartTs || !dutyOffTs) {
+        return 'Incomplete attendance';
+      }
+      let totalHours = (dutyOffTs - dutyStartTs) / 3600000;
+      if (hasLunchStart && hasLunchDone) {
+        const lunchStartTs = group.tsMap.get('Lunch start');
+        const lunchDoneTs = group.tsMap.get('Lunch done');
+        if (lunchStartTs && lunchDoneTs) {
+          const lunchHours = (lunchDoneTs - lunchStartTs) / 3600000;
+          totalHours = totalHours - lunchHours;
+        }
+      }
+      if (!(totalHours > 0)) {
+        return 'Off';
+      }
       if (totalHours >= 8.5) return 'Full day';
-      if (totalHours >= 7.5) return 'Late';
+      if (totalHours >= 7.5 && totalHours < 8.5) return 'Late';
       return 'Half day';
     }
 
-    // Open edit modal
+    // Open edit modal (shows up to 4 raw rows from DB, columns A-H editable)
     function openEditModal(emailStr, dateStr, rawRowsStr) {
       const email = emailStr;
       const date = dateStr;
-      const rawRows = JSON.parse(rawRowsStr);
+      let rawRows;
+      try {
+        rawRows = JSON.parse(rawRowsStr.replace(/&quot;/g, '"'));
+      } catch (e) {
+        console.error('Parse error:', e);
+        return;
+      }
 
       elements.editDate.textContent = date;
       elements.editEmail.textContent = email;
       elements.editTbody.innerHTML = '';
 
-      rawRows.forEach(([ts, name, status, remarks, selfie, bike, loc, verif, rowIndex]) => {
+      rawRows.forEach(([timestamp, name, status, remarks, selfieUrl, bikeUrl, location, verificationMessage, rowIndex]) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${rowIndex}</td>
-          <td><input type="text" value="${ts}" data-field="timestamp" data-row="${rowIndex}"></td>
+          <td><input type="text" value="${timestamp}" data-field="timestamp" data-row="${rowIndex}"></td>
+          <td><input type="text" value="${name}" data-field="name" data-row="${rowIndex}"></td>
           <td><input type="text" value="${status}" data-field="status" data-row="${rowIndex}"></td>
           <td><input type="text" value="${remarks}" data-field="remarks" data-row="${rowIndex}"></td>
-          <td><input type="text" value="${selfie}" data-field="selfieUrl" data-row="${rowIndex}"></td>
-          <td><input type="text" value="${bike}" data-field="bikeUrl" data-row="${rowIndex}"></td>
-          <td><input type="text" value="${loc}" data-field="location" data-row="${rowIndex}"></td>
-          <td><input type="text" value="${verif}" data-field="verificationMessage" data-row="${rowIndex}"></td>
+          <td><input type="text" value="${selfieUrl}" data-field="selfieUrl" data-row="${rowIndex}"></td>
+          <td><input type="text" value="${bikeUrl}" data-field="bikeUrl" data-row="${rowIndex}"></td>
+          <td><input type="text" value="${location}" data-field="location" data-row="${rowIndex}"></td>
+          <td><input type="text" value="${verificationMessage}" data-field="verificationMessage" data-row="${rowIndex}"></td>
         `;
         elements.editTbody.appendChild(tr);
       });
 
-      // Add blur listeners
+      // Add blur listeners for auto-save
       elements.editTbody.querySelectorAll('input').forEach(input => {
+        // Remove existing listener to avoid duplicates
+        input.removeEventListener('blur', handleFieldUpdate);
         input.addEventListener('blur', handleFieldUpdate);
       });
 
       elements.editModal.style.display = 'flex';
     }
 
-    // Handle field update
+    // Handle field update (saves entire row on any field blur)
     async function handleFieldUpdate(e) {
       const input = e.target;
       const rowIndex = input.dataset.row;
-      const field = input.dataset.field;
-      const value = input.value.trim();
 
       const payload = {
         action: 'updateRecord',
-        rowIndex: parseInt(rowIndex),
-        name: elements.editEmail.textContent
+        rowIndex: parseInt(rowIndex)
       };
 
       const rowInputs = elements.editTbody.querySelectorAll(`input[data-row="${rowIndex}"]`);
@@ -571,20 +592,24 @@
           body: JSON.stringify(payload)
         });
         const result = await response.json();
-        if (result.success) {
+        if (result.success !== false) {
           showToast();
-          // Refresh data and re-render modal
-          await fetchData();
-          // Re-open modal with fresh data for this email and date
+          await fetchData(); // Refresh all data
+          // Re-render table
+          renderTable();
+          // Re-open modal with fresh data
           const freshRawRows = allData.filter(row => {
             const rowDate = new Date(row[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             return row[1].trim() === elements.editEmail.textContent && rowDate === elements.editDate.textContent;
           });
           if (freshRawRows.length > 0) {
-            openEditModal(elements.editEmail.textContent, elements.editDate.textContent, JSON.stringify(freshRawRows));
+            const freshStr = JSON.stringify(freshRawRows).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            openEditModal(elements.editEmail.textContent, elements.editDate.textContent, freshStr);
           } else {
             elements.editModal.style.display = 'none';
           }
+        } else {
+          console.error('Update failed:', result.error);
         }
       } catch (err) {
         console.error('Update failed:', err);
