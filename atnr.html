@@ -287,304 +287,222 @@
   <div id="toast">Attendance modified!</div>
 
   <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykf97Wp9J6fPP_LcpzDy1MhfjlbRJIawIXXuW_zmzbx5f9wstjcTL98DlgiEl4rIhj/exec";
-    let allData = [];
-    let uniqueEmails = new Set();
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykf97Wp9J6fPP_LcpzDy1MhfjlbRJIawIXXuW_zmzbx5f9wstjcTL98DlgiEl4rIhj/exec";
+  let allData = [];
+  let uniqueEmails = new Set();
 
-    const elements = {
-      startDate: document.getElementById('startDate'),
-      endDate: document.getElementById('endDate'),
-      emailCheckboxes: document.getElementById('emailCheckboxes'),
-      attendanceCheckboxes: document.getElementById('attendanceCheckboxes'),
-      selectAllEmails: document.getElementById('selectAllEmails'),
-      deselectAllEmails: document.getElementById('deselectAllEmails'),
-      selectAllAtt: document.getElementById('selectAllAtt'),
-      deselectAllAtt: document.getElementById('deselectAllAtt'),
-      loadingMessage: document.getElementById('loadingMessage'),
-      attendanceTable: document.getElementById('attendanceTable'),
-      tbody: document.getElementById('attendanceTable').querySelector('tbody'),
-      editModal: document.getElementById('editModal'),
-      editClose: document.querySelector('#editModal .close'),
-      editDate: document.getElementById('editDate'),
-      editEmail: document.getElementById('editEmail'),
-      editTbody: document.getElementById('editTable').querySelector('tbody'),
-      toast: document.getElementById('toast')
-    };
+  const elements = {
+    startDate: document.getElementById('startDate'),
+    endDate: document.getElementById('endDate'),
+    emailCheckboxes: document.getElementById('emailCheckboxes'),
+    attendanceCheckboxes: document.getElementById('attendanceCheckboxes'),
+    selectAllEmails: document.getElementById('selectAllEmails'),
+    deselectAllEmails: document.getElementById('deselectAllEmails'),
+    selectAllAtt: document.getElementById('selectAllAtt'),
+    deselectAllAtt: document.getElementById('deselectAllAtt'),
+    loadingMessage: document.getElementById('loadingMessage'),
+    attendanceTable: document.getElementById('attendanceTable'),
+    tbody: document.getElementById('attendanceTable').querySelector('tbody'),
+    editModal: document.getElementById('editModal'),
+    editClose: document.querySelector('#editModal .close'),
+    editDate: document.getElementById('editDate'),
+    editEmail: document.getElementById('editEmail'),
+    editTbody: document.getElementById('editTable').querySelector('tbody'),
+    toast: document.getElementById('toast')
+  };
 
-    // Close modal
-    elements.editClose.onclick = () => { elements.editModal.style.display = 'none'; };
-    window.onclick = (e) => { if (e.target === elements.editModal) elements.editModal.style.display = 'none'; };
+  /* ----------  MODAL & TOAST ---------- */
+  elements.editClose.onclick = () => { elements.editModal.style.display = 'none'; };
+  window.onclick = e => { if (e.target === elements.editModal) elements.editModal.style.display = 'none'; };
+  function showToast() {
+    elements.toast.style.display = 'block';
+    setTimeout(() => elements.toast.style.display = 'none', 3000);
+  }
 
-    // Select All / Deselect All for Emails
-    elements.selectAllEmails.onclick = () => {
-      document.querySelectorAll('#emailCheckboxes input[type="checkbox"]').forEach(cb => cb.checked = true);
-      renderTable();
-    };
-    elements.deselectAllEmails.onclick = () => {
-      document.querySelectorAll('#emailCheckboxes input[type="checkbox"]').forEach(cb => cb.checked = false);
-      renderTable();
-    };
+  /* ----------  SELECT ALL / DESELECT ALL ---------- */
+  elements.selectAllEmails.onclick = () => { document.querySelectorAll('#emailCheckboxes input[type="checkbox"]').forEach(cb => cb.checked = true); renderTable(); };
+  elements.deselectAllEmails.onclick = () => { document.querySelectorAll('#emailCheckboxes input[type="checkbox"]').forEach(cb => cb.checked = false); renderTable(); };
+  elements.selectAllAtt.onclick = () => { document.querySelectorAll('#attendanceCheckboxes input[type="checkbox"]').forEach(cb => cb.checked = true); renderTable(); };
+  elements.deselectAllAtt.onclick = () => { document.querySelectorAll('#attendanceCheckboxes input[type="checkbox"]').forEach(cb => cb.checked = false); renderTable(); };
 
-    // Select All / Deselect All for Attendance Types
-    elements.selectAllAtt.onclick = () => {
-      document.querySelectorAll('#attendanceCheckboxes input[type="checkbox"]').forEach(cb => cb.checked = true);
-      renderTable();
-    };
-    elements.deselectAllAtt.onclick = () => {
-      document.querySelectorAll('#attendanceCheckboxes input[type="checkbox"]').forEach(cb => cb.checked = false);
-      renderTable();
-    };
+  /* ----------  FETCH ALL DATA ---------- */
+  async function fetchData() {
+    elements.loadingMessage.style.display = 'block';
+    elements.attendanceTable.style.display = 'none';
 
-    // Show toast
-    function showToast() {
-      elements.toast.style.display = 'block';
-      setTimeout(() => elements.toast.style.display = 'none', 3000);
-    }
+    const resp = await fetch(`${SCRIPT_URL}?action=getAllAttendance`);
+    allData = await resp.json();
 
-    // Fetch all data
-    async function fetchData() {
-      try {
-        elements.loadingMessage.style.display = 'block';
-        elements.attendanceTable.style.display = 'none';
+    uniqueEmails = new Set();
+    allData.forEach(r => uniqueEmails.add(r[1].trim()));
 
-        const response = await fetch(`${SCRIPT_URL}?action=getAllAttendance`);
-        allData = await response.json();
+    // ---- email checkboxes ----
+    elements.emailCheckboxes.innerHTML = '';
+    Array.from(uniqueEmails).sort().forEach(email => {
+      const div = document.createElement('div');
+      div.className = 'checkbox-item';
+      div.innerHTML = `<input type="checkbox" id="e_${email}" value="${email}" checked><label for="e_${email}">${email}</label>`;
+      elements.emailCheckboxes.appendChild(div);
+    });
 
-        // Extract unique emails
-        uniqueEmails = new Set();
-        allData.forEach(row => uniqueEmails.add(row[1].trim()));
+    document.querySelectorAll('#emailCheckboxes input, #attendanceCheckboxes input')
+            .forEach(cb => cb.addEventListener('change', renderTable));
 
-        // Populate email checkboxes
-        elements.emailCheckboxes.innerHTML = '';
-        Array.from(uniqueEmails).sort().forEach(email => {
-          const div = document.createElement('div');
-          div.className = 'checkbox-item';
-          div.innerHTML = `
-            <input type="checkbox" id="email_${email}" value="${email}" checked>
-            <label for="email_${email}">${email}</label>
-          `;
-          elements.emailCheckboxes.appendChild(div);
-        });
+    renderTable();
+  }
 
-        // Add event listeners
-        document.querySelectorAll('#emailCheckboxes input').forEach(cb => cb.addEventListener('change', renderTable));
-        document.querySelectorAll('#attendanceCheckboxes input').forEach(cb => cb.addEventListener('change', renderTable));
+  /* ----------  RENDER MAIN TABLE ---------- */
+  function renderTable() {
+    const s = elements.startDate.value, e = elements.endDate.value;
+    if (!s || !e) return;
+    const start = new Date(s), end = new Date(e);
+    if (start > end) return;
 
-        renderTable();
-      } catch (err) {
-        console.error('Error:', err);
-        elements.loadingMessage.textContent = 'Failed to load data. Please try again.';
-      }
-    }
+    const selEmails = Array.from(document.querySelectorAll('#emailCheckboxes input:checked')).map(cb => cb.value);
+    if (!selEmails.length) { elements.tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">No employees selected.</td></tr>'; elements.attendanceTable.style.display='table'; elements.loadingMessage.style.display='none'; return; }
 
-    // Render table
-    function renderTable() {
-      const startStr = elements.startDate.value;
-      const endStr = elements.endDate.value;
-      if (!startStr || !endStr) return;
+    const selAtt = Array.from(document.querySelectorAll('#attendanceCheckboxes input:checked')).map(cb => cb.value);
+    const allAtt = selAtt.includes('All') || selAtt.length===0;
 
-      const startDate = new Date(startStr);
-      const endDate = new Date(endStr);
-      if (startDate > endDate) return;
+    // ---- group by email → date ----
+    const groups = new Map();               // email → Map(dateKey → groupObj)
+    allData.forEach(row => {
+      const [tsStr, email, status] = row;
+      const ts = new Date(tsStr);
+      if (ts < start || ts > end) return;
+      const key = ts.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      if (!groups.has(email)) groups.set(email, new Map());
+      const dayMap = groups.get(email);
+      if (!dayMap.has(key)) dayMap.set(key, {dutyStart:null,lunchStart:null,lunchDone:null,dutyOff:null,tsMap:new Map(),raw:[]});
+      const g = dayMap.get(key);
+      const time = ts.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:false});
+      if (status==='Duty start') g.dutyStart = time;
+      if (status==='Lunch start') g.lunchStart = time;
+      if (status==='Lunch done') g.lunchDone = time;
+      if (status==='Duty off') g.dutyOff = time;
+      g.tsMap.set(status, ts);
+      g.raw.push(row);
+    });
 
-      const selectedEmails = Array.from(document.querySelectorAll('#emailCheckboxes input:checked'))
-        .map(cb => cb.value);
-      if (selectedEmails.length === 0) {
-        elements.tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">No employees selected.</td></tr>';
-        elements.attendanceTable.style.display = 'table';
-        elements.loadingMessage.style.display = 'none';
-        return;
-      }
+    // ---- date list (latest first) ----
+    const dates = [];
+    let cur = new Date(end);
+    while (cur >= start) { dates.push(cur.toLocaleDateString('en-US',{month:'short',day:'numeric'})); cur.setDate(cur.getDate()-1); }
 
-      const selectedAttTypes = Array.from(document.querySelectorAll('#attendanceCheckboxes input:checked'))
-        .map(cb => cb.value);
-      const includeAllAtt = selectedAttTypes.includes('All') || selectedAttTypes.length === 0;
-
-      // Group data by email and date
-      const groupsByEmail = new Map();
-      allData.forEach(row => {
-        const [ts, email, status, remarks, selfie, bike, loc, verif, rowIndex] = row;
-        const dateObj = new Date(ts);
-        if (dateObj < startDate || dateObj > endDate) return;
-        const dateKey = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-        if (!groupsByEmail.has(email)) groupsByEmail.set(email, new Map());
-        const emailGroups = groupsByEmail.get(email);
-        if (!emailGroups.has(dateKey)) {
-          emailGroups.set(dateKey, {
-            dutyStart: null, lunchStart: null, lunchDone: null, dutyOff: null,
-            tsMap: new Map(), rawRows: []
-          });
-        }
-        const group = emailGroups.get(dateKey);
-        const timeStr = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
-
-        if (status === 'Duty start') group.dutyStart = timeStr;
-        if (status === 'Lunch start') group.lunchStart = timeStr;
-        if (status === 'Lunch done') group.lunchDone = timeStr;
-        if (status === 'Duty off') group.dutyOff = timeStr;
-
-        group.tsMap.set(status, dateObj);
-        group.rawRows.push(row);
+    // ---- build rows ----
+    const rows = [];
+    selEmails.forEach(email => {
+      dates.forEach(d => {
+        const dayMap = groups.get(email) || new Map();
+        const g = dayMap.get(d) || {dutyStart:'--',lunchStart:'--',lunchDone:'--',dutyOff:'--',tsMap:new Map(),raw:[]};
+        const att = computeAttendance(g);
+        if (allAtt || selAtt.includes(att)) rows.push({email, date:d, dutyStart:g.dutyStart, lunchStart:g.lunchStart, lunchDone:g.lunchDone, dutyOff:g.dutyOff, attendance:att, raw:g.raw});
       });
+    });
 
-      // Generate date list (latest first)
-      const dateList = [];
-      let current = new Date(endDate);
-      while (current >= startDate) {
-        dateList.push(current.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-        current.setDate(current.getDate() - 1);
-      }
+    // ---- render ----
+    elements.tbody.innerHTML = '';
+    if (!rows.length) elements.tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">No records found.</td></tr>';
+    else rows.forEach((r,i) => {
+      const editBtn = r.raw.length ? `<button class="edit-btn" onclick="openEditModal('${r.email}','${r.date}',${JSON.stringify(r.raw).replace(/'/g,"\\'")})">Edit</button>` : '';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${editBtn}</td><td>${i+1}</td><td>${r.date}</td><td>${r.email}</td><td>${r.dutyStart}</td><td>${r.lunchStart}</td><td>${r.lunchDone}</td><td>${r.dutyOff}</td><td>${r.attendance}</td>`;
+      elements.tbody.appendChild(tr);
+    });
 
-      // Build rows
-      const rows = [];
-      selectedEmails.forEach(email => {
-        dateList.forEach(dateKey => {
-          const emailGroups = groupsByEmail.get(email) || new Map();
-          const group = emailGroups.get(dateKey) || {
-            dutyStart: '--', lunchStart: '--', lunchDone: '--', dutyOff: '--',
-            tsMap: new Map(), rawRows: []
-          };
-          const attendance = computeAttendance(group);
-          if (includeAllAtt || selectedAttTypes.includes(attendance)) {
-            rows.push({
-              email, date: dateKey,
-              dutyStart: group.dutyStart, lunchStart: group.lunchStart,
-              lunchDone: group.lunchDone, dutyOff: group.dutyOff,
-              attendance, rawRows: group.rawRows
-            });
-          }
-        });
-      });
+    elements.attendanceTable.style.display='table';
+    elements.loadingMessage.style.display='none';
+  }
 
-      // Render
-      elements.tbody.innerHTML = '';
-      if (rows.length === 0) {
-        elements.tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">No records found for selected filters.</td></tr>';
-      } else {
-        rows.forEach((row, idx) => {
-          const tr = document.createElement('tr');
-          const editBtn = row.rawRows.length > 0
-            ? `<button class="edit-btn" onclick="openEditModal('${row.email}', '${row.date}', ${JSON.stringify(row.rawRows).replace(/'/g, "\\'")})">Edit</button>`
-            : '';
-          tr.innerHTML = `
-            <td>${editBtn}</td>
-            <td>${idx + 1}</td>
-            <td>${row.date}</td>
-            <td>${row.email}</td>
-            <td>${row.dutyStart}</td>
-            <td>${row.lunchStart}</td>
-            <td>${row.lunchDone}</td>
-            <td>${row.dutyOff}</td>
-            <td>${row.attendance}</td>
-          `;
-          elements.tbody.appendChild(tr);
-        });
-      }
+  /* ----------  COMPUTE ATTENDANCE ---------- */
+  function computeAttendance(g){
+    const h=(s)=>g.tsMap.has(s), get=(s)=>g.tsMap.get(s);
+    if(!h('Duty start')&&!h('Duty off')&&!h('Lunch start')&&!h('Lunch done')) return 'Off';
+    if((h('Duty start')&&!h('Duty off'))||(!h('Duty start')&&h('Duty off'))) return 'Incomplete attendance';
+    if((h('Lunch start')&&!h('Lunch done'))||(!h('Lunch start')&&h('Lunch done'))) return 'Incomplete attendance';
+    let hrs = (get('Duty off')-get('Duty start'))/3600000;
+    if(h('Lunch start')&&h('Lunch done')) hrs -= (get('Lunch done')-get('Lunch start'))/3600000;
+    if(hrs<=0) return 'Off';
+    if(hrs>=8.5) return 'Full day';
+    if(hrs>=7.5) return 'Late';
+    return 'Half day';
+  }
 
-      elements.attendanceTable.style.display = 'table';
-      elements.loadingMessage.style.display = 'none';
-    }
+  /* ----------  OPEN EDIT MODAL (global) ---------- */
+  window.openEditModal = function(email, date, rawRows){
+    elements.editDate.textContent = date;
+    elements.editEmail.textContent = email;
+    elements.editTbody.innerHTML = '';
 
-    // Compute attendance status
-    function computeAttendance(group) {
-      const has = (status) => group.tsMap.has(status);
-      const get = (status) => group.tsMap.get(status);
+    rawRows.forEach(r => {
+      const [ts, name, status, remarks, selfie, bike, loc, verif, rowIdx] = r;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${rowIdx}</td>
+        <td><input type="text" value="${ts}" data-row="${rowIdx}" data-field="timestamp"></td>
+        <td><input type="text" value="${status}" data-row="${rowIdx}" data-field="status"></td>
+        <td><input type="text" value="${remarks}" data-row="${rowIdx}" data-field="remarks"></td>
+        <td><input type="text" value="${selfie}" data-row="${rowIdx}" data-field="selfieUrl"></td>
+        <td><input type="text" value="${bike}" data-row="${rowIdx}" data-field="bikeUrl"></td>
+        <td><input type="text" value="${loc}" data-row="${rowIdx}" data-field="location"></td>
+        <td><input type="text" value="${verif}" data-row="${rowIdx}" data-field="verificationMessage"></td>
+      `;
+      elements.editTbody.appendChild(tr);
+    });
 
-      if (!has('Duty start') && !has('Duty off') && !has('Lunch start') && !has('Lunch done')) return 'Off';
-      if ((has('Duty start') && !has('Duty off')) || (!has('Duty start') && has('Duty off'))) return 'Incomplete attendance';
-      if ((has('Lunch start') && !has('Lunch done')) || (!has('Lunch start') && has('Lunch done'))) return 'Incomplete attendance';
+    // attach blur handler once per input
+    elements.editTbody.querySelectorAll('input').forEach(inp => {
+      inp.removeEventListener('blur', handleBlur);   // avoid duplicates
+      inp.addEventListener('blur', handleBlur);
+    });
 
-      const dutyStart = get('Duty start');
-      const dutyOff = get('Duty off');
-      let totalHours = (dutyOff - dutyStart) / 3600000;
+    elements.editModal.style.display = 'flex';
+  };
 
-      if (has('Lunch start') && has('Lunch done')) {
-        const lunchHours = (get('Lunch done') - get('Lunch start')) / 3600000;
-        totalHours -= lunchHours;
-      }
-
-      if (totalHours <= 0) return 'Off';
-      if (totalHours >= 8.5) return 'Full day';
-      if (totalHours >= 7.5) return 'Late';
-      return 'Half day';
-    }
-
-    // Open edit modal
-    window.openEditModal = function(email, date, rawRows) {
-      elements.editDate.textContent = date;
-      elements.editEmail.textContent = email;
-      elements.editTbody.innerHTML = '';
-
-      rawRows.forEach(([ts, name, status, remarks, selfie, bike, loc, verif, rowIndex]) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${rowIndex}</td>
-          <td><input type="text" value="${ts}" data-field="timestamp" data-row="${rowIndex}"></td>
-          <td><input type="text" value="${status}" data-field="status" data-row="${rowIndex}"></td>
-          <td><input type="text" value="${remarks}" data-field="remarks" data-row="${rowIndex}"></td>
-          <td><input type="text" value="${selfie}" data-field="selfieUrl" data-row="${rowIndex}"></td>
-          <td><input type="text" value="${bike}" data-field="bikeUrl" data-row="${rowIndex}"></td>
-          <td><input type="text" value="${loc}" data-field="location" data-row="${rowIndex}"></td>
-          <td><input type="text" value="${verif}" data-field="verificationMessage" data-row="${rowIndex}"></td>
-        `;
-        elements.editTbody.appendChild(tr);
-      });
-
-      // Add blur listeners
-      elements.editTbody.querySelectorAll('input').forEach(input => {
-        input.addEventListener('blur', handleFieldUpdate);
-      });
-
-      elements.editModal.style.display = 'flex';
+  /* ----------  UPDATE SINGLE ROW (blur) ---------- */
+  async function handleBlur(e){
+    const inp = e.target;
+    const rowIdx = inp.dataset.row;
+    const tr = inp.closest('tr');
+    const payload = {
+      action: 'updateRecord',
+      rowIndex: Number(rowIdx),
+      name: elements.editEmail.textContent,
+      timestamp: tr.querySelector('[data-field="timestamp"]').value,
+      status: tr.querySelector('[data-field="status"]').value,
+      remarks: tr.querySelector('[data-field="remarks"]').value,
+      selfieUrl: tr.querySelector('[data-field="selfieUrl"]').value,
+      bikeUrl: tr.querySelector('[data-field="bikeUrl"]').value,
+      location: tr.querySelector('[data-field="location"]').value,
+      verificationMessage: tr.querySelector('[data-field="verificationMessage"]').value
     };
 
-    // Handle field update
-    async function handleFieldUpdate(e) {
-      const input = e.target;
-      const rowIndex = input.dataset.row;
-      const field = input.dataset.field;
-      const value = input.value.trim();
-
-      const payload = {
-        action: 'updateRecord',
-        rowIndex: parseInt(rowIndex),
-        name: elements.editEmail.textContent
-      };
-
-      const rowInputs = elements.editTbody.querySelectorAll(`input[data-row="${rowIndex}"]`);
-      rowInputs.forEach(inp => {
-        const f = inp.dataset.field;
-        payload[f] = inp.value.trim();
+    try{
+      await fetch(SCRIPT_URL,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
       });
-
-      try {
-        await fetch(SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        showToast();
-        fetchData(); // Refresh data
-      } catch (err) {
-        console.error('Update failed:', err);
-      }
+      showToast();
+      await fetchData();               // refresh everything
+    }catch(err){
+      console.error('Update failed',err);
     }
+  }
 
-    // Initialize
-    window.onload = async () => {
-      const today = new Date();
-      const defaultStart = new Date(today);
-      defaultStart.setDate(today.getDate() - 29);
+  /* ----------  INITIAL LOAD ---------- */
+  window.onload = async () => {
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(today.getDate()-29);
+    elements.endDate.value = today.toISOString().split('T')[0];
+    elements.startDate.value = start.toISOString().split('T')[0];
 
-      elements.endDate.value = today.toISOString().split('T')[0];
-      elements.startDate.value = defaultStart.toISOString().split('T')[0];
+    elements.startDate.addEventListener('change',renderTable);
+    elements.endDate.addEventListener('change',renderTable);
 
-      elements.startDate.addEventListener('change', renderTable);
-      elements.endDate.addEventListener('change', renderTable);
-
-      await fetchData();
-    };
-  </script>
+    await fetchData();
+  };
+</script>
 </body>
 </html>
