@@ -31,12 +31,10 @@
     font-weight: 700;
   }
 
-  /* ===== TABLE CONTAINER – नीचे स्पेस यहीं से ===== */
+  /* ===== TABLE CONTAINER – नीचे स्पेस सिर्फ़ मोबाइल में ===== */
   #matrixHolder {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    margin-bottom: 100px;   /* <<< नीचे से स्पेस */
-    padding-bottom: 30px;   /* <<< और थोड़ा पैडिंग */
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     background: #fff;
@@ -280,8 +278,12 @@
     100% { transform: rotate(360deg); }
   }
 
-  /* ===== RESPONSIVE ===== */
+  /* ===== RESPONSIVE – सिर्फ़ मोबाइल में नीचे स्पेस ===== */
   @media (max-width: 600px) {
+    #matrixHolder {
+      margin-bottom: 120px;   /* <<< यही नीचे स्पेस है मोबाइल में */
+      padding-bottom: 40px;
+    }
     #matrixTable {
       font-size: 12px;
     }
@@ -556,7 +558,7 @@
 <!-- Modal -->
 <div id="userModal">
   <div id="userModalContent">
-    <span class="closeBtn" onclick="closeModal()">&times;</span>
+    <span class="closeBtn" onclick="closeModal()">×</span>
     <div id="modalButtons"></div>
     <div id="screenshotContent">
       <h3 id="modalTitle">Users Details</h3>
@@ -645,7 +647,6 @@ async function loadData() {
     for (let oltObj of olts) {
       const olt = oltObj.id;
       const maxPon = oltObj.pons;
-      formando
       for (let i = 1; i <= maxPon; i++) {
         document.getElementById(`pon${i}-${olt}`).textContent = 'Error';
         document.getElementById(`off${i}-${olt}`).textContent = 'Error';
@@ -796,7 +797,7 @@ function showOltUsers(type, olt, maxPon) {
     if (oltData[nmid] && oltData[nmid][type]) currentUsers.push(...oltData[nmid][type]);
   }
   if (currentUsers.length === 0) { showToast(); return; }
-  showUsers(type, null, olt, 'All PONs'); // Reuse showUsers logic
+  showUsers(type, null, olt, 'All PONs');
 }
 
 function closeModal() {
