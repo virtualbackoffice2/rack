@@ -340,7 +340,7 @@ async function loadData() {
     }
     // Re-attach event listeners after data load
     attachEventListeners();
-    document.getElementById('loadingOverlay')..display = 'none';
+    document.getElementById('loadingOverlay').style.display = 'none';
   } catch (err) {
     console.error('Fetch error:', err);
     const olts = [
@@ -363,7 +363,7 @@ async function loadData() {
       document.getElementById(`oltOffTotal-${olt}`).textContent = 'Error';
       document.getElementById(`oltTickTotal-${olt}`).textContent = 'Error';
     }
-    document.getElementById('loadingOverlay')..display = 'none';
+    document.getElementById('loadingOverlay').style.display = 'none';
   }
 }
 function showToast() {
@@ -539,7 +539,7 @@ function showUsers(type, nmid, olt, pon) {
     });
   };
   modalButtons.appendChild(shareBtn);
-  document.getElementById('userModal')..display = 'flex';
+  document.getElementById('userModal').style.display = 'flex';
 }
 // Modal for OLT totals
 function showOltUsers(type, olt, maxPon) {
@@ -655,6 +655,7 @@ window.addEventListener('load', () => {
   
 </script>
   <style>
+
     @media (max-width: 768px) {
   table {
     margin-bottom: 100px; /* 👈 Bottom me extra space */
