@@ -1,2 +1,3 @@
-text/*
-  X-Frame-Options: ALLOWALL
+/*
+  X-Frame-Options: DENY
+  Content-Security-Policy: frame-ancestors 'self' https://vbo.co.in https://*.vbo.co.in;
