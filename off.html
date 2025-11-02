@@ -101,8 +101,10 @@
     const TOKEN = "abcd1234";
     // ---------------------------------------------------------------
     let rawRows = [];
+    let baseFiltered = [];
     let filtered = [];
     let currentSort = { key: null, asc: true };
+    let currentMode = 'offline'; // Default mode
     const spinner = document.getElementById('spinnerOverlay');
     const tbody = document.querySelector('#dataTable tbody');
     const selWindow = document.getElementById('selWindow');
@@ -162,8 +164,7 @@
         results.forEach(result => {
           rawRows.push(...result.rows.map(row => ({ ...row, source: result.key })));
         });
-        populateWindowPon();
-        applyQuickFilterOffline();
+        updateBaseFiltered();
       } catch (err) {
         console.error('Fetch error:', err);
         showToast('Failed to load data: ' + err.message);
@@ -203,50 +204,54 @@
       }).finally(() => hideSpinner());
     }
 
+    function updateBaseFiltered() {
+      switch (currentMode) {
+        case 'offline':
+          baseFiltered = rawRows.filter(r => (r['Downs'] || r['T'] || '').toString().trim() !== '');
+          break;
+        case 'complains':
+          baseFiltered = rawRows.filter(r => (r['Ticket'] || r['X'] || '').toString().trim() !== '');
+          break;
+        case 'drops':
+          baseFiltered = rawRows.filter(r => (r['Drops'] || r['AB'] || '').toString().trim() !== '');
+          break;
+        default:
+          baseFiltered = rawRows;
+      }
+      populateWindowPon();
+      applyAllFilters();
+    }
+
     function populateWindowPon() {
       const windows = new Set();
       const ponsForWindow = {};
-      rawRows.forEach(r => {
+      baseFiltered.forEach(r => {
         const win = r['Window'] || r['window'] || r['A'] || '';
         const pon = r['NMID'] || r['nmID'] || r['C'] || '';
         windows.add(win);
         if (!ponsForWindow[win]) ponsForWindow[win] = new Set();
         if (pon) ponsForWindow[win].add(pon);
       });
+      const selectedWin = selWindow.value;
       selWindow.innerHTML = '<option value="" style="color: black;">All Window</option>' + Array.from(windows).filter(w => w.trim() !== '').sort().map(w => `<option value="${escapeHtml(w)}" style="color: black;">${escapeHtml(w)}</option>`).join('');
       selWindow._ponsMap = ponsForWindow;
-      fillPonOptions('');
+      selWindow.value = '';
+      Array.from(selWindow.options).forEach(opt => {
+        if (opt.value === selectedWin) selWindow.value = selectedWin;
+      });
+      fillPonOptions(selWindow.value);
     }
 
     function fillPonOptions(windowName) {
       const map = selWindow._ponsMap || {};
       const set = windowName ? (map[windowName] || new Set()) : new Set(Object.values(map).flatMap(s => Array.from(s)));
+      const selectedPon = selPon.value;
       const opts = Array.from(set).sort().map(p => `<option value="${escapeHtml(p)}" style="color: black;">${escapeHtml(p)}</option>`).join('');
       selPon.innerHTML = '<option value="" style="color: black;">Select PON</option>' + opts;
-    }
-
-    function applyQuickFilterOffline() {
-      filtered = rawRows.filter(r => {
-        const val = (r['Downs'] || r['T'] || '').toString().trim();
-        return val !== '';
+      selPon.value = '';
+      Array.from(selPon.options).forEach(opt => {
+        if (opt.value === selectedPon) selPon.value = selectedPon;
       });
-      renderTable();
-    }
-
-    function applyFilterComplains() {
-      filtered = rawRows.filter(r => {
-        const val = (r['Ticket'] || r['X'] || '').toString().trim();
-        return val !== '';
-      });
-      renderTable();
-    }
-
-    function applyFilterDrops() {
-      filtered = rawRows.filter(r => {
-        const val = (r['Drops'] || r['AB'] || '').toString().trim();
-        return val !== '';
-      });
-      renderTable();
     }
 
     function applyAllFilters() {
@@ -256,7 +261,7 @@
       const mobile = document.getElementById('searchMobile').value.trim().toLowerCase();
       const name = document.getElementById('searchName').value.trim().toLowerCase();
       const mac = document.getElementById('searchMac').value.trim().toLowerCase();
-      filtered = rawRows.filter(r => {
+      filtered = baseFiltered.filter(r => {
         if (win && win !== '') { const v = (r['Window'] || r['window'] || '').toString(); if (v !== win) return false }
         if (pon) { const v = (r['NMID'] || r['C'] || '').toString(); if (v !== pon) return false }
         if (userId && userId.length >= 3) { const v = (r['Users'] || r['N'] || '').toString().toLowerCase(); if (!v.includes(userId)) return false }
@@ -500,9 +505,30 @@
 
     // Initialize
     fetchData();
-    document.getElementById('btnComplains').addEventListener('click', () => { showSpinner(); setTimeout(() => { applyFilterComplains(); hideSpinner(); }, 300); });
-    document.getElementById('btnOffline').addEventListener('click', () => { showSpinner(); setTimeout(() => { applyQuickFilterOffline(); hideSpinner(); }, 300); });
-    document.getElementById('btnDrops').addEventListener('click', () => { showSpinner(); setTimeout(() => { applyFilterDrops(); hideSpinner(); }, 300); });
+    document.getElementById('btnComplains').addEventListener('click', () => {
+      currentMode = 'complains';
+      showSpinner();
+      setTimeout(() => {
+        updateBaseFiltered();
+        hideSpinner();
+      }, 300);
+    });
+    document.getElementById('btnOffline').addEventListener('click', () => {
+      currentMode = 'offline';
+      showSpinner();
+      setTimeout(() => {
+        updateBaseFiltered();
+        hideSpinner();
+      }, 300);
+    });
+    document.getElementById('btnDrops').addEventListener('click', () => {
+      currentMode = 'drops';
+      showSpinner();
+      setTimeout(() => {
+        updateBaseFiltered();
+        hideSpinner();
+      }, 300);
+    });
     selWindow.addEventListener('change', () => { fillPonOptions(selWindow.value); applyAllFilters(); });
     selPon.addEventListener('change', applyAllFilters);
     document.getElementById('searchUser').addEventListener('input', () => { if (document.getElementById('searchUser').value.length >= 3) applyAllFilters(); });
