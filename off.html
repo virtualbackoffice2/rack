@@ -22,29 +22,24 @@
       transform: translateX(-50%);
       box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
-
     #toast.show {
       visibility: visible;
       animation: fadein 0.5s, fadeout 0.5s 2.5s;
     }
-
     @keyframes fadein {
       from { bottom: 0; opacity: 0; }
       to { bottom: 30px; opacity: 1; }
     }
-
     @keyframes fadeout {
       from { bottom: 30px; opacity: 1; }
       to { bottom: 0; opacity: 0; }
     }
-
     #dataTable {
       width: 100%;
-      table-layout: auto; /* Allow natural width for all columns */
+      table-layout: auto;
     }
-
     #tableWrap {
-      overflow: visible; /* Ensure no hidden overflow during capture */
+      overflow: visible;
       position: relative;
     }
   </style>
@@ -83,6 +78,7 @@
           <th>Actions</th>
           <th>Location</th>
           <th>Procare</th>
+          <th>Source</th> <!-- New column to indicate source -->
         </tr>
       </thead>
       <tbody></tbody>
@@ -90,371 +86,405 @@
   </div>
   <div id="spinnerOverlay"><div class="spinner"></div><p>Loading...</p></div>
   <div id="toast"></div>
-
-  <!-- Include html2canvas library -->
   <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
   <script>
-  // --- CONFIG: update these to your deployed GAS endpoint & token ---
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbzliBfK4lJmojz4wSUZVcJBg1UDu47WlLvHA5GSAFk84EPd1w4cT62Dw5PqpsuemybXww/exec";
-  const TOKEN = "abcd1234";
-  // ---------------------------------------------------------------
-  let rawRows = []; // rows from GAS
-  let filtered = []; // currently loaded rows
-  let currentSort = { key: null, asc: true };
-  const spinner = document.getElementById('spinnerOverlay');
-  const tbody = document.querySelector('#dataTable tbody');
-  const selWindow = document.getElementById('selWindow');
-  const selPon = document.getElementById('selPon');
-  function showSpinner() { spinner.style.display = 'flex'; document.body.classList.add('disabled'); }
-  function hideSpinner() { spinner.style.display = 'none'; document.body.classList.remove('disabled'); }
-  function showToast(message) {
-    const toast = document.getElementById('toast');
-    toast.innerText = message;
-    toast.className = 'show';
-    setTimeout(() => { toast.className = ''; }, 3000);
-  }
-  // -----------------------------
-  // JSONP GET helper (avoids CORS issues for reads)
-  // -----------------------------
-  function jsonpGet(url, timeoutMs = 10000) {
-    return new Promise((resolve, reject) => {
-      const callbackName = '__onGAS_' + Math.random().toString(36).slice(2);
-      window[callbackName] = function(data) {
-        cleanup();
-        resolve(data);
-      };
-      const script = document.createElement('script');
-      const sep = url.indexOf('?') === -1 ? '?' : '&';
-      script.src = url + sep + 'callback=' + callbackName + '&_=' + Date.now();
-      script.async = true;
-      let timedOut = false;
-      const timer = setTimeout(() => {
-        timedOut = true;
-        cleanup();
-        reject(new Error('JSONP request timed out'));
-      }, timeoutMs);
-      function cleanup() {
-        clearTimeout(timer);
-        try { delete window[callbackName]; } catch(e) { window[callbackName] = undefined; }
-        if (script.parentNode) script.parentNode.removeChild(script);
+    // --- CONFIG: Update these to your deployed GAS endpoints & token ---
+    const GAS_URLS = {
+      sheet1: {
+        url: "https://script.google.com/macros/s/AKfycbzliBfK4lJmojz4wSUZVcJBg1UDu47WlLvHA5GSAFk84EPd1w4cT62Dw5PqpsuemybXww/exec",
+        sheetId: "1oN4d2HCKLcTgogItpVgWUmDTxY28RDhtrVKEMt0PmzA"
+      },
+      sheet2: {
+        url: "https://script.google.com/macros/s/AKfycbzP06rGtmvCWN4sMqtrluFcLeSM29vjmJ0fRO0r8rEc5mqRRuyUGTuvIK2qN1gZEvLoTg/exec",
+        sheetId: "1d7tlBDp3snfzjeOxhZ8W0YHX-duuiwLVKDPflGsiA2Q"
       }
-      script.onerror = function(e) { if (timedOut) return; cleanup(); reject(new Error('JSONP script error')); };
-      document.head.appendChild(script);
-    });
-  }
-  function fetchData() {
-    showSpinner();
-    const url = GAS_URL + '?token=' + encodeURIComponent(TOKEN);
-    jsonpGet(url, 12000).then(data => {
-      rawRows = data && data.rows ? data.rows : [];
-      populateWindowPon();
-      applyQuickFilterOffline();
-    }).catch(err => {
-      console.error('Failed to fetch via JSONP:', err);
-      fetch(url).then(r => r.json()).then(data => {
-        rawRows = data && data.rows ? data.rows : [];
+    };
+    const TOKEN = "abcd1234";
+    // ---------------------------------------------------------------
+    let rawRows = [];
+    let filtered = [];
+    let currentSort = { key: null, asc: true };
+    const spinner = document.getElementById('spinnerOverlay');
+    const tbody = document.querySelector('#dataTable tbody');
+    const selWindow = document.getElementById('selWindow');
+    const selPon = document.getElementById('selPon');
+
+    function showSpinner() { spinner.style.display = 'flex'; document.body.classList.add('disabled'); }
+    function hideSpinner() { spinner.style.display = 'none'; document.body.classList.remove('disabled'); }
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.innerText = message;
+      toast.className = 'show';
+      setTimeout(() => { toast.className = ''; }, 3000);
+    }
+
+    // JSONP GET helper
+    function jsonpGet(url, timeoutMs = 10000) {
+      return new Promise((resolve, reject) => {
+        const callbackName = '__onGAS_' + Math.random().toString(36).slice(2);
+        window[callbackName] = function(data) {
+          cleanup();
+          resolve(data);
+        };
+        const script = document.createElement('script');
+        const sep = url.indexOf('?') === -1 ? '?' : '&';
+        script.src = url + sep + 'callback=' + callbackName + '&_=' + Date.now();
+        script.async = true;
+        let timedOut = false;
+        const timer = setTimeout(() => {
+          timedOut = true;
+          cleanup();
+          reject(new Error('JSONP request timed out'));
+        }, timeoutMs);
+        function cleanup() {
+          clearTimeout(timer);
+          try { delete window[callbackName]; } catch(e) { window[callbackName] = undefined; }
+          if (script.parentNode) script.parentNode.removeChild(script);
+        }
+        script.onerror = function(e) { if (timedOut) return; cleanup(); reject(new Error('JSONP script error')); };
+        document.head.appendChild(script);
+      });
+    }
+
+    // Fetch data from both endpoints
+    async function fetchData() {
+      showSpinner();
+      try {
+        const fetches = Object.keys(GAS_URLS).map(key =>
+          jsonpGet(`${GAS_URLS[key].url}?token=${encodeURIComponent(TOKEN)}`)
+            .then(data => ({ key, rows: data.rows || [], dashboardA7: data.dashboardA7 }))
+            .catch(err => {
+              console.error(`Failed to fetch from ${key}:`, err);
+              return { key, rows: [], dashboardA7: null };
+            })
+        );
+        const results = await Promise.all(fetches);
+        rawRows = [];
+        results.forEach(result => {
+          rawRows.push(...result.rows.map(row => ({ ...row, source: result.key })));
+        });
         populateWindowPon();
         applyQuickFilterOffline();
-      }).catch(err2 => {
-        console.error('Fallback fetch failed:', err2);
-        alert('Unable to load data from server (CORS or network error).\nSee console for details.');
-      });
-    }).finally(() => hideSpinner());
-  }
-  // -----------------------------
-  // POST helper with improved error handling
-  // -----------------------------
-  function postToGAS(obj) {
-    const url = GAS_URL + '?token=' + encodeURIComponent(TOKEN);
-    const json = JSON.stringify(obj);
-    showSpinner();
-    return fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: json
-    }).then(r => {
-      if (!r.ok) throw new Error(`Server responded with status ${r.status}`);
-      return r.json();
-    }).then(resp => {
-      if (!resp.success) throw new Error('Server returned failure');
-      return resp;
-    }).catch(err => {
-      console.error('POST error:', err);
+      } catch (err) {
+        console.error('Fetch error:', err);
+        showToast('Failed to load data: ' + err.message);
+      } finally {
+        hideSpinner();
+      }
+    }
+
+    // POST helper
+    function postToGAS(obj, sheetId) {
+      const gasUrl = Object.values(GAS_URLS).find(g => g.sheetId === sheetId).url;
+      const url = `${gasUrl}?token=${encodeURIComponent(TOKEN)}`;
+      const json = JSON.stringify(obj);
+      showSpinner();
       return fetch(url, {
         method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain' },
+        headers: { 'Content-Type': 'application/json' },
         body: json
-      }).then(() => ({ success: true, fallback: true }))
-        .catch(e => {
-          console.error('Fallback POST failed:', e);
-          throw e;
-        });
-    }).finally(() => hideSpinner());
-  }
-  function populateWindowPon() {
-    const windows = new Set();
-    const ponsForWindow = {};
-    rawRows.forEach(r => {
-      const win = r['Window'] || r['window'] || r['A'] || '';
-      const pon = r['NMID'] || r['nmID'] || r['C'] || '';
-      windows.add(win);
-      if (!ponsForWindow[win]) ponsForWindow[win] = new Set();
-      if (pon) ponsForWindow[win].add(pon);
-    });
-    selWindow.innerHTML = '<option value="" style="color: black;">All Window</option>' + Array.from(windows).filter(w => w.trim() !== '').sort().map(w => `<option value="${escapeHtml(w)}" style="color: black;">${escapeHtml(w)}</option>`).join('');
-    selWindow._ponsMap = ponsForWindow;
-    fillPonOptions('');
-  }
-  function fillPonOptions(windowName) {
-    const map = selWindow._ponsMap || {};
-    const set = windowName ? (map[windowName] || new Set()) : new Set(Object.values(map).flatMap(s => Array.from(s)));
-    const opts = Array.from(set).sort().map(p => `<option value="${escapeHtml(p)}" style="color: black;">${escapeHtml(p)}</option>`).join('');
-    selPon.innerHTML = '<option value="" style="color: black;">Select PON</option>' + opts;
-  }
-  function applyQuickFilterOffline() {
-    filtered = rawRows.filter(r => {
-      const val = (r['Downs'] || r['T'] || '').toString().trim();
-      return val !== '';
-    });
-    renderTable();
-  }
-  function applyFilterComplains() {
-    filtered = rawRows.filter(r => {
-      const val = (r['Ticket'] || r['X'] || '').toString().trim();
-      return val !== '';
-    });
-    renderTable();
-  }
-  function applyFilterDrops() {
-    filtered = rawRows.filter(r => {
-      const val = (r['Drops'] || r['AB'] || '').toString().trim();
-      return val !== '';
-    });
-    renderTable();
-  }
-  function applyAllFilters() {
-    const win = selWindow.value;
-    const pon = selPon.value;
-    const userId = document.getElementById('searchUser').value.trim().toLowerCase();
-    const mobile = document.getElementById('searchMobile').value.trim().toLowerCase();
-    const name = document.getElementById('searchName').value.trim().toLowerCase();
-    const mac = document.getElementById('searchMac').value.trim().toLowerCase();
-    filtered = rawRows.filter(r => {
-      if (win && win !== '') { const v = (r['Window'] || r['window'] || '').toString(); if (v !== win) return false }
-      if (pon) { const v = (r['NMID'] || r['C'] || '').toString(); if (v !== pon) return false }
-      if (userId && userId.length >= 3) { const v = (r['Users'] || r['N'] || '').toString().toLowerCase(); if (!v.includes(userId)) return false }
-      if (mobile && mobile.length >= 3) { const v1 = (r['Last called no'] || r['AC'] || '').toString().toLowerCase(); const v2 = (r['Number'] || r['P'] || '').toString().toLowerCase(); if (!v1.includes(mobile) && !v2.includes(mobile)) return false }
-      if (name && name.length >= 3) { const v = (r['Name'] || r['O'] || '').toString().toLowerCase(); if (!v.includes(name)) return false }
-      if (mac && mac.length >= 3) { const v1 = (r['MAC'] || r['U'] || '').toString().toLowerCase(); const v2 = (r['Serial'] || r['V'] || '').toString().toLowerCase(); if (!v1.includes(mac) && !v2.includes(mac)) return false }
-      return true;
-    });
-    renderTable();
-  }
-  function renderTable() {
-    tbody.innerHTML = '';
-    document.getElementById('userCount').innerText = filtered.length;
-    let rowsToRender = filtered.slice();
-    if (currentSort.key) {
-      rowsToRender.sort((a, b) => {
-        const ka = (a[currentSort.key] || a[keyOrAlt(a, currentSort.key)] || '').toString();
-        const kb = (b[currentSort.key] || b[keyOrAlt(b, currentSort.key)] || '').toString();
-        if (ka < kb) return currentSort.asc ? -1 : 1;
-        if (ka > kb) return currentSort.asc ? 1 : -1;
-        return 0;
-      });
+      }).then(r => {
+        if (!r.ok) throw new Error(`Server responded with status ${r.status}`);
+        return r.json();
+      }).then(resp => {
+        if (!resp.success) throw new Error('Server returned failure');
+        return resp;
+      }).catch(err => {
+        console.error('POST error:', err);
+        return fetch(url, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain' },
+          body: json
+        }).then(() => ({ success: true, fallback: true }))
+          .catch(e => {
+            console.error('Fallback POST failed:', e);
+            throw e;
+          });
+      }).finally(() => hideSpinner());
     }
-    rowsToRender.forEach((r, idx) => {
-      const tr = document.createElement('tr');
-      const isOffline = (r['Downs'] || r['T'] || '').toString().trim() !== '';
-      const isTicket = (r['Ticket'] || r['X'] || '').toString().trim() !== '';
-      if (isOffline) tr.classList.add('offline');
-      if (isTicket) tr.classList.add('ticket');
-      const userId = r['Users'] || r['N'] || '';
-      const pon = r['NMID'] || r['C'] || '';
-      const lastCalled = (r['Last called no'] || r['AC'] || '').toString().trim();
-      const number = (r['Number'] || r['P'] || '').toString().trim();
-      const mobile = lastCalled || number;
-      const name = r['Name'] || r['O'] || '';
-      const mac = r['MAC'] || r['U'] || '';
-      const serial = r['Serial'] || r['V'] || '';
-      const drops = r['Drops'] || r['AB'] || '';
-      const formattedDrops = drops ? formatTimestamp(new Date(drops)) : ''; // Blank if invalid
-      const remark = r['Remarks'] || r['Y'] || r['remark'] || r['Remark'] || '';
-      const location = r['Location'] || r['Q'] || '';
-      const procare = r['User status'] || r['AF'] || '';
-      tr.innerHTML = `
-        <td>${escapeHtml(pon)}</td>
-        <td>${escapeHtml(userId)}</td>
-        <td>${escapeHtml(mobile)}</td>
-        <td>${escapeHtml(name)}</td>
-        <td>${escapeHtml(mac)}<br><small>${escapeHtml(serial)}</small></td>
-        <td>${escapeHtml(formattedDrops)}</td>
-        <td><input class="remark-input" data-uid="${escapeHtml(userId)}" value="${escapeHtml(remark)}"></td>
-        <td>
-          <button class="mark-btn" data-uid="${escapeHtml(userId)}"></button>
-          <button class="remove-btn" data-uid="${escapeHtml(userId)}"></button>
-        </td>
-        <td>${escapeHtml(location)}</td>
-        <td>${escapeHtml(procare)}</td>
-      `;
-      tbody.appendChild(tr);
-    });
-    document.querySelectorAll('.mark-btn').forEach(b => b.addEventListener('click', onMarkClick));
-    document.querySelectorAll('.remove-btn').forEach(b => b.addEventListener('click', onRemoveClick));
-    document.querySelectorAll('.remark-input').forEach(i => i.addEventListener('change', onRemarkChange));
-  }
-  function keyOrAlt(obj, key) {
-    const map = { 'NMID': 'C', 'Users': 'N', 'Drops': 'AB' };
-    return map[key] || key;
-  }
-  function onRemarkChange(e) {
-    // No auto-save here; saved when marking complain
-  }
-  function onMarkClick(e) {
-    const uid = e.target.dataset.uid;
-    const remarkInput = document.querySelector(`.remark-input[data-uid="${cssEscape(uid)}"]`);
-    const remark = remarkInput ? remarkInput.value : '';
-    const ts = formatTimestamp(new Date());
-    const payload = { id: uid, action: 'mark', remark: remark, timestamp: ts };
-    showSpinner();
-    postToGAS(payload).then(resp => {
-      if (resp.success) {
-        showToast('Complain marked successfully!');
-        const rowEl = e.target.closest('tr');
-        rowEl.style.transition = 'opacity 1.2s ease, height 1.2s ease';
-        rowEl.style.opacity = '0';
-        setTimeout(() => {
-          rowEl.remove();
-          fetchData();
-        }, 1200);
-      } else {
-        showToast('Failed to mark complain: ' + (resp.error || 'Unknown error'));
-      }
-    }).catch(err => {
-      showToast('Error marking complain: ' + err.message);
-    });
-  }
-  function onRemoveClick(e) {
-    const uid = e.target.dataset.uid;
-    const payload = { id: uid, action: 'remove' };
-    showSpinner();
-    postToGAS(payload).then(resp => {
-      if (resp.success) {
-        showToast('Complain removed successfully!');
-        const rowEl = e.target.closest('tr');
-        rowEl.style.transition = 'opacity 1.2s ease, height 1.2s ease';
-        rowEl.style.opacity = '0';
-        setTimeout(() => {
-          rowEl.remove();
-          fetchData();
-        }, 1200);
-      } else {
-        showToast('Failed to remove complain: ' + (resp.error || 'Unknown error'));
-      }
-    }).catch(err => {
-      showToast('Error removing complain: ' + err.message);
-    });
-  }
-  function formatTimestamp(d) {
-    if (!(d instanceof Date) || isNaN(d)) return '';
-    const M = d.getMonth() + 1;
-    const D = d.getDate();
-    const Y = d.getFullYear();
-    const H = d.getHours();
-    const m = String(d.getMinutes()).padStart(2, '0');
-    const s = String(d.getSeconds()).padStart(2, '0');
-    return `${M}/${D}/${Y} ${H}:${m}:${s}`;
-  }
-  // CSV download
-  document.getElementById('btnDownloadCsv').addEventListener('click', () => {
-    const rows = Array.from(document.querySelectorAll('#dataTable tbody tr'));
-    const csv = [];
-    csv.push(['PON', 'UserID', 'Mobile', 'Name', 'Mac', 'Serial', 'Down time', 'Remark', 'Location', 'Procare'].join(','));
-    rows.forEach(tr => {
-      const tds = tr.querySelectorAll('td');
-      const pon = tds[0].innerText.trim();
-      const uid = tds[1].innerText.trim();
-      const mobile = tds[2].innerText.trim();
-      const name = tds[3].innerText.trim();
-      const mac = tds[4].innerText.split('\n')[0].trim();
-      const serial = tds[4].querySelector('small') ? tds[4].querySelector('small').innerText.trim() : '';
-      const drops = tds[5].innerText.trim();
-      const remark = tds[6].querySelector('input') ? tds[6].querySelector('input').value.replace(/\n/g, ' ') : '';
-      const location = tds[8].innerText.trim();
-      const procare = tds[9].innerText.trim();
-      csv.push([escapeCsv(pon), escapeCsv(uid), escapeCsv(mobile), escapeCsv(name), escapeCsv(mac), escapeCsv(serial), escapeCsv(drops), escapeCsv(remark), escapeCsv(location), escapeCsv(procare)].join(','));
-    });
-    const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'complains.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  });
-  // Screenshot download
-  document.getElementById('btnScreenshotDownload').addEventListener('click', async () => {
-    showSpinner();
-    try {
-      // Ensure the table is fully rendered
-      await new Promise(resolve => setTimeout(resolve, 100));
-      const node = document.getElementById('dataTable');
-      if (!node) throw new Error('Table element not found');
-      // Temporarily disable overflow and ensure full table is captured
-      const originalOverflow = node.parentElement.style.overflow;
-      node.parentElement.style.overflow = 'visible';
-      node.style.width = 'auto'; // Allow full width
-      const canvas = await html2canvas(node, {
-        scale: window.devicePixelRatio || 1,
-        useCORS: true,
-        logging: true,
-        backgroundColor: null,
-        scrollX: 0,
-        scrollY: -window.scrollY, // Adjust for page scroll
-        windowWidth: node.scrollWidth, // Use table's full scroll width
-        windowHeight: node.scrollHeight // Use table's full scroll height
+
+    function populateWindowPon() {
+      const windows = new Set();
+      const ponsForWindow = {};
+      rawRows.forEach(r => {
+        const win = r['Window'] || r['window'] || r['A'] || '';
+        const pon = r['NMID'] || r['nmID'] || r['C'] || '';
+        windows.add(win);
+        if (!ponsForWindow[win]) ponsForWindow[win] = new Set();
+        if (pon) ponsForWindow[win].add(pon);
       });
-      if (!canvas) throw new Error('Canvas creation failed');
-      const dataUrl = canvas.toDataURL('image/png');
-      const blob = await (await fetch(dataUrl)).blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'screenshot.png';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      // Restore original styles
-      node.parentElement.style.overflow = originalOverflow;
-      node.style.width = '';
-      showToast('Screenshot downloaded successfully!');
-    } catch (err) {
-      console.error('Screenshot download failed:', err);
-      showToast('Failed to download screenshot: ' + (err.message || 'Unknown error'));
+      selWindow.innerHTML = '<option value="" style="color: black;">All Window</option>' + Array.from(windows).filter(w => w.trim() !== '').sort().map(w => `<option value="${escapeHtml(w)}" style="color: black;">${escapeHtml(w)}</option>`).join('');
+      selWindow._ponsMap = ponsForWindow;
+      fillPonOptions('');
     }
-    hideSpinner();
-  });
-  // Sorting toggles
-  document.querySelectorAll('th.sortable').forEach(th => {
-    th.addEventListener('click', () => {
-      const key = th.dataset.key;
-      if (currentSort.key === key) currentSort.asc = !currentSort.asc; else { currentSort.key = key; currentSort.asc = true; }
+
+    function fillPonOptions(windowName) {
+      const map = selWindow._ponsMap || {};
+      const set = windowName ? (map[windowName] || new Set()) : new Set(Object.values(map).flatMap(s => Array.from(s)));
+      const opts = Array.from(set).sort().map(p => `<option value="${escapeHtml(p)}" style="color: black;">${escapeHtml(p)}</option>`).join('');
+      selPon.innerHTML = '<option value="" style="color: black;">Select PON</option>' + opts;
+    }
+
+    function applyQuickFilterOffline() {
+      filtered = rawRows.filter(r => {
+        const val = (r['Downs'] || r['T'] || '').toString().trim();
+        return val !== '';
+      });
       renderTable();
+    }
+
+    function applyFilterComplains() {
+      filtered = rawRows.filter(r => {
+        const val = (r['Ticket'] || r['X'] || '').toString().trim();
+        return val !== '';
+      });
+      renderTable();
+    }
+
+    function applyFilterDrops() {
+      filtered = rawRows.filter(r => {
+        const val = (r['Drops'] || r['AB'] || '').toString().trim();
+        return val !== '';
+      });
+      renderTable();
+    }
+
+    function applyAllFilters() {
+      const win = selWindow.value;
+      const pon = selPon.value;
+      const userId = document.getElementById('searchUser').value.trim().toLowerCase();
+      const mobile = document.getElementById('searchMobile').value.trim().toLowerCase();
+      const name = document.getElementById('searchName').value.trim().toLowerCase();
+      const mac = document.getElementById('searchMac').value.trim().toLowerCase();
+      filtered = rawRows.filter(r => {
+        if (win && win !== '') { const v = (r['Window'] || r['window'] || '').toString(); if (v !== win) return false }
+        if (pon) { const v = (r['NMID'] || r['C'] || '').toString(); if (v !== pon) return false }
+        if (userId && userId.length >= 3) { const v = (r['Users'] || r['N'] || '').toString().toLowerCase(); if (!v.includes(userId)) return false }
+        if (mobile && mobile.length >= 3) { const v1 = (r['Last called no'] || r['AC'] || '').toString().toLowerCase(); const v2 = (r['Number'] || r['P'] || '').toString().toLowerCase(); if (!v1.includes(mobile) && !v2.includes(mobile)) return false }
+        if (name && name.length >= 3) { const v = (r['Name'] || r['O'] || '').toString().toLowerCase(); if (!v.includes(name)) return false }
+        if (mac && mac.length >= 3) { const v1 = (r['MAC'] || r['U'] || '').toString().toLowerCase(); const v2 = (r['Serial'] || r['V'] || '').toString().toLowerCase(); if (!v1.includes(mac) && !v2.includes(mac)) return false }
+        return true;
+      });
+      renderTable();
+    }
+
+    function renderTable() {
+      tbody.innerHTML = '';
+      document.getElementById('userCount').innerText = filtered.length;
+      let rowsToRender = filtered.slice();
+      if (currentSort.key) {
+        rowsToRender.sort((a, b) => {
+          const ka = (a[currentSort.key] || a[keyOrAlt(a, currentSort.key)] || '').toString();
+          const kb = (b[currentSort.key] || b[keyOrAlt(b, currentSort.key)] || '').toString();
+          if (ka < kb) return currentSort.asc ? -1 : 1;
+          if (ka > kb) return currentSort.asc ? 1 : -1;
+          return 0;
+        });
+      }
+      rowsToRender.forEach((r, idx) => {
+        const tr = document.createElement('tr');
+        const isOffline = (r['Downs'] || r['T'] || '').toString().trim() !== '';
+        const isTicket = (r['Ticket'] || r['X'] || '').toString().trim() !== '';
+        if (isOffline) tr.classList.add('offline');
+        if (isTicket) tr.classList.add('ticket');
+        const userId = r['Users'] || r['N'] || '';
+        const pon = r['NMID'] || r['C'] || '';
+        const lastCalled = (r['Last called no'] || r['AC'] || '').toString().trim();
+        const number = (r['Number'] || r['P'] || '').toString().trim();
+        const mobile = lastCalled || number;
+        const name = r['Name'] || r['O'] || '';
+        const mac = r['MAC'] || r['U'] || '';
+        const serial = r['Serial'] || r['V'] || '';
+        const drops = r['Drops'] || r['AB'] || '';
+        const formattedDrops = drops ? formatTimestamp(new Date(drops)) : '';
+        const remark = r['Remarks'] || r['Y'] || r['remark'] || r['Remark'] || '';
+        const location = r['Location'] || r['Q'] || '';
+        const procare = r['User status'] || r['AF'] || '';
+        const source = r['source'] === 'sheet1' ? 'Sheet 1' : 'Sheet 2';
+        tr.innerHTML = `
+          <td>${escapeHtml(pon)}</td>
+          <td>${escapeHtml(userId)}</td>
+          <td>${escapeHtml(mobile)}</td>
+          <td>${escapeHtml(name)}</td>
+          <td>${escapeHtml(mac)}<br><small>${escapeHtml(serial)}</small></td>
+          <td>${escapeHtml(formattedDrops)}</td>
+          <td><input class="remark-input" data-uid="${escapeHtml(userId)}" data-source="${r['source']}" value="${escapeHtml(remark)}"></td>
+          <td>
+            <button class="mark-btn" data-uid="${escapeHtml(userId)}" data-source="${r['source']}"></button>
+            <button class="remove-btn" data-uid="${escapeHtml(userId)}" data-source="${r['source']}"></button>
+          </td>
+          <td>${escapeHtml(location)}</td>
+          <td>${escapeHtml(procare)}</td>
+          <td>${escapeHtml(source)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      document.querySelectorAll('.mark-btn').forEach(b => b.addEventListener('click', onMarkClick));
+      document.querySelectorAll('.remove-btn').forEach(b => b.addEventListener('click', onRemoveClick));
+      document.querySelectorAll('.remark-input').forEach(i => i.addEventListener('change', onRemarkChange));
+    }
+
+    function keyOrAlt(obj, key) {
+      const map = { 'NMID': 'C', 'Users': 'N', 'Drops': 'AB' };
+      return map[key] || key;
+    }
+
+    function onRemarkChange(e) {
+      // No auto-save; saved with mark action
+    }
+
+    function onMarkClick(e) {
+      const uid = e.target.dataset.uid;
+      const source = e.target.dataset.source;
+      const sheetId = GAS_URLS[source].sheetId;
+      const remarkInput = document.querySelector(`.remark-input[data-uid="${cssEscape(uid)}"][data-source="${source}"]`);
+      const remark = remarkInput ? remarkInput.value : '';
+      const ts = formatTimestamp(new Date());
+      const payload = { id: uid, action: 'mark', remark: remark, timestamp: ts };
+      postToGAS(payload, sheetId).then(resp => {
+        if (resp.success) {
+          showToast('Complain marked successfully!');
+          const rowEl = e.target.closest('tr');
+          rowEl.style.transition = 'opacity 1.2s ease, height 1.2s ease';
+          rowEl.style.opacity = '0';
+          setTimeout(() => {
+            rowEl.remove();
+            fetchData();
+          }, 1200);
+        } else {
+          showToast('Failed to mark complain: ' + (resp.error || 'Unknown error'));
+        }
+      }).catch(err => {
+        showToast('Error marking complain: ' + err.message);
+      });
+    }
+
+    function onRemoveClick(e) {
+      const uid = e.target.dataset.uid;
+      const source = e.target.dataset.source;
+      const sheetId = GAS_URLS[source].sheetId;
+      const payload = { id: uid, action: 'remove' };
+      postToGAS(payload, sheetId).then(resp => {
+        if (resp.success) {
+          showToast('Complain removed successfully!');
+          const rowEl = e.target.closest('tr');
+          rowEl.style.transition = 'opacity 1.2s ease, height 1.2s ease';
+          rowEl.style.opacity = '0';
+          setTimeout(() => {
+            rowEl.remove();
+            fetchData();
+          }, 1200);
+        } else {
+          showToast('Failed to remove complain: ' + (resp.error || 'Unknown error'));
+        }
+      }).catch(err => {
+        showToast('Error removing complain: ' + err.message);
+      });
+    }
+
+    function formatTimestamp(d) {
+      if (!(d instanceof Date) || isNaN(d)) return '';
+      const M = d.getMonth() + 1;
+      const D = d.getDate();
+      const Y = d.getFullYear();
+      const H = d.getHours();
+      const m = String(d.getMinutes()).padStart(2, '0');
+      const s = String(d.getSeconds()).padStart(2, '0');
+      return `${M}/${D}/${Y} ${H}:${m}:${s}`;
+    }
+
+    // CSV download
+    document.getElementById('btnDownloadCsv').addEventListener('click', () => {
+      const rows = Array.from(document.querySelectorAll('#dataTable tbody tr'));
+      const csv = [];
+      csv.push(['PON', 'UserID', 'Mobile', 'Name', 'Mac', 'Serial', 'Down time', 'Remark', 'Location', 'Procare', 'Source'].join(','));
+      rows.forEach(tr => {
+        const tds = tr.querySelectorAll('td');
+        const pon = tds[0].innerText.trim();
+        const uid = tds[1].innerText.trim();
+        const mobile = tds[2].innerText.trim();
+        const name = tds[3].innerText.trim();
+        const mac = tds[4].innerText.split('\n')[0].trim();
+        const serial = tds[4].querySelector('small') ? tds[4].querySelector('small').innerText.trim() : '';
+        const drops = tds[5].innerText.trim();
+        const remark = tds[6].querySelector('input') ? tds[6].querySelector('input').value.replace(/\n/g, ' ') : '';
+        const location = tds[8].innerText.trim();
+        const procare = tds[9].innerText.trim();
+        const source = tds[10].innerText.trim();
+        csv.push([escapeCsv(pon), escapeCsv(uid), escapeCsv(mobile), escapeCsv(name), escapeCsv(mac), escapeCsv(serial), escapeCsv(drops), escapeCsv(remark), escapeCsv(location), escapeCsv(procare), escapeCsv(source)].join(','));
+      });
+      const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'complains.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
     });
-  });
-  // Helper utils
-  function escapeHtml(s) { if (s == null) return ''; return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
-  function cssEscape(s) { return String(s).replace(/(["'\\])/g, '\\$1'); }
-  function escapeCsv(s) { if (s == null) return '""'; s = String(s).replace(/"/g, '""'); return '"' + s + '"'; }
-  // Initialize
-  fetchData();
-  document.getElementById('btnComplains').addEventListener('click', () => { showSpinner(); setTimeout(() => { applyFilterComplains(); hideSpinner(); }, 300); });
-  document.getElementById('btnOffline').addEventListener('click', () => { showSpinner(); setTimeout(() => { applyQuickFilterOffline(); hideSpinner(); }, 300); });
-  document.getElementById('btnDrops').addEventListener('click', () => { showSpinner(); setTimeout(() => { applyFilterDrops(); hideSpinner(); }, 300); });
-  selWindow.addEventListener('change', () => { fillPonOptions(selWindow.value); applyAllFilters(); });
-  selPon.addEventListener('change', applyAllFilters);
-  document.getElementById('searchUser').addEventListener('input', () => { if (document.getElementById('searchUser').value.length >= 3) applyAllFilters(); });
-  document.getElementById('searchMobile').addEventListener('input', () => { if (document.getElementById('searchMobile').value.length >= 3) applyAllFilters(); });
-  document.getElementById('searchName').addEventListener('input', () => { if (document.getElementById('searchName').value.length >= 3) applyAllFilters(); });
-  document.getElementById('searchMac').addEventListener('input', () => { if (document.getElementById('searchMac').value.length >= 3) applyAllFilters(); });
+
+    // Screenshot download
+    document.getElementById('btnScreenshotDownload').addEventListener('click', async () => {
+      showSpinner();
+      try {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        const node = document.getElementById('dataTable');
+        if (!node) throw new Error('Table element not found');
+        const originalOverflow = node.parentElement.style.overflow;
+        node.parentElement.style.overflow = 'visible';
+        node.style.width = 'auto';
+        const canvas = await html2canvas(node, {
+          scale: window.devicePixelRatio || 1,
+          useCORS: true,
+          logging: true,
+          backgroundColor: null,
+          scrollX: 0,
+          scrollY: -window.scrollY,
+          windowWidth: node.scrollWidth,
+          windowHeight: node.scrollHeight
+        });
+        if (!canvas) throw new Error('Canvas creation failed');
+        const dataUrl = canvas.toDataURL('image/png');
+        const blob = await (await fetch(dataUrl)).blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'screenshot.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        node.parentElement.style.overflow = originalOverflow;
+        node.style.width = '';
+        showToast('Screenshot downloaded successfully!');
+      } catch (err) {
+        console.error('Screenshot download failed:', err);
+        showToast('Failed to download screenshot: ' + (err.message || 'Unknown error'));
+      }
+      hideSpinner();
+    });
+
+    // Sorting toggles
+    document.querySelectorAll('th.sortable').forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.key;
+        if (currentSort.key === key) currentSort.asc = !currentSort.asc; else { currentSort.key = key; currentSort.asc = true; }
+        renderTable();
+      });
+    });
+
+    // Helper utils
+    function escapeHtml(s) { if (s == null) return ''; return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function cssEscape(s) { return String(s).replace(/(["'\\])/g, '\\$1'); }
+    function escapeCsv(s) { if (s == null) return '""'; s = String(s).replace(/"/g, '""'); return '"' + s + '"'; }
+
+    // Initialize
+    fetchData();
+    document.getElementById('btnComplains').addEventListener('click', () => { showSpinner(); setTimeout(() => { applyFilterComplains(); hideSpinner(); }, 300); });
+    document.getElementById('btnOffline').addEventListener('click', () => { showSpinner(); setTimeout(() => { applyQuickFilterOffline(); hideSpinner(); }, 300); });
+    document.getElementById('btnDrops').addEventListener('click', () => { showSpinner(); setTimeout(() => { applyFilterDrops(); hideSpinner(); }, 300); });
+    selWindow.addEventListener('change', () => { fillPonOptions(selWindow.value); applyAllFilters(); });
+    selPon.addEventListener('change', applyAllFilters);
+    document.getElementById('searchUser').addEventListener('input', () => { if (document.getElementById('searchUser').value.length >= 3) applyAllFilters(); });
+    document.getElementById('searchMobile').addEventListener('input', () => { if (document.getElementById('searchMobile').value.length >= 3) applyAllFilters(); });
+    document.getElementById('searchName').addEventListener('input', () => { if (document.getElementById('searchName').value.length >= 3) applyAllFilters(); });
+    document.getElementById('searchMac').addEventListener('input', () => { if (document.getElementById('searchMac').value.length >= 3) applyAllFilters(); });
   </script>
 </body>
 </html>
