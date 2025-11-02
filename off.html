@@ -97,10 +97,6 @@
   // --- CONFIG: update these to your deployed GAS endpoint & token ---
   const GAS_URL = "https://script.google.com/macros/s/AKfycbzliBfK4lJmojz4wSUZVcJBg1UDu47WlLvHA5GSAFk84EPd1w4cT62Dw5PqpsuemybXww/exec";
   const TOKEN = "abcd1234";
-  const SHEET_WINDOW_MAP = {
-    "1oN4d2HCKLcTgogItpVgWUmDTxY28RDhtrVKEMt0PmzA": "Merotra",
-    "1oYRi3wji65zODvUD-P3yL5vtyPUBq35xLws0ihg0O1Y": "Sunny"
-  };
   // ---------------------------------------------------------------
   let rawRows = []; // rows from GAS
   let filtered = []; // currently loaded rows
@@ -150,31 +146,13 @@
     showSpinner();
     const url = GAS_URL + '?token=' + encodeURIComponent(TOKEN);
     jsonpGet(url, 12000).then(data => {
-      rawRows = [];
-      if (data && data.data) {
-        data.data.forEach(sheetData => {
-          const windowName = SHEET_WINDOW_MAP[sheetData.sheetId] || 'Unknown';
-          sheetData.rows.forEach(row => {
-            row['Window'] = windowName;
-            rawRows.push(row);
-          });
-        });
-      }
+      rawRows = data && data.rows ? data.rows : [];
       populateWindowPon();
       applyQuickFilterOffline();
     }).catch(err => {
       console.error('Failed to fetch via JSONP:', err);
       fetch(url).then(r => r.json()).then(data => {
-        rawRows = [];
-        if (data && data.data) {
-          data.data.forEach(sheetData => {
-            const windowName = SHEET_WINDOW_MAP[sheetData.sheetId] || 'Unknown';
-            sheetData.rows.forEach(row => {
-              row['Window'] = windowName;
-              rawRows.push(row);
-            });
-          });
-        }
+        rawRows = data && data.rows ? data.rows : [];
         populateWindowPon();
         applyQuickFilterOffline();
       }).catch(err2 => {
