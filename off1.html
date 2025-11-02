@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Complain Manager</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="stylesoff.css">
+  <style>
+    #toast {
+      visibility: hidden;
+      min-width: 250px;
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      border-radius: 4px;
+      padding: 12px;
+      position: fixed;
+      z-index: 1001;
+      left: 50%;
+      bottom: 30px;
+      transform: translateX(-50%);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+    @keyframes fadein { from { bottom: 0; opacity: 0; } to { bottom: 30px; opacity: 1; } }
+    @keyframes fadeout { from { bottom: 30px; opacity: 1; } to { bottom: 0; opacity: 0; } }
+    #dataTable { width: 100%; table-layout: auto; }
+    #tableWrap { overflow: visible; position: relative; }
+  </style>
+</head>
+<body>
+  <h1>Complain Manager</h1>
+  <div class="top-row">
+    <div class="controls">
+      <button id="btnComplains">Complains</button>
+      <button id="btnOffline">Offline</button>
+      <button id="btnDrops">Drops</button>
+      <button id="btnDownloadCsv">CSV</button>
+      <button id="btnScreenshotDownload">Screenshot</button>
+    </div>
+  </div>
+  <div class="filters">
+    <select id="selWindow"></select>
+    <select id="selPon"></select>
+    <input id="searchUser" placeholder="Enter User ID">
+    <input id="searchMobile" placeholder="Enter Mobile No">
+    <input id="searchName" placeholder="Enter Name">
+    <input id="searchMac" placeholder="Enter Mac/Serial">
+    <div>User count: <span id="userCount">0</span></div>
+  </div>
+
+  <div id="tableWrap">
+    <table id="dataTable">
+      <thead>
+        <tr>
+          <th class="sortable" data-key="NMID">PON No</th>
+          <th class="sortable" data-key="Users">User ID</th>
+          <th>Mobile No</th>
+          <th>Name</th>
+          <th>Mac / Serial</th>
+          <th class="sortable" data-key="Drops">Down Time</th>
+          <th>Remark</th>
+          <th>Actions</th>
+          <th>Location</th>
+          <th>Procare</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div id="spinnerOverlay"><div class="spinner"></div><p>Loading...</p></div>
+  <div id="toast"></div>
+
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <script>
+  // --- CONFIG: update with your deployed GAS endpoint ---
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbzliBfK4lJmojz4wSUZVcJBg1UDu47WlLvHA5GSAFk84EPd1w4cT62Dw5PqpsuemybXww/exec";
+  const TOKEN = "abcd1234";
+  // -----------------------------------------------------
+  let rawRows = [];
+  let filtered = [];
+  let currentSort = { key: null, asc: true };
+  const spinner = document.getElementById('spinnerOverlay');
+  const tbody = document.querySelector('#dataTable tbody');
+  const selWindow = document.getElementById('selWindow');
+  const selPon = document.getElementById('selPon');
+
+  function showSpinner() { spinner.style.display = 'flex'; }
+  function hideSpinner() { spinner.style.display = 'none'; }
+  function showToast(msg){ const t=document.getElementById('toast');t.innerText=msg;t.className='show';setTimeout(()=>t.className='',3000); }
+
+  // JSONP GET helper
+  function jsonpGet(url, timeoutMs=12000){
+    return new Promise((resolve,reject)=>{
+      const cb='cb_'+Math.random().toString(36).slice(2);
+      window[cb]=data=>{cleanup();resolve(data)};
+      const s=document.createElement('script');
+      s.src=url+(url.includes('?')?'&':'?')+'callback='+cb+'&_='+Date.now();
+      s.onerror=()=>{cleanup();reject(new Error('JSONP failed'))};
+      document.head.appendChild(s);
+      const to=setTimeout(()=>{cleanup();reject(new Error('Timeout'))},timeoutMs);
+      function cleanup(){clearTimeout(to);if(s.parentNode)s.remove();delete window[cb];}
+    });
+  }
+
+  async function fetchData(){
+    showSpinner();
+    try{
+      const url=GAS_URL+'?token='+encodeURIComponent(TOKEN);
+      const res=await jsonpGet(url);
+      if(!res||!res.data) throw new Error("No data");
+      rawRows = res.data.flatMap(d=>d.rows.map(r=>({...r, _sheetId:d.sheetId, _dashboardA7:d.dashboardA7})));
+      populateWindowPon();
+      applyQuickFilterOffline();
+    }catch(err){
+      console.error('Fetch failed:',err);
+      showToast('Error loading data');
+    }finally{ hideSpinner(); }
+  }
+
+  // POST helper
+  function postToGAS(obj){
+    const url=GAS_URL+'?token='+encodeURIComponent(TOKEN);
+    showSpinner();
+    return fetch(url,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(obj)
+    }).then(r=>r.json()).finally(()=>hideSpinner());
+  }
+
+  function populateWindowPon(){
+    const windows=new Set();const pons={};
+    rawRows.forEach(r=>{
+      const w=r['Window']||'';const p=r['NMID']||'';
+      windows.add(w);if(!pons[w])pons[w]=new Set();if(p)pons[w].add(p);
+    });
+    selWindow.innerHTML='<option value="">All Window</option>'+Array.from(windows).filter(x=>x).sort().map(w=>`<option>${w}</option>`).join('');
+    selWindow._map=pons; fillPonOptions('');
+  }
+
+  function fillPonOptions(win){
+    const map=selWindow._map||{};const set=win?(map[win]||new Set()):new Set(Object.values(map).flatMap(x=>Array.from(x)));
+    selPon.innerHTML='<option value="">All PON</option>'+Array.from(set).sort().map(p=>`<option>${p}</option>`).join('');
+  }
+
+  // Filters
+  function applyQuickFilterOffline(){
+    filtered=rawRows.filter(r=>String(r['Downs']||'').trim()!=='');renderTable();
+  }
+  function applyFilterComplains(){
+    filtered=rawRows.filter(r=>String(r['Ticket']||'').trim()!=='');renderTable();
+  }
+  function applyFilterDrops(){
+    filtered=rawRows.filter(r=>String(r['Drops']||'').trim()!=='');renderTable();
+  }
+  function applyAllFilters(){
+    const win=selWindow.value,pon=selPon.value;
+    const uid=document.getElementById('searchUser').value.trim().toLowerCase();
+    const mob=document.getElementById('searchMobile').value.trim().toLowerCase();
+    const name=document.getElementById('searchName').value.trim().toLowerCase();
+    const mac=document.getElementById('searchMac').value.trim().toLowerCase();
+    filtered=rawRows.filter(r=>{
+      if(win&&r['Window']!==win)return false;
+      if(pon&&r['NMID']!==pon)return false;
+      if(uid&&!(r['Users']||'').toString().toLowerCase().includes(uid))return false;
+      if(mob&&!( (r['Last called no']||'').toString().toLowerCase().includes(mob) || (r['Number']||'').toString().toLowerCase().includes(mob)))return false;
+      if(name&&!(r['Name']||'').toString().toLowerCase().includes(name))return false;
+      if(mac&&!((r['MAC']||'').toString().toLowerCase().includes(mac)||(r['Serial']||'').toString().toLowerCase().includes(mac)))return false;
+      return true;
+    });
+    renderTable();
+  }
+
+  function renderTable(){
+    tbody.innerHTML='';document.getElementById('userCount').innerText=filtered.length;
+    let rows=filtered.slice();
+    if(currentSort.key){
+      rows.sort((a,b)=>{const ka=a[currentSort.key]||'',kb=b[currentSort.key]||'';return currentSort.asc?ka.localeCompare(kb):kb.localeCompare(ka);});
+    }
+    rows.forEach(r=>{
+      const tr=document.createElement('tr');
+      const uid=r['Users']||'';
+      const pon=r['NMID']||'';
+      const mobile=(r['Last called no']||r['Number']||'');
+      const drops=r['Drops']||'';
+      const remark=r['Remarks']||'';
+      const name=r['Name']||'';
+      const mac=r['MAC']||'';
+      const serial=r['Serial']||'';
+      const loc=r['Location']||'';
+      const pro=r['User status']||'';
+      tr.innerHTML=`
+        <td>${pon}</td><td>${uid}</td><td>${mobile}</td><td>${name}</td>
+        <td>${mac}<br><small>${serial}</small></td>
+        <td>${drops}</td>
+        <td><input class="remark-input" data-uid="${uid}" value="${remark}"></td>
+        <td><button class="mark-btn" data-uid="${uid}"></button>
+            <button class="remove-btn" data-uid="${uid}"></button></td>
+        <td>${loc}</td><td>${pro}</td>`;
+      tbody.appendChild(tr);
+    });
+    document.querySelectorAll('.mark-btn').forEach(b=>b.onclick=onMarkClick);
+    document.querySelectorAll('.remove-btn').forEach(b=>b.onclick=onRemoveClick);
+  }
+
+  function onMarkClick(e){
+    const uid=e.target.dataset.uid;
+    const remark=document.querySelector(`.remark-input[data-uid="${uid}"]`)?.value||'';
+    postToGAS({id:uid,action:'mark',remark}).then(r=>{
+      if(r.success){showToast('Marked!');fetchData();}
+      else showToast('Failed mark');
+    });
+  }
+
+  function onRemoveClick(e){
+    const uid=e.target.dataset.uid;
+    postToGAS({id:uid,action:'remove'}).then(r=>{
+      if(r.success){showToast('Removed!');fetchData();}
+      else showToast('Failed remove');
+    });
+  }
+
+  // Sorting
+  document.querySelectorAll('th.sortable').forEach(th=>{
+    th.addEventListener('click',()=>{
+      const k=th.dataset.key;
+      if(currentSort.key===k)currentSort.asc=!currentSort.asc;else{currentSort.key=k;currentSort.asc=true;}
+      renderTable();
+    });
+  });
+
+  // Inputs
+  selWindow.onchange=()=>{fillPonOptions(selWindow.value);applyAllFilters();}
+  selPon.onchange=applyAllFilters;
+  ['searchUser','searchMobile','searchName','searchMac'].forEach(id=>{
+    document.getElementById(id).addEventListener('input',()=>applyAllFilters());
+  });
+  document.getElementById('btnComplains').onclick=()=>applyFilterComplains();
+  document.getElementById('btnOffline').onclick=()=>applyQuickFilterOffline();
+  document.getElementById('btnDrops').onclick=()=>applyFilterDrops();
+
+  fetchData();
+  </script>
+</body>
+</html>
