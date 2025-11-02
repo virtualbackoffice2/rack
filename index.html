@@ -14,7 +14,6 @@
   <p>Loading rack...</p>
 </div>
 <h2>Merotra Network Rack</h2>
-
 <div id="matrixHolder">
 <table id="matrixTable">
 <tr>
@@ -205,7 +204,7 @@
   <td id="stat2-O4I9">⏳</td>
   <td id="stat3-O4I9">⏳</td>
   <td id="stat4-O4I9">⏳</td>
-  <td colspan="4"></td>
+  <td troubleshooter="4"></td>
   <td></td>
 </tr>
 <!-- Separator for Budheshwar window -->
@@ -279,42 +278,85 @@
 <!-- Toast -->
 <div id="toast">No user in list!!</div>
 <script>
-const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzliBfK4lJmojz4wSUZVcJBg1UDu47WlLvHA5GSAFk84EPd1w4cT62Dw5PqpsuemybXww/exec';
+const WEB_APP_URLS = [
+  'https://script.google.com/macros/s/AKfycbzliBfK4lJmojz4wSUZVcJBg1UDu47WlLvHA5GSAFk84EPd1w4cT62Dw5PqpsuemybXww/exec',
+  'https://script.google.com/macros/s/AKfycbzP06rGtmvCWN4sMqtrluFcLeSM29vjmJ0fRO0r8rEc5mqRRuyUGTuvIK2qN1gZEvLoTg/exec'
+];
 const TOKEN = 'abcd1234';
 const STATUS_LINK = 'https://vbo.co.in/ISP/Lucknow/Merotra/tag';
 let oltData = {};
 let dashboardA7 = null;
+
 async function loadData() {
-  const url = WEB_APP_URL + '?token=' + encodeURIComponent(TOKEN);
+  const olts = [
+    { id: 'O1I5', pons: 8 },
+    { id: 'O2I6', pons: 8 },
+    { id: 'O3I7', pons: 4 },
+    { id: 'O4I9', pons: 4 },
+    { id: 'O5I2', pons: 8 }
+  ];
+
+  // Initialize oltData for all NMIDs
+  for (let oltObj of olts) {
+    const olt = oltObj.id;
+    const maxPon = oltObj.pons;
+    for (let i = 1; i <= maxPon; i++) {
+      const nmid = olt + 'P' + i;
+      oltData[nmid] = { all: [], off: [], tick: [], drops: [] };
+    }
+  }
+
   try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Network response was not ok: ' + response.statusText);
-    const data = await response.json();
-    if (data.error) throw new Error(data.error);
-    const rows = data.rows || [];
-    dashboardA7 = data.dashboardA7 !== undefined && data.dashboardA7 !== null ? Number(data.dashboardA7) : null;
-    const olts = [
-      { id: 'O1I5', pons: 8 },
-      { id: 'O2I6', pons: 8 },
-      { id: 'O3I7', pons: 4 },
-      { id: 'O4I9', pons: 4 },
-      { id: 'O5I2', pons: 8 }
-    ];
+    // Fetch data from both URLs concurrently
+    const fetchPromises = WEB_APP_URLS.map(url => 
+      fetch(url + '?token=' + encodeURIComponent(TOKEN))
+        .then(response => {
+          if (!response.ok) throw new Error('Network response was not ok: ' + response.statusText);
+          return response.json();
+        })
+        .then(data => {
+          if (data.error) throw new Error(data.error);
+          return data;
+        })
+    );
+
+    const results = await Promise.all(fetchPromises);
+    let allRows = [];
+    let dashboardA7Values = [];
+
+    // Combine rows and dashboardA7 values from both responses
+    results.forEach(data => {
+      allRows.push(...(data.rows || []));
+      if (data.dashboardA7 !== undefined && data.dashboardA7 !== null) {
+        dashboardA7Values.push(Number(data.dashboardA7));
+      }
+    });
+
+    // Use the minimum dashboardA7 value if available, otherwise null
+    dashboardA7 = dashboardA7Values.length > 0 ? Math.min(...dashboardA7Values) : null;
+
+    // Process data for each OLT
     for (let oltObj of olts) {
       const olt = oltObj.id;
       const maxPon = oltObj.pons;
       let total = 0, offTotal = 0, tickTotal = 0;
+
       for (let i = 1; i <= maxPon; i++) {
         const nmid = olt + 'P' + i;
-        const filtered = rows.filter(r => r['NMID'] === nmid && r['Users']);
-        const allRows = filtered;
+        const filtered = allRows.filter(r => r['NMID'] === nmid && r['Users']);
+        const allRowsFiltered = filtered;
         const offRows = filtered.filter(r => r['Downs']);
         const tickRows = filtered.filter(r => r['Ticket']);
         const dropTimes = filtered.map(r => r['Drops']).filter(v => v && v !== '');
-        oltData[nmid] = { all: allRows, off: offRows, tick: tickRows, drops: dropTimes };
-        document.getElementById(`pon${i}-${olt}`).textContent = allRows.length;
+
+        // Update oltData for this NMID
+        oltData[nmid] = { all: allRowsFiltered, off: offRows, tick: tickRows, drops: dropTimes };
+
+        // Update table cells
+        document.getElementById(`pon${i}-${olt}`).textContent = allRowsFiltered.length;
         document.getElementById(`off${i}-${olt}`).textContent = offRows.length;
         document.getElementById(`tick${i}-${olt}`).textContent = tickRows.length;
+
         let statusCell = document.getElementById(`stat${i}-${olt}`);
         let dropCount = dropTimes.length;
         if (dashboardA7 !== null && !isNaN(dashboardA7)) {
@@ -330,26 +372,23 @@ async function loadData() {
           statusCell.textContent = "-";
           statusCell.className = "";
         }
-        total += allRows.length;
+
+        total += allRowsFiltered.length;
         offTotal += offRows.length;
         tickTotal += tickRows.length;
       }
+
+      // Update total cells
       document.getElementById(`oltTotal-${olt}`).textContent = total;
       document.getElementById(`oltOffTotal-${olt}`).textContent = offTotal;
       document.getElementById(`oltTickTotal-${olt}`).textContent = tickTotal;
     }
+
     // Re-attach event listeners after data load
     attachEventListeners();
     document.getElementById('loadingOverlay').style.display = 'none';
   } catch (err) {
     console.error('Fetch error:', err);
-    const olts = [
-      { id: 'O1I5', pons: 8 },
-      { id: 'O2I6', pons: 8 },
-      { id: 'O3I7', pons: 4 },
-      { id: 'O4I9', pons: 4 },
-      { id: 'O5I2', pons: 8 }
-    ];
     for (let oltObj of olts) {
       const olt = oltObj.id;
       const maxPon = oltObj.pons;
@@ -366,11 +405,13 @@ async function loadData() {
     document.getElementById('loadingOverlay').style.display = 'none';
   }
 }
+
 function showToast() {
   const toast = document.getElementById('toast');
   toast.className = 'show';
   setTimeout(() => { toast.className = ''; }, 3000);
 }
+
 function attachEventListeners() {
   const olts = [
     { id: 'O1I5', pons: 8 },
@@ -446,6 +487,7 @@ function attachEventListeners() {
     }
   }
 }
+
 // Modal for PON
 function showUsers(type, nmid, olt, pon) {
   let title = "Users Details";
@@ -541,6 +583,7 @@ function showUsers(type, nmid, olt, pon) {
   modalButtons.appendChild(shareBtn);
   document.getElementById('userModal').style.display = 'flex';
 }
+
 // Modal for OLT totals
 function showOltUsers(type, olt, maxPon) {
   let title = "All Users Details";
@@ -642,26 +685,22 @@ function showOltUsers(type, olt, maxPon) {
   modalButtons.appendChild(shareBtn);
   document.getElementById('userModal').style.display = 'flex';
 }
+
 function closeModal() {
   document.getElementById('userModal').style.display = 'none';
 }
+
 window.addEventListener('load', () => {
-  loadData(); // Pehle ek baar run
-  setInterval(loadData, 30000); // har 30 sec me backend sync karega
+  loadData(); // Run once on load
+  setInterval(loadData, 30000); // Sync with backend every 30 seconds
 });
-
-
-
-  
 </script>
-  <style>
-
-    @media (max-width: 768px) {
+<style>
+@media (max-width: 768px) {
   table {
-    margin-bottom: 100px; /* 👈 Bottom me extra space */
+    margin-bottom: 100px; /* Extra space at bottom for mobile */
   }
 }
-
-  </style>
+</style>
 </body>
 </html>
