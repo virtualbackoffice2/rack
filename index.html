@@ -204,7 +204,7 @@
   <td id="stat2-O4I9">⏳</td>
   <td id="stat3-O4I9">⏳</td>
   <td id="stat4-O4I9">⏳</td>
-  <td troubleshooter="4"></td>
+  <td colspan="4"></td>
   <td></td>
 </tr>
 <!-- Separator for Budheshwar window -->
@@ -308,15 +308,20 @@ async function loadData() {
 
   try {
     // Fetch data from both URLs concurrently
-    const fetchPromises = WEB_APP_URLS.map(url => 
+    const fetchPromises = WEB_APP_URLS.map((url, index) =>
       fetch(url + '?token=' + encodeURIComponent(TOKEN))
         .then(response => {
-          if (!response.ok) throw new Error('Network response was not ok: ' + response.statusText);
+          if (!response.ok) throw new Error(`Network response was not ok for URL ${index + 1}: ${response.statusText}`);
           return response.json();
         })
         .then(data => {
-          if (data.error) throw new Error(data.error);
+          console.log(`Data from URL ${index + 1} (${url}):`, data); // Debug: Log raw data
+          if (data.error) throw new Error(`Error from URL ${index + 1}: ${data.error}`);
           return data;
+        })
+        .catch(err => {
+          console.error(`Fetch error for URL ${index + 1} (${url}):`, err);
+          return { rows: [], dashboardA7: null }; // Return empty data on error
         })
     );
 
@@ -325,15 +330,20 @@ async function loadData() {
     let dashboardA7Values = [];
 
     // Combine rows and dashboardA7 values from both responses
-    results.forEach(data => {
+    results.forEach((data, index) => {
+      console.log(`Processing data from URL ${index + 1}:`, data.rows); // Debug: Log rows
       allRows.push(...(data.rows || []));
       if (data.dashboardA7 !== undefined && data.dashboardA7 !== null) {
         dashboardA7Values.push(Number(data.dashboardA7));
       }
     });
 
+    console.log('Combined rows:', allRows); // Debug: Log combined rows
+    console.log('Unique NMIDs in data:', [...new Set(allRows.map(r => r['NMID']))]); // Debug: Log unique NMIDs
+
     // Use the minimum dashboardA7 value if available, otherwise null
     dashboardA7 = dashboardA7Values.length > 0 ? Math.min(...dashboardA7Values) : null;
+    console.log('Selected dashboardA7:', dashboardA7); // Debug: Log dashboardA7
 
     // Process data for each OLT
     for (let oltObj of olts) {
@@ -348,6 +358,8 @@ async function loadData() {
         const offRows = filtered.filter(r => r['Downs']);
         const tickRows = filtered.filter(r => r['Ticket']);
         const dropTimes = filtered.map(r => r['Drops']).filter(v => v && v !== '');
+
+        console.log(`NMID ${nmid}:`, { all: allRowsFiltered.length, off: offRows.length, tick: tickRows.length, drops: dropTimes.length }); // Debug: Log counts
 
         // Update oltData for this NMID
         oltData[nmid] = { all: allRowsFiltered, off: offRows, tick: tickRows, drops: dropTimes };
@@ -388,7 +400,7 @@ async function loadData() {
     attachEventListeners();
     document.getElementById('loadingOverlay').style.display = 'none';
   } catch (err) {
-    console.error('Fetch error:', err);
+    console.error('General fetch error:', err);
     for (let oltObj of olts) {
       const olt = oltObj.id;
       const maxPon = oltObj.pons;
