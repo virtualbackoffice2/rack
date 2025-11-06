@@ -429,7 +429,6 @@
             <th>Duty Off</th>
             <th>Attendance</th>
             <th>Bike Running</th>
-            <th>Bike Reading Pic</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -726,7 +725,7 @@
       let dataUrl = elements.canvas.toDataURL('image/jpeg', quality);
       while (atob(dataUrl.split(',')[1]).length > 90 * 1024 && quality > 0.2) {
         quality -= 0.1;
-        dataUrl = elements.canvas.toDataURL('image/jpeg', quality);
+        dataUrl = canvas.toDataURL('image/jpeg', quality);
       }
       lastDataUrl = dataUrl;
       elements.previewArea.innerHTML =
@@ -934,8 +933,7 @@
             lunchDone: group.lunchDone || '--',
             dutyOff: group.dutyOff || '--',
             attendance,
-            bikeRunning,
-            bikeUrl
+            bikeRunning
           });
         }
       });
@@ -950,7 +948,6 @@
           <td>${row.dutyOff}</td>
           <td>${row.attendance}</td>
           <td>${row.bikeRunning}</td>
-          <td>${row.bikeUrl === '--' ? '--' : `<a href="${row.bikeUrl}" target="_blank">View</a>`}</td>
         `;
         tbody.appendChild(tr);
       });
