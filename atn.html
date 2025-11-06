@@ -181,6 +181,35 @@
       color: #2c5282;
       border: 1px solid #90cdf4;
     }
+    .toast {
+      visibility: hidden;
+      min-width: 250px;
+      margin: auto;
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      border-radius: 10px;
+      padding: 16px;
+      position: fixed;
+      z-index: 1000;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 16px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .toast.show {
+      visibility: visible;
+      animation: fadein 0.5s, fadeout 0.5s 2.5s;
+    }
+    @keyframes fadein {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes fadeout {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
     #readingPhotoLabel {
       display: none;
     }
@@ -277,6 +306,13 @@
     #attendanceTable th {
       background-color: #f2f2f2;
     }
+    #attendanceTable a {
+      color: #667eea;
+      text-decoration: none;
+    }
+    #attendanceTable a:hover {
+      text-decoration: underline;
+    }
     #attendanceFilter {
       margin-bottom: 10px;
       width: 100%;
@@ -319,10 +355,10 @@
       <div id="datetime"></div>
       <h1>👤 Attendance</h1>
       <p>Merotra Cable Network</p>
-     <p style="color:red; font-size:12px; font-style:italic;">
-  * 1.5 hr late is half day<br>
-  * 30 minutes late is late
-</p>
+      <p style="color:red; font-size:12px; font-style:italic;">
+        * 1.5 hr late is half day<br>
+        * 30 minutes late is late
+      </p>
     </div>
     <div class="welcome" id="welcome">Welcome, <span id="userEmail">Not signed in</span></div>
     <div id="gSignInWrapper" style="text-align:center; margin-bottom:20px;">
@@ -350,7 +386,7 @@
       <option value="Duty off">Duty off</option>
     </select>
     <button id="checkLocation" style="display:none;">Reached office?</button>
-    <textarea id="remarks" placeholder="Remark and bike reading"></textarea>
+    <textarea id="bikeReading" placeholder="Bike Reading (numbers only)"></textarea>
     <label id="readingPhotoLabel" for="bikePhoto">Bike meter reading photo</label>
     <input type="file" id="bikePhoto" accept="image/*" capture="environment" />
     <div id="bikePreviewArea" style="text-align: center;"></div>
@@ -359,6 +395,7 @@
     <canvas id="canvas" style="display:none;"></canvas>
     <div id="previewArea"></div>
     <div id="statusMsg" class="result" style="display:none;"></div>
+    <div id="toast" class="toast"></div>
   </div>
   <!-- Modal for location messages -->
   <div id="locationModal" class="modal">
@@ -379,6 +416,7 @@
         <option value="Late">Late</option>
         <option value="Half day">Half day</option>
         <option value="Off">Off</option>
+        <option value="Incomplete attendance">Incomplete</option>
       </select>
       <table id="attendanceTable">
         <thead>
@@ -390,6 +428,8 @@
             <th>Lunch Done</th>
             <th>Duty Off</th>
             <th>Attendance</th>
+            <th>Bike Running</th>
+            <th>Bike Reading Pic</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -403,7 +443,7 @@
     const elements = {
       status: document.getElementById('status'),
       checkLocation: document.getElementById('checkLocation'),
-      remarks: document.getElementById('remarks'),
+      bikeReading: document.getElementById('bikeReading'),
       bikePhoto: document.getElementById('bikePhoto'),
       welcome: document.getElementById('welcome'),
       userEmail: document.getElementById('userEmail'),
@@ -419,7 +459,8 @@
       checkAttendance: document.getElementById('checkAttendance'),
       attendanceModal: document.getElementById('attendanceModal'),
       attendanceFilter: document.getElementById('attendanceFilter'),
-      attendanceTable: document.getElementById('attendanceTable')
+      attendanceTable: document.getElementById('attendanceTable'),
+      toast: document.getElementById('toast')
     };
     let stream = null;
     let lastDataUrl = null;
@@ -428,9 +469,17 @@
     let currentLocation = null;
     let verificationMessage = '';
     let attendanceData = [];
+    let todayAttendanceCount = 0;
     function showModal(message) {
       elements.modalMessage.textContent = message;
       elements.locationModal.style.display = 'flex';
+    }
+    function showToast(message) {
+      elements.toast.textContent = message;
+      elements.toast.className = 'toast show';
+      setTimeout(() => {
+        elements.toast.className = 'toast';
+      }, 3000);
     }
     const modalClose = document.getElementsByClassName("close")[0];
     modalClose.onclick = () => {
@@ -443,19 +492,44 @@
       if (event.target == elements.locationModal) {
         elements.locationModal.style.display = "none";
       }
+      if (event.target == elements.attendanceModal) {
+        elements.attendanceModal.style.display = "none";
+      }
     };
     const attendanceModalClose = elements.attendanceModal.querySelector('.close');
     attendanceModalClose.onclick = () => {
       elements.attendanceModal.style.display = "none";
     };
-    window.onclick = (event) => {
-      if (event.target == elements.attendanceModal) {
-        elements.attendanceModal.style.display = "none";
+    async function updateAttendanceOptions() {
+      if (!userEmailValue) {
+        elements.status.innerHTML = `<option value="" disabled selected>Select attendance</option>`;
+        elements.status.disabled = true;
+        return;
       }
-      if (event.target == elements.locationModal) {
-        elements.locationModal.style.display = "none";
+      try {
+        const response = await fetch(`${SCRIPT_URL}?action=getAttendanceCount&email=${encodeURIComponent(userEmailValue)}`);
+        const data = await response.json();
+        todayAttendanceCount = data.count || 0;
+        const allOptions = [
+          { value: "Duty start", text: "Duty start" },
+          { value: "Lunch start", text: "Lunch start" },
+          { value: "Lunch done", text: "Lunch done" },
+          { value: "Duty off", text: "Duty off" }
+        ];
+        elements.status.innerHTML = `<option value="" disabled selected>Select attendance</option>`;
+        if (todayAttendanceCount < 4) {
+          const expectedOption = allOptions[todayAttendanceCount];
+          elements.status.innerHTML += `<option value="${expectedOption.value}">${expectedOption.text}</option>`;
+          elements.status.disabled = false;
+        } else {
+          elements.status.disabled = true;
+        }
+        updateButtonState();
+      } catch (err) {
+        console.error('Error fetching attendance count:', err);
+        elements.status.disabled = true;
       }
-    };
+    }
     function handleCredentialResponse(response) {
       try {
         const responsePayload = decodeJwtResponse(response.credential);
@@ -464,11 +538,12 @@
         if (userEmailValue) {
           elements.welcome.style.display = 'block';
           elements.checkAttendance.style.display = 'block';
+          updateAttendanceOptions(); // Fetch attendance count on sign-in
         } else {
           elements.welcome.style.display = 'none';
           elements.checkAttendance.style.display = 'none';
+          elements.status.disabled = true;
         }
-        elements.status.disabled = !userEmailValue;
         updateButtonState();
         toggleSignIn(!userEmailValue);
       } catch (err) {
@@ -497,6 +572,7 @@
         elements.markAttendanceBtn.disabled = true;
         elements.markAttendanceBtn.classList.remove('enabled');
         toggleSignIn(true);
+        updateAttendanceOptions();
       });
     }
     document.getElementById('signOutBtn').addEventListener('click', signOut);
@@ -517,7 +593,7 @@
     }
     function updateButtonState() {
       const statusVal = elements.status.value;
-      if (!userEmailValue) {
+      if (!userEmailValue || todayAttendanceCount >= 4) {
         elements.markAttendanceBtn.disabled = true;
         elements.markAttendanceBtn.classList.remove('enabled');
         elements.checkLocation.style.display = 'none';
@@ -600,14 +676,31 @@
         reader.readAsDataURL(file);
       }
     });
+    elements.bikeReading.addEventListener('input', () => {
+      const value = elements.bikeReading.value.trim();
+      if (value && !/^(0|[1-9]\d*)$/.test(value)) {
+        elements.bikeReading.setCustomValidity("Bike Reading must contain only numbers (0 or positive integers).");
+      } else {
+        elements.bikeReading.setCustomValidity("");
+      }
+    });
     elements.markAttendanceBtn.onclick = async () => {
       if (elements.markAttendanceBtn.disabled || isUploading) return;
       if (!elements.status.value) {
-        alert('Please select attendance status');
+        showToast('Please select attendance status');
         return;
       }
       if (!userEmailValue) {
-        alert('Please sign in');
+        showToast('Please sign in');
+        return;
+      }
+      if (todayAttendanceCount >= 4) {
+        showToast('You have done for the day!');
+        return;
+      }
+      const bikeReadingVal = elements.bikeReading.value.trim();
+      if (bikeReadingVal && !/^(0|[1-9]\d*)$/.test(bikeReadingVal)) {
+        showToast('Bike Reading must contain only numbers (0 or positive integers).');
         return;
       }
       try {
@@ -621,7 +714,7 @@
         elements.markAttendanceBtn.onclick = captureAndSend;
       } catch (err) {
         console.error('Camera error:', err);
-        alert('Camera access denied or unavailable: ' + err.message);
+        showToast('Camera access denied or unavailable: ' + err.message);
       }
     };
     function captureAndSend() {
@@ -648,7 +741,7 @@
     }
     async function sendAttendance() {
       if (!lastDataUrl) {
-        alert('Please capture selfie first');
+        showToast('Please capture selfie first');
         return;
       }
       isUploading = true;
@@ -656,7 +749,7 @@
       elements.markAttendanceBtn.disabled = true;
       elements.markAttendanceBtn.classList.remove('enabled');
       const statusVal = elements.status.value;
-      const remarksVal = elements.remarks.value.trim() || "N/A";
+      const bikeReadingVal = elements.bikeReading.value.trim() || "N/A";
       const bikePhotoFile = elements.bikePhoto.files[0];
       let bikePhotoData = null;
       if (bikePhotoFile) {
@@ -665,14 +758,14 @@
       const payload = {
         name: userEmailValue,
         status: statusVal,
-        remarks: remarksVal,
+        remarks: bikeReadingVal,
         imageBase64: lastDataUrl,
         bikePhotoBase64: bikePhotoData || null,
         location: currentLocation || "",
         verificationMessage: verificationMessage || ""
       };
       try {
-        await fetch(SCRIPT_URL, {
+        const response = await fetch(SCRIPT_URL, {
           method: "POST",
           mode: "no-cors",
           headers: { "Content-Type": "application/json" },
@@ -685,13 +778,14 @@
           `Attendance recorded!`;
         elements.statusMsg.className = 'result success';
         elements.status.selectedIndex = 0;
-        elements.remarks.value = '';
+        elements.bikeReading.value = '';
         elements.bikePhoto.value = '';
         elements.previewArea.innerHTML = '';
         elements.bikePreviewArea.innerHTML = '';
         lastDataUrl = null;
         elements.markAttendanceBtn.textContent = 'Click to mark attendance';
-        updateButtonState();
+        todayAttendanceCount++;
+        updateAttendanceOptions();
       } catch (err) {
         console.error('Upload error:', err);
         elements.statusMsg.style.display = 'block';
@@ -753,6 +847,9 @@
       try {
         const response = await fetch(`${SCRIPT_URL}?action=getAttendance&email=${encodeURIComponent(userEmailValue)}`);
         attendanceData = await response.json();
+        if (attendanceData.length > 0) {
+          elements.userEmail.textContent = attendanceData[0][1]; // Use name from first row
+        }
         renderAttendanceTable('All');
         elements.attendanceModal.style.display = 'flex';
       } catch (err) {
@@ -763,6 +860,44 @@
     elements.attendanceFilter.addEventListener('change', (e) => {
       renderAttendanceTable(e.target.value);
     });
+    function groupByDate(data) {
+      const groups = new Map();
+      data.forEach(row => {
+        const tsStr = row[0];
+        const ts = new Date(tsStr);
+        const dateKey = ts.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        if (!groups.has(dateKey)) {
+          groups.set(dateKey, {
+            dutyStart: null,
+            lunchStart: null,
+            lunchDone: null,
+            dutyOff: null,
+            dutyStartReading: null,
+            dutyOffReading: null,
+            dutyStartBikeUrl: null,
+            dutyOffBikeUrl: null,
+            tsMap: new Map()
+          });
+        }
+        const type = row[2];
+        const time = ts.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+        const group = groups.get(dateKey);
+        if (type === 'Duty start') {
+          group.dutyStart = time;
+          group.dutyStartReading = row[3] !== "N/A" ? parseInt(row[3]) : null;
+          group.dutyStartBikeUrl = row[5] || null;
+        }
+        if (type === 'Lunch start') group.lunchStart = time;
+        if (type === 'Lunch done') group.lunchDone = time;
+        if (type === 'Duty off') {
+          group.dutyOff = time;
+          group.dutyOffReading = row[3] !== "N/A" ? parseInt(row[3]) : null;
+          group.dutyOffBikeUrl = row[5] || null;
+        }
+        group.tsMap.set(type, ts);
+      });
+      return groups;
+    }
     function renderAttendanceTable(filter) {
       const tbody = elements.attendanceTable.querySelector('tbody');
       tbody.innerHTML = '';
@@ -781,9 +916,16 @@
           lunchStart: null,
           lunchDone: null,
           dutyOff: null,
+          dutyStartReading: null,
+          dutyOffReading: null,
+          dutyStartBikeUrl: null,
+          dutyOffBikeUrl: null,
           tsMap: new Map()
         };
         const attendance = computeAttendance(group);
+        const bikeRunning = (group.dutyStartReading != null && group.dutyOffReading != null)
+          ? (group.dutyOffReading - group.dutyStartReading) : '--';
+        const bikeUrl = group.dutyOffBikeUrl || group.dutyStartBikeUrl || '--';
         if (filter === 'All' || attendance === filter) {
           rows.push({
             date: dateKey,
@@ -791,7 +933,9 @@
             lunchStart: group.lunchStart || '--',
             lunchDone: group.lunchDone || '--',
             dutyOff: group.dutyOff || '--',
-            attendance
+            attendance,
+            bikeRunning,
+            bikeUrl
           });
         }
       });
@@ -805,60 +949,31 @@
           <td>${row.lunchDone}</td>
           <td>${row.dutyOff}</td>
           <td>${row.attendance}</td>
+          <td>${row.bikeRunning}</td>
+          <td>${row.bikeUrl === '--' ? '--' : `<a href="${row.bikeUrl}" target="_blank">View</a>`}</td>
         `;
         tbody.appendChild(tr);
       });
     }
-    function groupByDate(data) {
-      const groups = new Map();
-      data.forEach(row => {
-        const tsStr = row[0];
-        const ts = new Date(tsStr);
-        const dateKey = ts.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        if (!groups.has(dateKey)) {
-          groups.set(dateKey, { dutyStart: null, lunchStart: null, lunchDone: null, dutyOff: null, tsMap: new Map() });
-        }
-        const type = row[2];
-        const time = ts.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
-        const group = groups.get(dateKey);
-        if (type === 'Duty start') group.dutyStart = time;
-        if (type === 'Lunch start') group.lunchStart = time;
-        if (type === 'Lunch done') group.lunchDone = time;
-        if (type === 'Duty off') group.dutyOff = time;
-        group.tsMap.set(type, ts);
-      });
-      return groups;
-    }
-    // ---------- UPDATED computeAttendance (only this function changed) ----------
     function computeAttendance(group) {
-      // Check which timestamps exist
       const hasDutyStart = !!group.tsMap.get('Duty start');
       const hasDutyOff = !!group.tsMap.get('Duty off');
       const hasLunchStart = !!group.tsMap.get('Lunch start');
       const hasLunchDone = !!group.tsMap.get('Lunch done');
-      // No punches at all -> Off
       if (!hasDutyStart && !hasDutyOff && !hasLunchStart && !hasLunchDone) {
         return 'Off';
       }
-      // Incomplete attendance cases:
-      // - Duty pair incomplete (one exists without the other)
       if ((hasDutyStart && !hasDutyOff) || (!hasDutyStart && hasDutyOff)) {
         return 'Incomplete attendance';
       }
-      // - Lunch pair incomplete (one exists without the other)
       if ((hasLunchStart && !hasLunchDone) || (!hasLunchStart && hasLunchDone)) {
         return 'Incomplete attendance';
       }
-      // By now dutyStart && dutyOff exist (otherwise would have returned above).
       const dutyStartTs = group.tsMap.get('Duty start');
       const dutyOffTs = group.tsMap.get('Duty off');
       if (!dutyStartTs || !dutyOffTs) {
-        // Safety fallback
         return 'Incomplete attendance';
       }
-      // totalHours calculation:
-      // if lunch both present -> subtract lunch duration
-      // if lunch absent -> use dutyOff - dutyStart
       let totalHours = (dutyOffTs - dutyStartTs) / 3600000;
       if (hasLunchStart && hasLunchDone) {
         const lunchStartTs = group.tsMap.get('Lunch start');
@@ -868,16 +983,13 @@
           totalHours = totalHours - lunchHours;
         }
       }
-      // If total hours is zero or negative, treat as Off (or could be invalid data)
       if (!(totalHours > 0)) {
         return 'Off';
       }
-      // Classification rules
       if (totalHours >= 8.5) return 'Full day';
       if (totalHours >= 7.5 && totalHours < 8.5) return 'Late';
       return 'Half day';
     }
-    // ---------------------------------------------------------------------------
     window.onload = () => {
       google.accounts.id.initialize({
         client_id: '415169964515-vlf28tsj228j6dma3ot6s10eeudhkas2.apps.googleusercontent.com',
@@ -889,7 +1001,7 @@
       google.accounts.id.renderButton(
         document.querySelector('.g_id_signin'),
         { theme: 'outline', size: 'large', type: 'standard' }
-      ); // Render the button manually
+      );
     };
   </script>
 </body>
