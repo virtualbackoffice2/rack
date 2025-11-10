@@ -109,7 +109,6 @@
     const tbody = document.querySelector('#dataTable tbody');
     const selWindow = document.getElementById('selWindow');
     const selPon = document.getElementById('selPon');
-
     function showSpinner() { spinner.style.display = 'flex'; document.body.classList.add('disabled'); }
     function hideSpinner() { spinner.style.display = 'none'; document.body.classList.remove('disabled'); }
     function showToast(message) {
@@ -118,7 +117,6 @@
       toast.className = 'show';
       setTimeout(() => { toast.className = ''; }, 3000);
     }
-
     // JSONP GET helper
     function jsonpGet(url, timeoutMs = 10000) {
       return new Promise((resolve, reject) => {
@@ -146,7 +144,6 @@
         document.head.appendChild(script);
       });
     }
-
     // Fetch data from both endpoints
     async function fetchData() {
       showSpinner();
@@ -172,7 +169,6 @@
         hideSpinner();
       }
     }
-
     // POST helper
     function postToGAS(obj, sheetId) {
       const gasUrl = Object.values(GAS_URLS).find(g => g.sheetId === sheetId).url;
@@ -203,7 +199,6 @@
           });
       }).finally(() => hideSpinner());
     }
-
     function updateBaseFiltered() {
       switch (currentMode) {
         case 'offline':
@@ -221,7 +216,6 @@
       populateWindowPon();
       applyAllFilters();
     }
-
     function populateWindowPon() {
       const windows = new Set();
       const ponsForWindow = {};
@@ -241,7 +235,6 @@
       });
       fillPonOptions(selWindow.value);
     }
-
     function fillPonOptions(windowName) {
       const map = selWindow._ponsMap || {};
       const set = windowName ? (map[windowName] || new Set()) : new Set(Object.values(map).flatMap(s => Array.from(s)));
@@ -253,7 +246,6 @@
         if (opt.value === selectedPon) selPon.value = selectedPon;
       });
     }
-
     function applyAllFilters() {
       const win = selWindow.value;
       const pon = selPon.value;
@@ -261,18 +253,48 @@
       const mobile = document.getElementById('searchMobile').value.trim().toLowerCase();
       const name = document.getElementById('searchName').value.trim().toLowerCase();
       const mac = document.getElementById('searchMac').value.trim().toLowerCase();
-      filtered = baseFiltered.filter(r => {
-        if (win && win !== '') { const v = (r['Window'] || r['window'] || '').toString(); if (v !== win) return false }
-        if (pon) { const v = (r['NMID'] || r['C'] || '').toString(); if (v !== pon) return false }
-        if (userId && userId.length >= 3) { const v = (r['Users'] || r['N'] || '').toString().toLowerCase(); if (!v.includes(userId)) return false }
-        if (mobile && mobile.length >= 3) { const v1 = (r['Last called no'] || r['AC'] || '').toString().toLowerCase(); const v2 = (r['Number'] || r['P'] || '').toString().toLowerCase(); if (!v1.includes(mobile) && !v2.includes(mobile)) return false }
-        if (name && name.length >= 3) { const v = (r['Name'] || r['O'] || '').toString().toLowerCase(); if (!v.includes(name)) return false }
-        if (mac && mac.length >= 3) { const v1 = (r['MAC'] || r['U'] || '').toString().toLowerCase(); const v2 = (r['Serial'] || r['V'] || '').toString().toLowerCase(); if (!v1.includes(mac) && !v2.includes(mac)) return false }
-        return true;
+      
+      // Start with baseFiltered for Window and PON filters
+      let tempFiltered = baseFiltered;
+      if (win && win !== '') {
+        tempFiltered = tempFiltered.filter(r => {
+          const v = (r['Window'] || r['window'] || '').toString();
+          return v === win;
+        });
+      }
+      if (pon) {
+        tempFiltered = tempFiltered.filter(r => {
+          const v = (r['NMID'] || r['C'] || '').toString();
+          return v === pon;
+        });
+      }
+      
+      // Apply User ID, Mobile, Name, and Mac/Serial filters on rawRows
+      filtered = rawRows.filter(r => {
+        if (userId && userId.length >= 3) {
+          const v = (r['Users'] || r['N'] || '').toString().toLowerCase();
+          if (!v.includes(userId)) return false;
+        }
+        if (mobile && mobile.length >= 3) {
+          const v1 = (r['Last called no'] || r['AC'] || '').toString().toLowerCase();
+          const v2 = (r['Number'] || r['P'] || '').toString().toLowerCase();
+          if (!v1.includes(mobile) && !v2.includes(mobile)) return false;
+        }
+        if (name && name.length >= 3) {
+          const v = (r['Name'] || r['O'] || '').toString().toLowerCase();
+          if (!v.includes(name)) return false;
+        }
+        if (mac && mac.length >= 3) {
+          const v1 = (r['MAC'] || r['U'] || '').toString().toLowerCase();
+          const v2 = (r['Serial'] || r['V'] || '').toString().toLowerCase();
+          if (!v1.includes(mac) && !v2.includes(mac)) return false;
+        }
+        // If the row is in tempFiltered (after Window/PON filters), include it
+        return tempFiltered.some(fr => fr['Users'] === r['Users'] && fr['NMID'] === r['NMID'] && fr['source'] === r['source']);
       });
+      
       renderTable();
     }
-
     function renderTable() {
       tbody.innerHTML = '';
       document.getElementById('userCount').innerText = filtered.length;
@@ -326,16 +348,13 @@
       document.querySelectorAll('.remove-btn').forEach(b => b.addEventListener('click', onRemoveClick));
       document.querySelectorAll('.remark-input').forEach(i => i.addEventListener('change', onRemarkChange));
     }
-
     function keyOrAlt(obj, key) {
       const map = { 'NMID': 'C', 'Users': 'N', 'Drops': 'AB' };
       return map[key] || key;
     }
-
     function onRemarkChange(e) {
       // No auto-save; saved with mark action
     }
-
     function onMarkClick(e) {
       const uid = e.target.dataset.uid;
       const source = e.target.dataset.source;
@@ -361,7 +380,6 @@
         showToast('Error marking complain: ' + err.message);
       });
     }
-
     function onRemoveClick(e) {
       const uid = e.target.dataset.uid;
       const source = e.target.dataset.source;
@@ -384,7 +402,6 @@
         showToast('Error removing complain: ' + err.message);
       });
     }
-
     function formatTimestamp(input) {
       if (!input) return '';
       // Handle custom format like "1-Nov [19:18]O1I5P2"
@@ -423,7 +440,6 @@
       const s = String(d.getSeconds()).padStart(2, '0');
       return `${M}/${D}/${Y} ${H}:${m}:${s}`;
     }
-
     // CSV download
     document.getElementById('btnDownloadCsv').addEventListener('click', () => {
       const rows = Array.from(document.querySelectorAll('#dataTable tbody tr'));
@@ -447,7 +463,6 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url; a.download = 'complains.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
     });
-
     // Screenshot download
     document.getElementById('btnScreenshotDownload').addEventListener('click', async () => {
       showSpinner();
@@ -488,7 +503,6 @@
       }
       hideSpinner();
     });
-
     // Sorting toggles
     document.querySelectorAll('th.sortable').forEach(th => {
       th.addEventListener('click', () => {
@@ -497,12 +511,10 @@
         renderTable();
       });
     });
-
     // Helper utils
     function escapeHtml(s) { if (s == null) return ''; return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
     function cssEscape(s) { return String(s).replace(/(["'\\])/g, '\\$1'); }
     function escapeCsv(s) { if (s == null) return '""'; s = String(s).replace(/"/g, '""'); return '"' + s + '"'; }
-
     // Initialize
     fetchData();
     document.getElementById('btnComplains').addEventListener('click', () => {
