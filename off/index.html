@@ -253,24 +253,9 @@
       const mobile = document.getElementById('searchMobile').value.trim().toLowerCase();
       const name = document.getElementById('searchName').value.trim().toLowerCase();
       const mac = document.getElementById('searchMac').value.trim().toLowerCase();
-      
-      // Start with baseFiltered for Window and PON filters
-      let tempFiltered = baseFiltered;
-      if (win && win !== '') {
-        tempFiltered = tempFiltered.filter(r => {
-          const v = (r['Window'] || r['window'] || '').toString();
-          return v === win;
-        });
-      }
-      if (pon) {
-        tempFiltered = tempFiltered.filter(r => {
-          const v = (r['NMID'] || r['C'] || '').toString();
-          return v === pon;
-        });
-      }
-      
-      // Apply User ID, Mobile, Name, and Mac/Serial filters on rawRows
-      filtered = rawRows.filter(r => {
+
+      // 1. First, filter rawRows based on User ID, Mobile, Name, and Mac/Serial
+      let searchFiltered = rawRows.filter(r => {
         if (userId && userId.length >= 3) {
           const v = (r['Users'] || r['N'] || '').toString().toLowerCase();
           if (!v.includes(userId)) return false;
@@ -289,16 +274,52 @@
           const v2 = (r['Serial'] || r['V'] || '').toString().toLowerCase();
           if (!v1.includes(mac) && !v2.includes(mac)) return false;
         }
-        // If the row is in tempFiltered (after Window/PON filters), include it
-        return tempFiltered.some(fr => fr['Users'] === r['Users'] && fr['NMID'] === r['NMID'] && fr['source'] === r['source']);
+        return true;
       });
-      
+
+      // 2. If no search inputs are provided, use baseFiltered (mode-based)
+      if (!userId && !mobile && !name && !mac) {
+        filtered = baseFiltered;
+      } else {
+        filtered = searchFiltered;
+      }
+
+      // 3. Apply Window and PON filters (always)
+      if (win && win !== '') {
+        filtered = filtered.filter(r => {
+          const v = (r['Window'] || r['window'] || '').toString();
+          return v === win;
+        });
+      }
+      if (pon) {
+        filtered = filtered.filter(r => {
+          const v = (r['NMID'] || r['C'] || '').toString();
+          return v === pon;
+        });
+      }
+
       renderTable();
     }
     function renderTable() {
       tbody.innerHTML = '';
-      document.getElementById('userCount').innerText = filtered.length;
       let rowsToRender = filtered.slice();
+
+      // Apply mode-based filtering only when no search inputs are provided
+      if (!document.getElementById('searchUser').value.trim() &&
+          !document.getElementById('searchMobile').value.trim() &&
+          !document.getElementById('searchName').value.trim() &&
+          !document.getElementById('searchMac').value.trim()) {
+        if (currentMode === 'offline') {
+          rowsToRender = rowsToRender.filter(r => (r['Downs'] || r['T'] || '').toString().trim() !== '');
+        } else if (currentMode === 'complains') {
+          rowsToRender = rowsToRender.filter(r => (r['Ticket'] || r['X'] || '').toString().trim() !== '');
+        } else if (currentMode === 'drops') {
+          rowsToRender = rowsToRender.filter(r => (r['Drops'] || r['AB'] || '').toString().trim() !== '');
+        }
+      }
+
+      document.getElementById('userCount').innerText = rowsToRender.length;
+
       if (currentSort.key) {
         rowsToRender.sort((a, b) => {
           const ka = (a[currentSort.key] || a[keyOrAlt(a, currentSort.key)] || '').toString();
