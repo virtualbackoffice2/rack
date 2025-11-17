@@ -8,10 +8,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <!-- ============================================= -->
-    <!--                INLINE CSS START               -->
+    <!--                INLINE CSS (Original Style)    -->
     <!-- ============================================= -->
     <style>
-        body        body {
+        body {
             font-family: 'Roboto', sans-serif;
             margin: 0;
             padding: 0;
@@ -19,6 +19,13 @@
             color: #333;
             overflow-x: hidden;
             box-sizing: border-box;
+        }
+
+        h2 {
+            text-align: center;
+            margin: 10px 0;
+            font-size: 1.3rem;
+            color: #2c3e50;
         }
 
         #matrixHolder {
@@ -75,35 +82,55 @@
             background-color: #e0e4e8;
         }
 
-        .onStatus { color: green; }
-        .offStatus { color: red; }
+        .onStatus {
+            color: green;
+        }
+
+        .offStatus {
+            color: red;
+        }
 
         #loadingOverlay {
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 255, 255, 0.9);
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
             z-index: 1000;
         }
 
         .spinner {
-            border: 3px solid rgba(0,0,0,0.1);
+            border: 3px solid rgba(0, 0, 0, 0.1);
             border-left-color: #3498db;
             border-radius: 50%;
-            width: 24px; height: 24px;
+            width: 24px;
+            height: 24px;
             animation: spin 1s linear infinite;
         }
 
-        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
 
         #userModal {
             display: none;
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
-            justify-content: center; align-items: center;
-            z-index: 1000; padding: 8px; box-sizing: border-box;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            overflow: auto;
+            padding: 8px;
+            box-sizing: border-box;
         }
 
         #userModalContent {
@@ -115,94 +142,180 @@
             max-height: 80vh;
             overflow-y: auto;
             position: relative;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
         }
 
         .closeBtn {
-            position: absolute; top: 8px; right: 8px;
-            font-size: 1.3rem; cursor: pointer; color: #aaa;
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 1.3rem;
+            cursor: pointer;
+            color: #aaa;
         }
 
-        .closeBtn:hover { color: #333; }
+        .closeBtn:hover {
+            color: #333;
+        }
 
         #modalButtons {
-            display: flex; justify-content: space-around; margin-bottom: 8px;
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 8px;
         }
 
         #modalButtons button {
-            padding: 6px 12px; background: #3498db; color: #fff;
-            border: none; border-radius: 4px; cursor: pointer;
-            font-size: 0.8rem; transition: background 0.3s ease;
+            padding: 6px 12px;
+            background: #3498db;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: background 0.3s ease;
         }
 
-        #modalButtons button:hover { background: #2980b9; }
+        #modalButtons button:hover {
+            background: #2980b9;
+        }
 
-        #modalTitle { font-size: 1.1rem; margin: 0 0 4px 0; }
-        #modalSubTitle { font-size: 0.9rem; color: #555; margin-bottom: 8px; }
+        #modalTitle {
+            font-size: 1.1rem;
+            margin: 0 0 4px 0;
+        }
 
-        #userDetails table { width: 100%; border-collapse: collapse; }
+        #modalSubTitle {
+            font-size: 0.9rem;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        #userDetails table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
         #userDetails th, #userDetails td {
-            padding: 5px; border: 1px solid #ddd; font-size: 0.8rem;
+            padding: 5px;
+            border: 1px solid #ddd;
+            font-size: 0.8rem;
         }
-        #userDetails th { background: #f0f2f5; font-size: 0.8rem; }
 
-        .red { background-color: red !important; color: white !important; }
-        .pink { background-color: pink !important; }
-        .blink { animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0.5; } }
+        #userDetails th {
+            background: #f0f2f5;
+            font-size: 0.8rem;
+        }
+
+        .red {
+            background-color: red !important;
+            color: white !important;
+        }
+
+        .pink {
+            background-color: pink !important;
+        }
+
+        .blink {
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0.5; }
+        }
 
         #toast {
-            visibility: hidden; min-width: 220px; margin-left: -110px;
-            background-color: #333; color: #fff; text-align: center;
-            border-radius: 2px; padding: 12px; position: fixed;
-            z-index: 1; left: 50%; bottom: 30px; font-size: 0.9rem;
+            visibility: hidden;
+            min-width: 220px;
+            margin-left: -110px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 2px;
+            padding: 12px;
+            position: fixed;
+            z-index: 1;
+            left: 50%;
+            bottom: 30px;
+            font-size: 0.9rem;
         }
-        #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
-        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
-        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
 
-        /* Mobile: 45% Smaller */
+        #toast.show {
+            visibility: visible;
+            animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        }
+
+        @keyframes fadein {
+            from {bottom: 0; opacity: 0;}
+            to {bottom: 30px; opacity: 1;}
+        }
+
+        @keyframes fadeout {
+            from {bottom: 30px; opacity: 1;}
+            to {bottom: 0; opacity: 0;}
+        }
+
+        /* Mobile: 45% Scale */
         @media (max-width: 768px) {
+            h2 {
+                font-size: 1.1rem;
+            }
             #matrixHolder {
                 padding: 4px;
                 transform: scale(0.55);
                 transform-origin: top left;
-                width: 182%; /* 100 / 0.55 */
+                width: 182%;
             }
-            #matrixTable {
-                font-size: 0.68rem;
+            th, td {
+                padding: 4px;
+                font-size: 0.75rem;
             }
-            th, td { padding: 3px; font-size: 0.68rem; }
-            .separator th, .olt-name { font-size: 0.76rem; }
-            #userModalContent { padding: 8px; max-width: 95%; max-height: 90vh; }
-            #modalTitle { font-size: 1rem; }
-            #modalSubTitle { font-size: 0.8rem; }
-            #userDetails th, #userDetails td { font-size: 0.65rem; padding: 2px; }
-            #modalButtons { flex-direction: column; gap: 8px; }
-            #modalButtons button { width: 100%; font-size: 0.73rem; padding: 5px 8px; }
+            .separator th {
+                font-size: 0.8rem;
+            }
+            .olt-name {
+                font-size: 0.8rem;
+            }
+            #userModalContent {
+                padding: 8px;
+                max-height: 90vh;
+                max-width: 95%;
+            }
+            #modalButtons {
+                flex-direction: column;
+                gap: 8px;
+            }
+            #modalButtons button {
+                width: 100%;
+                font-size: 0.75rem;
+                padding: 6px;
+            }
+            #modalTitle {
+                font-size: 1rem;
+            }
+            #modalSubTitle {
+                font-size: 0.8rem;
+            }
+            #userDetails th, #userDetails td {
+                font-size: 0.7rem;
+                padding: 3px;
+            }
+            table {
+                margin-bottom: 100px;
+            }
         }
     </style>
-    <!-- ============================================= -->
-    <!--                 INLINE CSS END                -->
-    <!-- ============================================= -->
 </head>
 <body>
 
-    <!-- ============================================= -->
-    <!--                LOADING OVERLAY                -->
-    <!-- ============================================= -->
+    <!-- Loading Overlay -->
     <div id="loadingOverlay">
         <div class="spinner"></div>
         <p>Loading rack...</p>
     </div>
 
-    <!-- ============================================= -->
-    <!--                MAIN TABLE HOLDER              -->
-    <!-- ============================================= -->
+    <!-- Table Holder -->
     <div id="matrixHolder">
         <table id="matrixTable">
-
-            <!-- Header Row -->
             <tr>
                 <th></th>
                 <th></th>
@@ -220,47 +333,50 @@
             <tr>
                 <th rowspan="4" class="olt-name">O1I5</th>
                 <th>Users</th>
-                <td id="pon1-O1I5" class="clickable">Loading...</td>
-                <td id="pon2-O1I5" class="clickable">Loading...</td>
-                <td id="pon3-O1I5" class="clickable">Loading...</td>
-                <td id="pon4-O1I5" class="clickable">Loading...</td>
-                <td id="pon5-O1I5" class="clickable">Loading...</td>
-                <td id="pon6-O1I5" class="clickable">Loading...</td>
-                <td id="pon7-O1I5" class="clickable">Loading...</td>
-                <td id="pon8-O1I5" class="clickable">Loading...</td>
-                <td id="oltTotal-O1I5" class="clickable">Loading...</td>
+                <td id="pon1-O1I5" class="clickable">Hourglass</td>
+                <td id="pon2-O1I5" class="clickable">Hourglass</td>
+                <td id="pon3-O1I5" class="clickable">Hourglass</td>
+                <td id="pon4-O1I5" class="clickable">Hourglass</td>
+                <td id="pon5-O1I5" class="clickable">Hourglass</td>
+                <td id="pon6-O1I5" class="clickable">Hourglass</td>
+                <td id="pon7-O1I5" class="clickable">Hourglass</td>
+                <td id="pon8-O1I5" class="clickable">Hourglass</td>
+                <td id="oltTotal-O1I5" class="clickable">Hourglass</td>
             </tr>
-            <tr><th>Offline</th>
-                <td id="off1-O1I5" class="clickable">Loading...</td>
-                <td id="off2-O1I5" class="clickable">Loading...</td>
-                <td id="off3-O1I5" class="clickable">Loading...</td>
-                <td id="off4-O1I5" class="clickable">Loading...</td>
-                <td id="off5-O1I5" class="clickable">Loading...</td>
-                <td id="off6-O1I5" class="clickable">Loading...</td>
-                <td id="off7-O1I5" class="clickable">Loading...</td>
-                <td id="off8-O1I5" class="clickable">Loading...</td>
-                <td id="oltOffTotal-O1I5" class="clickable">Loading...</td>
+            <tr>
+                <th>Offline</th>
+                <td id="off1-O1I5" class="clickable">Hourglass</td>
+                <td id="off2-O1I5" class="clickable">Hourglass</td>
+                <td id="off3-O1I5" class="clickable">Hourglass</td>
+                <td id="off4-O1I5" class="clickable">Hourglass</td>
+                <td id="off5-O1I5" class="clickable">Hourglass</td>
+                <td id="off6-O1I5" class="clickable">Hourglass</td>
+                <td id="off7-O1I5" class="clickable">Hourglass</td>
+                <td id="off8-O1I5" class="clickable">Hourglass</td>
+                <td id="oltOffTotal-O1I5" class="clickable">Hourglass</td>
             </tr>
-            <tr><th>Ticket</th>
-                <td id="tick1-O1I5" class="clickable">Loading...</td>
-                <td id="tick2-O1I5" class="clickable">Loading...</td>
-                <td id="tick3-O1I5" class="clickable">Loading...</td>
-                <td id="tick4-O1I5" class="clickable">Loading...</td>
-                <td id="tick5-O1I5" class="clickable">Loading...</td>
-                <td id="tick6-O1I5" class="clickable">Loading...</td>
-                <td id="tick7-O1I5" class="clickable">Loading...</td>
-                <td id="tick8-O1I5" class="clickable">Loading...</td>
-                <td id="oltTickTotal-O1I5" class="clickable">Loading...</td>
+            <tr>
+                <th>Ticket</th>
+                <td id="tick1-O1I5" class="clickable">Hourglass</td>
+                <td id="tick2-O1I5" class="clickable">Hourglass</td>
+                <td id="tick3-O1I5" class="clickable">Hourglass</td>
+                <td id="tick4-O1I5" class="clickable">Hourglass</td>
+                <td id="tick5-O1I5" class="clickable">Hourglass</td>
+                <td id="tick6-O1I5" class="clickable">Hourglass</td>
+                <td id="tick7-O1I5" class="clickable">Hourglass</td>
+                <td id="tick8-O1I5" class="clickable">Hourglass</td>
+                <td id="oltTickTotal-O1I5" class="clickable">Hourglass</td>
             </tr>
-            <tr><th>Line</th>
-                <td id="stat1-O1I5">Loading...</td>
-                <td id="stat2-O1I5">Loading...</td>
-                <td id="stat3-O1I5">Loading...</td>
-                <td id="stat4-O1I5">Loading...</td>
-                <td id="stat5-O1I5">Loading...</td>
-                <td id="stat6-O1I5">Loading...</td>
-                <td id="stat7-O1I5">Loading...</td>
-                <td id="stat8-O1I5">Loading...</td>
+            <tr>
+                <th>Line</th>
+                <td id="stat1-O1I5">Hourglass</td>
+                <td id="stat2-O1I5">Hourglass</td>
+                <td id="stat3-O1I5">Hourglass</td>
+                <td id="stat4-O1I5">Hourglass</td>
+                <td id="stat5-O1I5">Hourglass</td>
+                <td id="stat6-O1I5">Hourglass</td>
+                <td id="stat7-O1I5">Hourglass</td>
+                <td id="stat8-O1I5">Hourglass</td>
                 <td></td>
             </tr>
 
@@ -268,47 +384,50 @@
             <tr>
                 <th rowspan="4" class="olt-name">O2I6</th>
                 <th>Users</th>
-                <td id="pon1-O2I6" class="clickable">Loading...</td>
-                <td id="pon2-O2I6" class="clickable">Loading...</td>
-                <td id="pon3-O2I6" class="clickable">Loading...</td>
-                <td id="pon4-O2I6" class="clickable">Loading...</td>
-                <td id="pon5-O2I6" class="clickable">Loading...</td>
-                <td id="pon6-O2I6" class="clickable">Loading...</td>
-                <td id="pon7-O2I6" class="clickable">Loading...</td>
-                <td id="pon8-O2I6" class="clickable">Loading...</td>
-                <td id="oltTotal-O2I6" class="clickable">Loading...</td>
+                <td id="pon1-O2I6" class="clickable">Hourglass</td>
+                <td id="pon2-O2I6" class="clickable">Hourglass</td>
+                <td id="pon3-O2I6" class="clickable">Hourglass</td>
+                <td id="pon4-O2I6" class="clickable">Hourglass</td>
+                <td id="pon5-O2I6" class="clickable">Hourglass</td>
+                <td id="pon6-O2I6" class="clickable">Hourglass</td>
+                <td id="pon7-O2I6" class="clickable">Hourglass</td>
+                <td id="pon8-O2I6" class="clickable">Hourglass</td>
+                <td id="oltTotal-O2I6" class="clickable">Hourglass</td>
             </tr>
-            <tr><th>Offline</th>
-                <td id="off1-O2I6" class="clickable">Loading...</td>
-                <td id="off2-O2I6" class="clickable">Loading...</td>
-                <td id="off3-O2I6" class="clickable">Loading...</td>
-                <td id="off4-O2I6" class="clickable">Loading...</td>
-                <td id="off5-O2I6" class="clickable">Loading...</td>
-                <td id="off6-O2I6" class="clickable">Loading...</td>
-                <td id="off7-O2I6" class="clickable">Loading...</td>
-                <td id="off8-O2I6" class="clickable">Loading...</td>
-                <td id="oltOffTotal-O2I6" class="clickable">Loading...</td>
+            <tr>
+                <th>Offline</th>
+                <td id="off1-O2I6" class="clickable">Hourglass</td>
+                <td id="off2-O2I6" class="clickable">Hourglass</td>
+                <td id="off3-O2I6" class="clickable">Hourglass</td>
+                <td id="off4-O2I6" class="clickable">Hourglass</td>
+                <td id="off5-O2I6" class="clickable">Hourglass</td>
+                <td id="off6-O2I6" class="clickable">Hourglass</td>
+                <td id="off7-O2I6" class="clickable">Hourglass</td>
+                <td id="off8-O2I6" class="clickable">Hourglass</td>
+                <td id="oltOffTotal-O2I6" class="clickable">Hourglass</td>
             </tr>
-            <tr><th>Ticket</th>
-                <td id="tick1-O2I6" class="clickable">Loading...</td>
-                <td id="tick2-O2I6" class="clickable">Loading...</td>
-                <td id="tick3-O2I6" class="clickable">Loading...</td>
-                <td id="tick4-O2I6" class="clickable">Loading...</td>
-                <td id="tick5-O2I6" class="clickable">Loading...</td>
-                <td id="tick6-O2I6" class="clickable">Loading...</td>
-                <td id="tick7-O2I6" class="clickable">Loading...</td>
-                <td id="tick8-O2I6" class="clickable">Loading...</td>
-                <td id="oltTickTotal-O2I6" class="clickable">Loading...</td>
+            <tr>
+                <th>Ticket</th>
+                <td id="tick1-O2I6" class="clickable">Hourglass</td>
+                <td id="tick2-O2I6" class="clickable">Hourglass</td>
+                <td id="tick3-O2I6" class="clickable">Hourglass</td>
+                <td id="tick4-O2I6" class="clickable">Hourglass</td>
+                <td id="tick5-O2I6" class="clickable">Hourglass</td>
+                <td id="tick6-O2I6" class="clickable">Hourglass</td>
+                <td id="tick7-O2I6" class="clickable">Hourglass</td>
+                <td id="tick8-O2I6" class="clickable">Hourglass</td>
+                <td id="oltTickTotal-O2I6" class="clickable">Hourglass</td>
             </tr>
-            <tr><th>Line</th>
-                <td id="stat1-O2I6">Loading...</td>
-                <td id="stat2-O2I6">Loading...</td>
-                <td id="stat3-O2I6">Loading...</td>
-                <td id="stat4-O2I6">Loading...</td>
-                <td id="stat5-O2I6">Loading...</td>
-                <td id="stat6-O2I6">Loading...</td>
-                <td id="stat7-O2I6">Loading...</td>
-                <td id="stat8-O2I6">Loading...</td>
+            <tr>
+                <th>Line</th>
+                <td id="stat1-O2I6">Hourglass</td>
+                <td id="stat2-O2I6">Hourglass</td>
+                <td id="stat3-O2I6">Hourglass</td>
+                <td id="stat4-O2I6">Hourglass</td>
+                <td id="stat5-O2I6">Hourglass</td>
+                <td id="stat6-O2I6">Hourglass</td>
+                <td id="stat7-O2I6">Hourglass</td>
+                <td id="stat8-O2I6">Hourglass</td>
                 <td></td>
             </tr>
 
@@ -316,34 +435,37 @@
             <tr>
                 <th rowspan="4" class="olt-name">O3I7</th>
                 <th>Users</th>
-                <td id="pon1-O3I7" class="clickable">Loading...</td>
-                <td id="pon2-O3I7" class="clickable">Loading...</td>
-                <td id="pon3-O3I7" class="clickable">Loading...</td>
-                <td id="pon4-O3I7" class="clickable">Loading...</td>
+                <td id="pon1-O3I7" class="clickable">Hourglass</td>
+                <td id="pon2-O3I7" class="clickable">Hourglass</td>
+                <td id="pon3-O3I7" class="clickable">Hourglass</td>
+                <td id="pon4-O3I7" class="clickable">Hourglass</td>
                 <td colspan="4"></td>
-                <td id="oltTotal-O3I7" class="clickable">Loading...</td>
+                <td id="oltTotal-O3I7" class="clickable">Hourglass</td>
             </tr>
-            <tr><th>Offline</th>
-                <td id="off1-O3I7" class="clickable">Loading...</td>
-                <td id="off2-O3I7" class="clickable">Loading...</td>
-                <td id="off3-O3I7" class="clickable">Loading...</td>
-                <td id="off4-O3I7" class="clickable">Loading...</td>
+            <tr>
+                <th>Offline</th>
+                <td id="off1-O3I7" class="clickable">Hourglass</td>
+                <td id="off2-O3I7" class="clickable">Hourglass</td>
+                <td id="off3-O3I7" class="clickable">Hourglass</td>
+                <td id="off4-O3I7" class="clickable">Hourglass</td>
                 <td colspan="4"></td>
-                <td id="oltOffTotal-O3I7" class="clickable">Loading...</td>
+                <td id="oltOffTotal-O3I7" class="clickable">Hourglass</td>
             </tr>
-            <tr><th>Ticket</th>
-                <td id="tick1-O3I7" class="clickable">Loading...</td>
-                <td id="tick2-O3I7" class="clickable">Loading...</td>
-                <td id="tick3-O3I7" class="clickable">Loading...</td>
-                <td id="tick4-O3I7" class="clickable">Loading...</td>
+            <tr>
+                <th>Ticket</th>
+                <td id="tick1-O3I7" class="clickable">Hourglass</td>
+                <td id="tick2-O3I7" class="clickable">Hourglass</td>
+                <td id="tick3-O3I7" class="clickable">Hourglass</td>
+                <td id="tick4-O3I7" class="clickable">Hourglass</td>
                 <td colspan="4"></td>
-                <td id="oltTickTotal-O3I7" class="clickable">Loading...</td>
+                <td id="oltTickTotal-O3I7" class="clickable">Hourglass</td>
             </tr>
-            <tr><th>Line</th>
-                <td id="stat1-O3I7">Loading...</td>
-                <td id="stat2-O3I7">Loading...</td>
-                <td id="stat3-O3I7">Loading...</td>
-                <td id="stat4-O3I7">Loading...</td>
+            <tr>
+                <th>Line</th>
+                <td id="stat1-O3I7">Hourglass</td>
+                <td id="stat2-O3I7">Hourglass</td>
+                <td id="stat3-O3I7">Hourglass</td>
+                <td id="stat4-O3I7">Hourglass</td>
                 <td colspan="4"></td>
                 <td></td>
             </tr>
@@ -357,34 +479,37 @@
             <tr>
                 <th rowspan="4" class="olt-name">O4I9</th>
                 <th>Users</th>
-                <td id="pon1-O4I9" class="clickable">Loading...</td>
-                <td id="pon2-O4I9" class="clickable">Loading...</td>
-                <td id="pon3-O4I9" class="clickable">Loading...</td>
-                <td id="pon4-O4I9" class="clickable">Loading...</td>
+                <td id="pon1-O4I9" class="clickable">Hourglass</td>
+                <td id="pon2-O4I9" class="clickable">Hourglass</td>
+                <td id="pon3-O4I9" class="clickable">Hourglass</td>
+                <td id="pon4-O4I9" class="clickable">Hourglass</td>
                 <td colspan="4"></td>
-                <td id="oltTotal-O4I9" class="clickable">Loading...</td>
+                <td id="oltTotal-O4I9" class="clickable">Hourglass</td>
             </tr>
-            <tr><th>Offline</th>
-                <td id="off1-O4I9" class="clickable">Loading...</td>
-                <td id="off2-O4I9" class="clickable">Loading...</td>
-                <td id="off3-O4I9" class="clickable">Loading...</td>
-                <td id="off4-O4I9" class="clickable">Loading...</td>
+            <tr>
+                <th>Offline</th>
+                <td id="off1-O4I9" class="clickable">Hourglass</td>
+                <td id="off2-O4I9" class="clickable">Hourglass</td>
+                <td id="off3-O4I9" class="clickable">Hourglass</td>
+                <td id="off4-O4I9" class="clickable">Hourglass</td>
                 <td colspan="4"></td>
-                <td id="oltOffTotal-O4I9" class="clickable">Loading...</td>
+                <td id="oltOffTotal-O4I9" class="clickable">Hourglass</td>
             </tr>
-            <tr><th>Ticket</th>
-                <td id="tick1-O4I9" class="clickable">Loading...</td>
-                <td id="tick2-O4I9" class="clickable">Loading...</td>
-                <td id="tick3-O4I9" class="clickable">Loading...</td>
-                <td id="tick4-O4I9" class="clickable">Loading...</td>
+            <tr>
+                <th>Ticket</th>
+                <td id="tick1-O4I9" class="clickable">Hourglass</td>
+                <td id="tick2-O4I9" class="clickable">Hourglass</td>
+                <td id="tick3-O4I9" class="clickable">Hourglass</td>
+                <td id="tick4-O4I9" class="clickable">Hourglass</td>
                 <td colspan="4"></td>
-                <td id="oltTickTotal-O4I9" class="clickable">Loading...</td>
+                <td id="oltTickTotal-O4I9" class="clickable">Hourglass</td>
             </tr>
-            <tr><th>Line</th>
-                <td id="stat1-O4I9">Loading...</td>
-                <td id="stat2-O4I9">Loading...</td>
-                <td id="stat3-O4I9">Loading...</td>
-                <td id="stat4-O4I9">Loading...</td>
+            <tr>
+                <th>Line</th>
+                <td id="stat1-O4I9">Hourglass</td>
+                <td id="stat2-O4I9">Hourglass</td>
+                <td id="stat3-O4I9">Hourglass</td>
+                <td id="stat4-O4I9">Hourglass</td>
                 <td colspan="4"></td>
                 <td></td>
             </tr>
@@ -393,56 +518,56 @@
             <tr>
                 <th rowspan="4" class="olt-name">O5I2</th>
                 <th>Users</th>
-                <td id="pon1-O5I2" class="clickable">Loading...</td>
-                <td id="pon2-O5I2" class="clickable">Loading...</td>
-                <td id="pon3-O5I2" class="clickable">Loading...</td>
-                <td id="pon4-O5I2" class="clickable">Loading...</td>
-                <td id="pon5-O5I2" class="clickable">Loading...</td>
-                <td id="pon6-O5I2" class="clickable">Loading...</td>
-                <td id="pon7-O5I2" class="clickable">Loading...</td>
-                <td id="pon8-O5I2" class="clickable">Loading...</td>
-                <td id="oltTotal-O5I2" class="clickable">Loading...</td>
+                <td id="pon1-O5I2" class="clickable">Hourglass</td>
+                <td id="pon2-O5I2" class="clickable">Hourglass</td>
+                <td id="pon3-O5I2" class="clickable">Hourglass</td>
+                <td id="pon4-O5I2" class="clickable">Hourglass</td>
+                <td id="pon5-O5I2" class="clickable">Hourglass</td>
+                <td id="pon6-O5I2" class="clickable">Hourglass</td>
+                <td id="pon7-O5I2" class="clickable">Hourglass</td>
+                <td id="pon8-O5I2" class="clickable">Hourglass</td>
+                <td id="oltTotal-O5I2" class="clickable">Hourglass</td>
             </tr>
-            <tr><th>Offline</th>
-                <td id="off1-O5I2" class="clickable">Loading...</td>
-                <td id="off2-O5I2" class="clickable">Loading...</td>
-                <td id="off3-O5I2" class="clickable">Loading...</td>
-                <td id="off4-O5I2" class="clickable">Loading...</td>
-                <td id="off5-O5I2" class="clickable">Loading...</td>
-                <td id="off6-O5I2" class="clickable">Loading...</td>
-                <td id="off7-O5I2" class="clickable">Loading...</td>
-                <td id="off8-O5I2" class="clickable">Loading...</td>
-                <td id="oltOffTotal-O5I2" class="clickable">Loading...</td>
+            <tr>
+                <th>Offline</th>
+                <td id="off1-O5I2" class="clickable">Hourglass</td>
+                <td id="off2-O5I2" class="clickable">Hourglass</td>
+                <td id="off3-O5I2" class="clickable">Hourglass</td>
+                <td id="off4-O5I2" class="clickable">Hourglass</td>
+                <td id="off5-O5I2" class="clickable">Hourglass</td>
+                <td id="off6-O5I2" class="clickable">Hourglass</td>
+                <td id="off7-O5I2" class="clickable">Hourglass</td>
+                <td id="off8-O5I2" class="clickable">Hourglass</td>
+                <td id="oltOffTotal-O5I2" class="clickable">Hourglass</td>
             </tr>
-            <tr><th>Ticket</th>
-                <td id="tick1-O5I2" class="clickable">Loading...</td>
-                <td id="tick2-O5I2" class="clickable">Loading...</td>
-                <td id="tick3-O5I2" class="clickable">Loading...</td>
-                <td id="tick4-O5I2" class="clickable">Loading...</td>
-                <td id="tick5-O5I2" class="clickable">Loading...</td>
-                <td id="tick6-O5I2" class="clickable">Loading...</td>
-                <td id="tick7-O5I2" class="clickable">Loading...</td>
-                <td id="tick8-O5I2" class="clickable">Loading...</td>
-                <td id="oltTickTotal-O5I2" class="clickable">Loading...</td>
+            <tr>
+                <th>Ticket</th>
+                <td id="tick1-O5I2" class="clickable">Hourglass</td>
+                <td id="tick2-O5I2" class="clickable">Hourglass</td>
+                <td id="tick3-O5I2" class="clickable">Hourglass</td>
+                <td id="tick4-O5I2" class="clickable">Hourglass</td>
+                <td id="tick5-O5I2" class="clickable">Hourglass</td>
+                <td id="tick6-O5I2" class="clickable">Hourglass</td>
+                <td id="tick7-O5I2" class="clickable">Hourglass</td>
+                <td id="tick8-O5I2" class="clickable">Hourglass</td>
+                <td id="oltTickTotal-O5I2" class="clickable">Hourglass</td>
             </tr>
-            <tr><th>Line</th>
-                <td id="stat1-O5I2">Loading...</td>
-                <td id="stat2-O5I2">Loading...</td>
-                <td id="stat3-O5I2">Loading...</td>
-                <td id="stat4-O5I2">Loading...</td>
-                <td id="stat5-O5I2">Loading...</td>
-                <td id="stat6-O5I2">Loading...</td>
-                <td id="stat7-O5I2">Loading...</td>
-                <td id="stat8-O5I2">Loading...</td>
+            <tr>
+                <th>Line</th>
+                <td id="stat1-O5I2">Hourglass</td>
+                <td id="stat2-O5I2">Hourglass</td>
+                <td id="stat3-O5I2">Hourglass</td>
+                <td id="stat4-O5I2">Hourglass</td>
+                <td id="stat5-O5I2">Hourglass</td>
+                <td id="stat6-O5I2">Hourglass</td>
+                <td id="stat7-O5I2">Hourglass</td>
+                <td id="stat8-O5I2">Hourglass</td>
                 <td></td>
             </tr>
-
         </table>
     </div>
 
-    <!-- ============================================= -->
-    <!--                   USER MODAL                  -->
-    <!-- ============================================= -->
+    <!-- Modal -->
     <div id="userModal">
         <div id="userModalContent">
             <span class="closeBtn" onclick="closeModal()">×</span>
@@ -455,13 +580,11 @@
         </div>
     </div>
 
-    <!-- ============================================= -->
-    <!--                     TOAST                     -->
-    <!-- ============================================= -->
+    <!-- Toast -->
     <div id="toast">No user in list!!</div>
 
     <!-- ============================================= -->
-    <!--                JAVASCRIPT START               -->
+    <!--                   JAVASCRIPT                  -->
     <!-- ============================================= -->
     <script>
         const WEB_APP_URLS = [
@@ -482,43 +605,43 @@
                 { id: 'O5I2', pons: 8 }
             ];
 
-            // Initialize oltData
-            olts.forEach(oltObj => {
+            for (let oltObj of olts) {
                 for (let i = 1; i <= oltObj.pons; i++) {
                     const nmid = oltObj.id + 'P' + i;
                     oltData[nmid] = { all: [], off: [], tick: [], drops: [] };
                 }
-            });
+            }
 
             try {
-                const fetchPromises = WEB_APP_URLS.map((url, index) =>
-                    fetch(url + '?token=' + encodeURIComponent(TOKEN))
-                        .then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`))
-                        .then(d => ({ rows: d.rows || [], dashboardA7: d.dashboardA7, sourceIndex: index }))
-                        .catch(() => ({ rows: [], dashboardA7: null, sourceIndex: index }))
+                const results = await Promise.all(
+                    WEB_APP_URLS.map(url =>
+                        fetch(url + '?token=' + encodeURIComponent(TOKEN))
+                            .then(r => r.ok ? r.json() : Promise.reject('Network error'))
+                            .then(d => ({ rows: d.rows || [], dashboardA7: d.dashboardA7 }))
+                            .catch(() => ({ rows: [], dashboardA7: null }))
+                    )
                 );
-                const results = await Promise.all(fetchPromises);
 
-                let allRows = [], dashboardA7Values = [];
-                results.forEach(r => {
-                    allRows.push(...r.rows);
-                    if (r.dashboardA7 != null) dashboardA7Values.push(+r.dashboardA7);
-                });
-                dashboardA7 = dashboardA7Values.length ? Math.min(...dashboardA7Values) : null;
+                const allRows = results.flatMap(r => r.rows);
+                dashboardA7 = Math.min(...results.map(r => r.dashboardA7).filter(v => v != null)) || null;
 
-                olts.forEach(oltObj => {
+                for (let oltObj of olts) {
                     const olt = oltObj.id, maxPon = oltObj.pons;
                     let total = 0, offTotal = 0, tickTotal = 0;
+
                     for (let i = 1; i <= maxPon; i++) {
                         const nmid = olt + 'P' + i;
                         let filtered = results[0].rows.filter(r => r['NMID'] === nmid && r['Users']);
                         if (olt === 'O5I2') {
-                            filtered = filtered.concat(results[1].rows.filter(r => (r['ID']||'').substring(0,7).toUpperCase() === nmid && r['Users']));
+                            filtered = filtered.concat(
+                                results[1].rows.filter(r => (r['ID']||'').substring(0,7).toUpperCase() === nmid && r['Users'])
+                            );
                         }
+
                         const allRowsFiltered = filtered;
-                        const offRows = filtered.filter(r => r['Downs'] && r['Downs'] !== '');
-                        const tickRows = filtered.filter(r => r['Ticket'] && r['Ticket'] !== '');
-                        const dropTimes = filtered.map(r => r['Drops']).filter(v => v && v !== '');
+                        const offRows = filtered.filter(r => r['Downs']);
+                        const tickRows = filtered.filter(r => r['Ticket']);
+                        const dropTimes = filtered.map(r => r['Drops']).filter(Boolean);
 
                         oltData[nmid] = { all: allRowsFiltered, off: offRows, tick: tickRows, drops: dropTimes };
 
@@ -535,15 +658,16 @@
                         offTotal += offRows.length;
                         tickTotal += tickRows.length;
                     }
+
                     document.getElementById(`oltTotal-${olt}`).textContent = total;
                     document.getElementById(`oltOffTotal-${olt}`).textContent = offTotal;
                     document.getElementById(`oltTickTotal-${olt}`).textContent = tickTotal;
-                });
+                }
 
                 attachEventListeners();
                 document.getElementById('loadingOverlay').style.display = 'none';
             } catch (err) {
-                console.error('Load error:', err);
+                console.error('Error:', err);
                 olts.forEach(o => {
                     for (let i = 1; i <= o.pons; i++) {
                         document.getElementById(`pon${i}-${o.id}`).textContent = 'Error';
@@ -566,34 +690,17 @@
         }
 
         function attachEventListeners() {
-            const olts = [
-                { id: 'O1I5', pons: 8 },
-                { id: 'O2I6', pons: 8 },
-                { id: 'O3I7', pons: 4 },
-                { id: 'O4I9', pons: 4 },
-                { id: 'O5I2', pons: 8 }
-            ];
+            const olts = [ { id: 'O1I5', pons: 8 }, { id: 'O2I6', pons: 8 }, { id: 'O3I7', pons: 4 }, { id: 'O4I9', pons: 4 }, { id: 'O5I2', pons: 8 } ];
             olts.forEach(oltObj => {
-                const olt = oltObj.id, maxPon = oltObj.pons;
-                for (let i = 1; i <= maxPon; i++) {
-                    ['pon', 'off', 'tick'].forEach(prefix => {
-                        const el = document.getElementById(`${prefix}${i}-${olt}`);
-                        if (el) {
-                            el.onclick = () => {
-                                if (el.textContent === '0') showToast();
-                                else showUsers(prefix === 'pon' ? 'all' : prefix === 'off' ? 'off' : 'tick', `${olt}P${i}`, olt, `P${i}`);
-                            };
-                        }
+                for (let i = 1; i <= oltObj.pons; i++) {
+                    ['pon', 'off', 'tick'].forEach(p => {
+                        const el = document.getElementById(`${p}${i}-${oltObj.id}`);
+                        if (el) el.onclick = () => el.textContent === '0' ? showToast() : showUsers(p === 'pon' ? 'all' : p === 'off' ? 'off' : 'tick', `${oltObj.id}P${i}`, oltObj.id, `P${i}`);
                     });
                 }
-                ['Total', 'OffTotal', 'TickTotal'].forEach(suffix => {
-                    const el = document.getElementById(`olt${suffix}-${olt}`);
-                    if (el) {
-                        el.onclick = () => {
-                            if (el.textContent === '0') showToast();
-                            else showOltUsers(suffix === 'Total' ? 'all' : suffix === 'OffTotal' ? 'off' : 'tick', olt, maxPon);
-                        };
-                    }
+                ['Total', 'OffTotal', 'TickTotal'].forEach(s => {
+                    const el = document.getElementById(`olt${s}-${oltObj.id}`);
+                    if (el) el.onclick = () => el.textContent === '0' ? showToast() : showOltUsers(s === 'Total' ? 'all' : s === 'OffTotal' ? 'off' : 'tick', oltObj.id, oltObj.pons);
                 });
             });
         }
@@ -602,80 +709,65 @@
             const titles = { all: 'Users Details', off: 'Offline Users Details', tick: 'Ticket Users Details' };
             document.getElementById('modalTitle').textContent = titles[type];
             document.getElementById('modalSubTitle').textContent = `OLT: ${olt} PON: ${pon}`;
-            const users = (oltData[nmid] && oltData[nmid][type]) || [];
+            const users = oltData[nmid][type] || [];
             if (!users.length) return showToast();
 
             const details = document.getElementById('userDetails');
             details.innerHTML = '<table><thead><tr><th>Sn</th><th>Name</th><th>Number</th><th>Location</th><th>Address</th><th>Power</th><th>Remarks</th></tr></thead><tbody></tbody></table>';
-            const tbody = details.querySelector('tbody');
             users.forEach((r, i) => {
                 const tr = document.createElement('tr');
                 if (r['Ticket']) tr.classList.add('red', 'blink');
                 else if (r['Downs']) tr.classList.add('pink', 'blink');
                 const num = (r['Last called no'] || '').trim() || r['Number'] || '';
                 tr.innerHTML = `<td>${i+1}</td><td>${r['Name']||''}</td><td>${num}</td><td>${r['Location']||''}</td><td>${r['Address']||''}</td><td>${r['Power']||''}</td><td>${r['Remarks']||''}</td>`;
-                tbody.appendChild(tr);
+                details.querySelector('tbody').appendChild(tr);
             });
 
             const btns = document.getElementById('modalButtons');
             btns.innerHTML = '';
-
-            const dlBtn = document.createElement('button');
-            dlBtn.textContent = 'Download CSV';
-            dlBtn.onclick = () => {
-                let csv = 'Sn,Name,Number,Location,Address,Power,Remarks\n';
-                users.forEach((r, i) => {
-                    const num = (r['Last called no'] || '').trim() || r['Number'] || '';
-                    csv += [i+1, r['Name']||'', num, r['Location']||'', r['Address']||'', r['Power']||'', r['Remarks']||'']
-                        .map(v => `"${v.replace(/"/g, '""')}"`).join(',') + '\n';
-                });
-                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url; a.download = 'users.csv'; a.click();
-                URL.revokeObjectURL(url);
-            };
-            btns.appendChild(dlBtn);
-
-            const shareBtn = document.createElement('button');
-            shareBtn.textContent = 'Share Screenshot on WhatsApp';
-            shareBtn.onclick = () => {
-                html2canvas(document.getElementById('screenshotContent'), { scale: 2 }).then(canvas => {
-                    canvas.toBlob(blob => {
-                        const file = new File([blob], 'screenshot.png', { type: 'image/png' });
-                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                            navigator.share({ files: [file] }).catch(() => fallbackDownload(blob));
-                        } else {
-                            fallbackDownload(blob);
-                        }
-                        function fallbackDownload(b) {
-                            const url = URL.createObjectURL(b);
-                            const a = document.createElement('a');
-                            a.href = url; a.download = 'screenshot.png'; a.click();
-                            URL.revokeObjectURL(url);
-                        }
-                    });
-                }).catch(err => {
-                    console.error('Screenshot error:', err);
-                    alert('Failed to capture screenshot.');
-                });
-            };
-            btns.appendChild(shareBtn);
-
+            const dl = document.createElement('button'); dl.textContent = 'Download CSV'; dl.onclick = () => downloadCSV(users); btns.appendChild(dl);
+            const share = document.createElement('button'); share.textContent = 'Share Screenshot on WhatsApp'; share.onclick = () => shareScreenshot(); btns.appendChild(share);
             document.getElementById('userModal').style.display = 'flex';
         }
 
         function showOltUsers(type, olt, maxPon) {
-            const titles = { all: 'All Users Details', off: 'All Offline Users Details', tick: 'All Ticket Users Details' };
-            document.getElementById('modalTitle').textContent = titles[type];
-            document.getElementById('modalSubTitle').textContent = `OLT: ${olt}`;
-            let users = [];
+            const users = [];
             for (let i = 1; i <= maxPon; i++) {
                 const nmid = olt + 'P' + i;
                 if (oltData[nmid] && oltData[nmid][type]) users.push(...oltData[nmid][type]);
             }
             if (!users.length) return showToast();
             showUsers(type, null, olt, 'All');
+        }
+
+        function downloadCSV(users) {
+            let csv = 'Sn,Name,Number,Location,Address,Power,Remarks\n';
+            users.forEach((r, i) => {
+                const num = (r['Last called no'] || '').trim() || r['Number'] || '';
+                csv += [i+1, r['Name']||'', num, r['Location']||'', r['Address']||'', r['Power']||'', r['Remarks']||'']
+                    .map(v => `"${v.replace(/"/g, '""')}"`).join(',') + '\n';
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'users.csv';
+            a.click();
+        }
+
+        function shareScreenshot() {
+            html2canvas(document.getElementById('screenshotContent'), { scale: 2 }).then(canvas => {
+                canvas.toBlob(blob => {
+                    const file = new File([blob], 'screenshot.png', { type: 'image/png' });
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        navigator.share({ files: [file] }).catch(() => fallback(blob));
+                    } else fallback(blob);
+                    function fallback(b) {
+                        const url = URL.createObjectURL(b);
+                        const a = document.createElement('a');
+                        a.href = url; a.download = 'screenshot.png'; a.click();
+                    }
+                });
+            });
         }
 
         function closeModal() {
@@ -687,8 +779,5 @@
             setInterval(loadData, 30000);
         });
     </script>
-    <!-- ============================================= -->
-    <!--                 JAVASCRIPT END                -->
-    <!-- ============================================= -->
 </body>
 </html>
