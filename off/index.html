@@ -173,51 +173,7 @@ function showToast(message) {
   setTimeout(() => toast.classList.remove("show"), 3000);
 }
 
-  <!-- DRAWER (for mobile) -->
-  <div class="drawer" id="appDrawer" aria-hidden="true">
-    <div class="drawer-backdrop" id="drawerBackdrop"></div>
-    <aside class="drawer-panel" role="dialog" aria-label="Menu">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <strong style="font-size:1rem">Menu</strong>
-        <button id="btnCloseDrawer" aria-label="Close menu"
-          style="border:none;background:transparent;font-size:18px;cursor:pointer">✕</button>
-      </div>
-
-      <div class="controls">
-        <button id="m_btnComplains">Complains</button>
-        <button id="m_btnOffline">Offline</button>
-        <button id="m_btnDrops">Drops</button>
-        <button id="m_btnDownloadCsv">CSV</button>
-        <button id="m_btnScreenshot">Screenshot</button>
-      </div>
-
-      <hr style="margin:12px 0;border:none;border-top:1px solid #eef2f6">
-
-      <div class="filters">
-        <label style="font-weight:600">Window</label>
-        <select id="selWindow_mobile" placeholder="Select Window"></select>
-
-        <label style="font-weight:600">PON</label>
-        <select id="selPon_mobile" placeholder="Select PON"></select>
-
-        <label style="font-weight:600">User ID</label>
-        <input id="searchUser_mobile" placeholder="Enter User ID">
-
-        <label style="font-weight:600">Mobile No</label>
-        <input id="searchMobile_mobile" placeholder="Enter Mobile No">
-
-        <label style="font-weight:600">Name</label>
-        <input id="searchName_mobile" placeholder="Enter Name">
-
-        <label style="font-weight:600">Mac/Serial</label>
-        <input id="searchMac_mobile" placeholder="Enter Mac/Serial">
-
-        <div class="user-count">User count:
-          <span id="userCount">0</span>
-        </div>
-      </div>
-    </aside>
-  </div>
+  
 
   <!-- Desktop inline filters -->
   <div style="padding:12px 20px;">
