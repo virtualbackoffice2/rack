@@ -186,19 +186,16 @@
         const results = await Promise.all(
           Object.entries(GAS_URLS).map(async ([key, {url}]) => {
             const fullUrl = `${url}?token=${TOKEN}`;
-            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(fullUrl)}`;
-            const response = await fetch(proxyUrl, {
-              method: 'GET',
-              cache: 'no-cache'
-            });
-            if (!response.ok) throw new Error(`Proxy failed for ${key}`);
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(fullUrl)}`;
+            const response = await fetch(proxyUrl, {method: 'GET', cache: 'no-cache'});
+            if (!response.ok) throw new Error(`Failed to load ${key}: ${response.status}`);
             const text = await response.text();
             let data;
             try {
               data = JSON.parse(text);
-            } catch (e) {
-              // If not JSON, try to parse as CSV or log - simple fallback
-              data = { rows: parseLogText(text) || [] };
+            } catch (parseErr) {
+              console.warn('JSON parse failed for', key, ':', parseErr.message);
+              data = { rows: [] }; // Fallback to empty
             }
             return { key, rows: data.rows || [], dashboardA7: data.dashboardA7 || null };
           })
@@ -207,30 +204,17 @@
         results.forEach(result => {
           rawRows.push(...(result.rows || []).map(row => ({ ...row, source: result.key })));
         });
+        if (rawRows.length === 0) throw new Error('No data received');
         updateBaseFiltered();
+        showToast(`${rawRows.length} records loaded`);
       }catch(e){
         console.error('Data load failed:', e);
-        showToast('Loading failed - Check connection');
-        // Fallback to empty data
-        rawRows = [];
+        showToast('Loading failed - Check connection or try refresh');
+        rawRows = []; // Ensure empty to avoid errors
         updateBaseFiltered();
       }finally{
         hideSpinner();
       }
-    }
-    // Simple log parser fallback
-    function parseLogText(text) {
-      // Basic split by lines or commas, assume key=value format
-      const lines = text.split('\n').filter(line => line.trim());
-      const rows = [];
-      lines.forEach(line => {
-        const pairs = line.split(',').map(p => {
-          const [k, v] = p.split('=').map(s => s.trim().replace(/"/g, ''));
-          return { [k]: v };
-        });
-        if (pairs.length > 0) rows.push(Object.assign({}, ...pairs));
-      });
-      return rows;
     }
     function updateBaseFiltered(){
       switch(currentMode){
@@ -260,7 +244,7 @@
       applyAllFilters();
     }
     function applyAllFilters(){
-      let data = rawRows.slice(); // Full data search
+      let data = rawRows.slice();
       const win = selWindow.value || selWindow_mobile.value || '';
       const pon = selPon.value || selPon_mobile.value || '';
       const user = (document.getElementById('searchUser').value || document.getElementById('searchUser_mobile').value || '').trim().toLowerCase();
@@ -380,24 +364,32 @@
       hideSpinner();showToast('Screenshot saved');
     }
     document.addEventListener('DOMContentLoaded',()=>{
-      // Menu handlers first - ensure they work even if data fails
+      // Menu handlers - independent of data
       const drawer = document.getElementById('appDrawer');
-      document.getElementById('btnHamburger').onclick = () => drawer.classList.add('open');
-      document.getElementById('btnCloseDrawer').onclick = () => drawer.classList.remove('open');
-      document.getElementById('drawerBackdrop').onclick = () => drawer.classList.remove('open');
+      const hamburger = document.getElementById('btnHamburger');
+      const closeBtn = document.getElementById('btnCloseDrawer');
+      const backdrop = document.getElementById('drawerBackdrop');
+      if (hamburger) hamburger.onclick = () => drawer.classList.add('open');
+      if (closeBtn) closeBtn.onclick = () => drawer.classList.remove('open');
+      if (backdrop) backdrop.onclick = () => drawer.classList.remove('open');
       
+      // Load data
       fetchData();
       
+      // Filter handlers
       selWindow.onchange=()=>{fillPonOptions(selWindow.value);selWindow_mobile.value=selWindow.value;applyAllFilters();}
       selPon.onchange=applyAllFilters;
       selWindow_mobile.onchange=()=>{selWindow.value=selWindow_mobile.value;fillPonOptions(selWindow.value);applyAllFilters();}
       selPon_mobile.onchange=()=>{selPon.value=selPon_mobile.value;applyAllFilters();}
       ['searchUser','searchMobile','searchName','searchMac'].forEach(id=>{
         const desk=document.getElementById(id),mob=document.getElementById(id+'_mobile');
-        desk.oninput=mob.oninput=()=>applyAllFilters();
-        mob.oninput=()=>{desk.value=mob.value;}
+        if (desk) desk.oninput=()=>applyAllFilters();
+        if (mob) {
+          mob.oninput=()=>applyAllFilters();
+          mob.oninput=()=>{if (desk) desk.value=mob.value;}
+        }
       });
-      window.onresize=()=>window.innerWidth>880&&drawer.classList.remove('open');
+      window.onresize=()=>{if (window.innerWidth>880) drawer.classList.remove('open');};
     });
   </script>
 </body>
