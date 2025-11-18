@@ -358,9 +358,15 @@ async function loadData() {
         oltData[nmid] = { all: filtered, off: offRows, tick: tickRows, drops: dropTimes };
 
         // Update table
-        document.getElementById(`pon${i}-${olt}`).textContent = filtered.length;
-        document.getElementById(`off${i}-${olt}`).textContent = offRows.length;
-        document.getElementById(`tick${i}-${olt}`).textContent = tickRows.length;
+document.getElementById(`pon${i}-${olt}`).textContent = 
+    filtered.length === 0 ? "" : filtered.length;
+
+document.getElementById(`off${i}-${olt}`).textContent = 
+    offRows.length === 0 ? "" : offRows.length;
+
+document.getElementById(`tick${i}-${olt}`).textContent = 
+    tickRows.length === 0 ? "" : tickRows.length;
+
 
     
 
@@ -381,9 +387,15 @@ async function loadData() {
         tickTotal += tickRows.length;
       }
 
-      document.getElementById(`oltTotal-${olt}`).textContent = total;
-      document.getElementById(`oltOffTotal-${olt}`).textContent = offTotal;
-      document.getElementById(`oltTickTotal-${olt}`).textContent = tickTotal;
+document.getElementById(`oltTotal-${olt}`).textContent =
+    total === 0 ? "" : total;
+
+document.getElementById(`oltOffTotal-${olt}`).textContent =
+    offTotal === 0 ? "" : offTotal;
+
+document.getElementById(`oltTickTotal-${olt}`).textContent =
+    tickTotal === 0 ? "" : tickTotal;
+
     }
 
     attachEventListeners();
