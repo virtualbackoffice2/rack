@@ -165,52 +165,49 @@
   <td colspan="4"></td>
   <td></td>
 </tr>
-<!-- Separator for Sarosa Distance OLT -->
+<!-- Separator for Budheshwar Window -->
 <tr class="separator">
-  <th colspan="11">Sarosa Distance OLT</th>
+  <th colspan="11">Budheshwar Window</th>
 </tr>
-<!-- O4I9 -->
+<!-- O4I5 -->
 <tr>
-  <th rowspan="4" class="olt-name">O4I9</th>
+  <th rowspan="4" class="olt-name">O4I5</th>
   <th>Users</th>
-  <td id="pon1-O4I9" class="clickable">⏳</td>
-  <td id="pon2-O4I9" class="clickable">⏳</td>
-  <td id="pon3-O4I9" class="clickable">⏳</td>
-  <td id="pon4-O4I9" class="clickable">⏳</td>
+  <td id="pon1-O4I5" class="clickable">⏳</td>
+  <td id="pon2-O4I5" class="clickable">⏳</td>
+  <td id="pon3-O4I5" class="clickable">⏳</td>
+  <td id="pon4-O4I5" class="clickable">⏳</td>
   <td colspan="4"></td>
-  <td id="oltTotal-O4I9" class="clickable">⏳</td>
+  <td id="oltTotal-O4I5" class="clickable">⏳</td>
 </tr>
 <tr>
   <th>Offline</th>
-  <td id="off1-O4I9" class="clickable">⏳</td>
-  <td id="off2-O4I9" class="clickable">⏳</td>
-  <td id="off3-O4I9" class="clickable">⏳</td>
-  <td id="off4-O4I9" class="clickable">⏳</td>
+  <td id="off1-O4I5" class="clickable">⏳</td>
+  <td id="off2-O4I5" class="clickable">⏳</td>
+  <td id="off3-O4I5" class="clickable">⏳</td>
+  <td id="off4-O4I5" class="clickable">⏳</td>
   <td colspan="4"></td>
   <td id="oltOffTotal-O4I9" class="clickable">⏳</td>
 </tr>
 <tr>
   <th>Ticket</th>
-  <td id="tick1-O4I9" class="clickable">⏳</td>
-  <td id="tick2-O4I9" class="clickable">⏳</td>
-  <td id="tick3-O4I9" class="clickable">⏳</td>
-  <td id="tick4-O4I9" class="clickable">⏳</td>
+  <td id="tick1-O4I5" class="clickable">⏳</td>
+  <td id="tick2-O4I5" class="clickable">⏳</td>
+  <td id="tick3-O4I5" class="clickable">⏳</td>
+  <td id="tick4-O4I5" class="clickable">⏳</td>
   <td colspan="4"></td>
   <td id="oltTickTotal-O4I9" class="clickable">⏳</td>
 </tr>
 <tr>
   <th>Line</th>
-  <td id="stat1-O4I9">⏳</td>
-  <td id="stat2-O4I9">⏳</td>
-  <td id="stat3-O4I9">⏳</td>
-  <td id="stat4-O4I9">⏳</td>
+  <td id="stat1-O4I5">⏳</td>
+  <td id="stat2-O4I5">⏳</td>
+  <td id="stat3-O4I5">⏳</td>
+  <td id="stat4-O4I5">⏳</td>
   <td colspan="4"></td>
   <td></td>
 </tr>
-<!-- Separator for Budheshwar window -->
-<tr class="separator">
-  <th colspan="11">Budheshwar Window (Includes Suny Data)</th>
-</tr>
+
 <!-- O5I2 -->
 <tr>
   <th rowspan="4" class="olt-name">O5I2</th>
@@ -292,7 +289,7 @@ async function loadData() {
     { id: 'O1I5', pons: 8 },
     { id: 'O2I6', pons: 8 },
     { id: 'O3I7', pons: 4 },
-    { id: 'O4I9', pons: 4 },
+    { id: 'O4I5', pons: 4 },
     { id: 'O5I2', pons: 8 }
   ];
 
@@ -359,7 +356,7 @@ async function loadData() {
         // Filter from second source (extract NMID from ID for O5I2 only)
 // Naya rule: O1I5, O2I6, O3I7 → Sheet 1 se
 // O4I9 aur O5I2 → Sheet 2 se
-if (olt === 'O4I9' || olt === 'O5I2') {
+if (olt === 'O4I5' || olt === 'O5I2') {
           const source2Filtered = results[1].rows.filter(r => {
             const fullId = r['ID'] || '';
             const extractedNmid = fullId.substring(0, 7).toUpperCase();
