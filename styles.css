@@ -278,5 +278,6 @@ h2 {
   100% { opacity: 1; }
 }
 
-.onStatus::before   { content: "Green Circle"; }
-.offStatus::before  { content: "Red Circle"; animation: blink 1s infinite; }
+/* .onStatus::before   { content: "Green Circle"; } */
+/* .offStatus::before  { content: "Red Circle"; animation: blink 1s infinite; } */
+
