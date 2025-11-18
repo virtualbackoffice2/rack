@@ -357,7 +357,9 @@ async function loadData() {
         filtered.push(...source1Filtered);
 
         // Filter from second source (extract NMID from ID for O5I2 only)
-        if (olt === 'O5I2') {
+// Naya rule: O1I5, O2I6, O3I7 → Sheet 1 se
+// O4I9 aur O5I2 → Sheet 2 se
+if (olt === 'O4I9' || olt === 'O5I2') {
           const source2Filtered = results[1].rows.filter(r => {
             const fullId = r['ID'] || '';
             const extractedNmid = fullId.substring(0, 7).toUpperCase();
