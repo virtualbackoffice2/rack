@@ -350,18 +350,20 @@ async function loadData() {
         let filtered = [];
 
         // Filter from first source (standard NMID)
-        const source1Filtered = results[0].rows.filter(r => r['NMID'] === nmid && r['Users']);
+        const source1Filtered = results[0].rows.filter(r => {
+          return (r['NMID'] || '').trim().toUpperCase() === nmid && r['Users'];
+        });
         filtered.push(...source1Filtered);
 
         // Filter from second source (extract NMID from ID for O5I2 only)
 // Naya rule: O1I5, O2I6, O3I7 → Sheet 1 se
 // O4I9 aur O5I2 → Sheet 2 se
-if (olt === 'O4I5' || olt === 'O5I2') {
+        if (olt === 'O4I5' || olt === 'O5I2') {
           const source2Filtered = results[1].rows.filter(r => {
-            const fullId = r['ID'] || '';
-            const extractedNmid = fullId.substring(0, 7).toUpperCase();
-            return extractedNmid === nmid && r['Users'];
+            return (r['NMID'] || '').trim().toUpperCase() === nmid && r['Users'];
           });
+          filtered.push(...source2Filtered);
+        }
           filtered.push(...source2Filtered);
           console.log(`O5I2P${i} from second source: ${source2Filtered.length} rows`);
         }
