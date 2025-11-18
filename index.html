@@ -293,7 +293,7 @@ async function loadData() {
     { id: 'O5I2', pons: 8 }
   ];
 
-  // Initialize oltData for all NMIDs
+  // Initialize oltData
   for (let oltObj of olts) {
     const olt = oltObj.id;
     const maxPon = oltObj.pons;
@@ -304,42 +304,30 @@ async function loadData() {
   }
 
   try {
-    // Fetch data from both URLs concurrently
     const fetchPromises = WEB_APP_URLS.map((url, index) =>
       fetch(url + '?token=' + encodeURIComponent(TOKEN))
-        .then(response => {
-          if (!response.ok) throw new Error(`Network response was not ok for URL ${index + 1}: ${response.statusText}`);
-          return response.json();
+        .then(r => {
+          if (!r.ok) throw new Error('Network error');
+          return r.json();
         })
-        .then(data => {
-          console.log(`Data from URL ${index + 1}: rows length = ${data.rows ? data.rows.length : 0}`);
-          if (data.error) throw new Error(`Error from URL ${index + 1}: ${data.error}`);
-          return { rows: data.rows || [], dashboardA7: data.dashboardA7, sourceIndex: index };
-        })
+        .then(data => ({ ...data, sourceIndex: index }))
         .catch(err => {
-          console.error(`Fetch error for URL ${index + 1}:`, err);
+          console.error('Fetch failed for URL ' + (index + 1), err);
           return { rows: [], dashboardA7: null, sourceIndex: index };
         })
     );
 
     const results = await Promise.all(fetchPromises);
-    let allRows = [];
-    let dashboardA7Values = [];
 
-    // Combine rows from both sources
-    results.forEach((result) => {
-      allRows.push(...result.rows);
-      if (result.dashboardA7 !== undefined && result.dashboardA7 !== null) {
-        dashboardA7Values.push(Number(result.dashboardA7));
+    let dashboardA7Values = [];
+    results.forEach(res => {
+      if (res.dashboardA7 !== null && res.dashboardA7 !== undefined) {
+        dashboardA7Values.push(Number(res.dashboardA7));
       }
     });
-
-    // Use the minimum dashboardA7 if available
     dashboardA7 = dashboardA7Values.length > 0 ? Math.min(...dashboardA7Values) : null;
-    console.log('Combined dashboardA7:', dashboardA7);
-    console.log('Total combined rows:', allRows.length);
 
-    // Process data for each OLT
+    // Process each OLT
     for (let oltObj of olts) {
       const olt = oltObj.id;
       const maxPon = oltObj.pons;
@@ -349,91 +337,72 @@ async function loadData() {
         const nmid = olt + 'P' + i;
         let filtered = [];
 
-        // Filter from first source (standard NMID)
-        const source1Filtered = results[0].rows.filter(r => {
-          return (r['NMID'] || '').trim().toUpperCase() === nmid && r['Users'];
-        });
-        filtered.push(...source1Filtered);
+        // Source 1 (Merotra)
+        const s1 = results[0].rows.filter(r => 
+          (r['NMID'] || '').trim().toUpperCase() === nmid && (r['Users'] || r['Users'] === 0)
+        );
+        filtered.push(...s1);
 
-        // Filter from second source (extract NMID from ID for O5I2 only)
-// Naya rule: O1I5, O2I6, O3I7 → Sheet 1 se
-// O4I9 aur O5I2 → Sheet 2 se
+        // Source 2 (Budheshwar) - only for O4I5 & O5I2
         if (olt === 'O4I5' || olt === 'O5I2') {
-          const source2Filtered = results[1].rows.filter(r => {
-            return (r['NMID'] || '').trim().toUpperCase() === nmid && r['Users'];
-          });
-          filtered.push(...source2Filtered);
-        }
-          filtered.push(...source2Filtered);
-          console.log(`O5I2P${i} from second source: ${source2Filtered.length} rows`);
+          const s2 = results[1].rows.filter(r => 
+            (r['NMID'] || '').trim().toUpperCase() === nmid && (r['Users'] || r['Users'] === 0)
+          );
+          filtered.push(...s2);
         }
 
-        const allRowsFiltered = filtered;
         const offRows = filtered.filter(r => r['Downs'] && r['Downs'] !== '');
         const tickRows = filtered.filter(r => r['Ticket'] && r['Ticket'] !== '');
         const dropTimes = filtered.map(r => r['Drops']).filter(v => v && v !== '');
 
-        console.log(`${nmid}: total users = ${allRowsFiltered.length}, offline = ${offRows.length}, tickets = ${tickRows.length}, drops = ${dropTimes.length}`);
+        oltData[nmid] = { all: filtered, off: offRows, tick: tickRows, drops: dropTimes };
 
-        // Update oltData
-        oltData[nmid] = { all: allRowsFiltered, off: offRows, tick: tickRows, drops: dropTimes };
-
-        // Update table cells
-        document.getElementById(`pon${i}-${olt}`).textContent = allRowsFiltered.length;
+        // Update table
+        document.getElementById(`pon${i}-${olt}`).textContent = filtered.length;
         document.getElementById(`off${i}-${olt}`).textContent = offRows.length;
         document.getElementById(`tick${i}-${olt}`).textContent = tickRows.length;
 
-        let statusCell = document.getElementById(`stat${i}-${olt}`);
-        let dropCount = dropTimes.length;
-        if (dashboardA7 !== null && !isNaN(dashboardA7)) {
-          let isOn = dropCount < dashboardA7;
-          statusCell.innerHTML = `<a href="${STATUS_LINK}" target="_self">${isOn ? '🟢' : '🔴'}</a>`;
-          statusCell.className = isOn ? "onStatus clickable" : "offStatus clickable";
+        const statusCell = document.getElementById(`stat${i}-${olt}`);
+        if (dashboardA7 !== null && dropTimes.length < dashboardA7) {
+          statusCell.innerHTML = `<a href="${STATUS_LINK}" target="_self">ON</a>`;
+          statusCell.className = "onStatus clickable";
         } else {
-          statusCell.textContent = "-";
-          statusCell.className = "";
+          statusCell.innerHTML = `<a href="${STATUS_LINK}" target="_self">OFF</a>`;
+          statusCell.className = "offStatus clickable";
         }
 
-        total += allRowsFiltered.length;
+        total += filtered.length;
         offTotal += offRows.length;
         tickTotal += tickRows.length;
       }
 
-      // Update total cells
       document.getElementById(`oltTotal-${olt}`).textContent = total;
       document.getElementById(`oltOffTotal-${olt}`).textContent = offTotal;
       document.getElementById(`oltTickTotal-${olt}`).textContent = tickTotal;
     }
 
-    // Re-attach event listeners
     attachEventListeners();
     document.getElementById('loadingOverlay').style.display = 'none';
+
   } catch (err) {
-    console.error('Fetch error:', err);
-    const olts = [
-      { id: 'O1I5', pons: 8 },
-      { id: 'O2I6', pons: 8 },
-      { id: 'O3I7', pons: 4 },
-      { id: 'O4I5', pons: 4 },
-      { id: 'O5I2', pons: 8 }
-    ];
+    console.error('LoadData Error:', err);
+    // Error handling - show Error in cells
     for (let oltObj of olts) {
       const olt = oltObj.id;
       const maxPon = oltObj.pons;
       for (let i = 1; i <= maxPon; i++) {
-        document.getElementById(`pon${i}-${olt}`).textContent = 'Error';
-        document.getElementById(`off${i}-${olt}`).textContent = 'Error';
-        document.getElementById(`tick${i}-${olt}`).textContent = 'Error';
+        document.getElementById(`pon${i}-${olt}`).textContent = 'Err';
+        document.getElementById(`off${i}-${olt}`).textContent = 'Err';
+        document.getElementById(`tick${i}-${olt}`).textContent = 'Err';
         document.getElementById(`stat${i}-${olt}`).textContent = '-';
       }
-      document.getElementById(`oltTotal-${olt}`).textContent = 'Error';
-      document.getElementById(`oltOffTotal-${olt}`).textContent = 'Error';
-      document.getElementById(`oltTickTotal-${olt}`).textContent = 'Error';
+      document.getElementById(`oltTotal-${olt}`).textContent = 'Err';
+      document.getElementById(`oltOffTotal-${olt}`).textContent = 'Err';
+      document.getElementById(`oltTickTotal-${olt}`).textContent = 'Err';
     }
     document.getElementById('loadingOverlay').style.display = 'none';
   }
 }
-
 function showToast() {
   const toast = document.getElementById('toast');
   toast.className = 'show';
