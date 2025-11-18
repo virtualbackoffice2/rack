@@ -173,7 +173,21 @@ h2 {
 }
 .pink { background-color: #ffebee; }
 .red { background-color: #ef5350; color: white; }
-.blink { animation: none; }
+.offStatus {
+  background-color: white;
+  color: #e74c3c;
+  font-weight: bold;
+  border-radius: 50%;
+  animation: blink 1s infinite;   /* ← Ye already hai, bas confirm kar lena */
+}
+
+.onStatus {
+  background-color: white;
+  color: #27ae60;
+  font-weight: bold;
+  border-radius: 50%;
+  animation: none;   /* Green ko blink nahi chahiye */
+}
 /* Loading Overlay */
 #loadingOverlay {
   position: fixed;
