@@ -362,18 +362,20 @@ async function loadData() {
         document.getElementById(`off${i}-${olt}`).textContent = offRows.length;
         document.getElementById(`tick${i}-${olt}`).textContent = tickRows.length;
 
-        const statusCell = document.getElementById(`stat${i}-${olt}`);
+    
+
+                const statusCell = document.getElementById(`stat${i}-${olt}`);
         if (dashboardA7 !== null && !isNaN(dashboardA7)) {
           const isOn = dropTimes.length < dashboardA7;
-          statusCell.innerHTML = `<a href="${STATUS_LINK}" target="_self">${isOn ? '🟢' : '🔴'}</a>`;
+          // Emoji direct text mein + link alag se wrap kar rahe hain
+          statusCell.innerHTML = `<a href="${STATUS_LINK}" target="_self" style="text-decoration:none;">${isOn ? '🟢' : '🔴'}</a>`;
           statusCell.className = isOn ? "onStatus clickable" : "offStatus clickable";
-          // Optional: agar OFF pe blinking chahiye to ye line uncomment kar dena
-          // if (!isOn) statusCell.classList.add('blink');
         } else {
           statusCell.textContent = '-';
           statusCell.className = "";
         }
 
+        
         total += filtered.length;
         offTotal += offRows.length;
         tickTotal += tickRows.length;
