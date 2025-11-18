@@ -280,13 +280,13 @@ h2 {
 
 @media (max-width: 768px) {
   table {
-    margin-bottom: 100px; /* Extra space at bottom for mobile */
+    margin-bottom: 20px; /* Extra space at bottom for mobile */
   }
 }
 
 @media (max-width: 768px) {
   body {
-    transform: scale(0.50);
+    transform: scale(0.40);
     transform-origin: top left;
     width: 200%;
   }
