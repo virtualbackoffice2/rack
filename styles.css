@@ -278,6 +278,18 @@ h2 {
   100% { opacity: 1; }
 }
 
-/* .onStatus::before   { content: "Green Circle"; } */
-/* .offStatus::before  { content: "Red Circle"; animation: blink 1s infinite; } */
+@media (max-width: 768px) {
+  table {
+    margin-bottom: 100px; /* Extra space at bottom for mobile */
+  }
+}
 
+@media (max-width: 768px) {
+  body {
+    transform: scale(0.50);
+    transform-origin: top left;
+    width: 200%;
+  }
+}
+
+}
