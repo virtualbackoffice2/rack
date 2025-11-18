@@ -286,9 +286,9 @@ h2 {
 
 @media (max-width: 768px) {
   body {
-    transform: scale(0.50);
+    transform: scale(0.43);
     transform-origin: top left;
-    width: 200%;
+    width: 233%;
   }
 }
 
