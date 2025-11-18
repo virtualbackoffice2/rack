@@ -277,3 +277,6 @@ h2 {
   50% { opacity: 0.3; }
   100% { opacity: 1; }
 }
+
+.onStatus::before   { content: "Green Circle"; }
+.offStatus::before  { content: "Red Circle"; animation: blink 1s infinite; }
