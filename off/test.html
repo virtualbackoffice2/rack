@@ -192,6 +192,8 @@
         <input id="searchName_mobile" placeholder="Enter Name">
         <label style="font-weight:600">Mac/Serial</label>
         <input id="searchMac_mobile" placeholder="Enter Mac/Serial">
+        <input id="powerMin_mobile" placeholder="Min Power">
+        <input id="powerMax_mobile" placeholder="Max Power">
         <div class="user-count">User count: <span id="userCount">0</span></div>
       </div>
       <button id="drawerGoBtn" class="go-btn-mobile">Go</button>
@@ -205,6 +207,8 @@
       <input id="searchMobile" placeholder="Enter Mobile No">
       <input id="searchName" placeholder="Enter Name">
       <input id="searchMac" placeholder="Enter Mac/Serial">
+      <input id="powerMin" placeholder="Min Power">
+      <input id="powerMax" placeholder="Max Power">
       <div class="user-count">User count: <span id="userCount_desktop">0</span></div>
     </div>
   </div>
@@ -220,6 +224,7 @@
           <th class="sortable" data-key="Drops">Down</th>
           <th>Remark</th>
           <th>Team</th>
+          <th>Power</th>
           <th>Complain</th>
           <th>Location</th>
           <th>Status</th>
@@ -310,6 +315,11 @@
           return true;
         });
       }
+const pMin = parseFloat(document.getElementById('powerMin').value || document.getElementById('powerMin_mobile').value || '');
+const pMax = parseFloat(document.getElementById('powerMax').value || document.getElementById('powerMax_mobile').value || '');
+
+if (!isNaN(pMin)) data = data.filter(r => Number(r.Power || r.S || 0) >= pMin);
+if (!isNaN(pMax)) data = data.filter(r => Number(r.Power || r.S || 0) <= pMax);
       if(win) data=data.filter(r=>(r.Window||r.window||r.A||'').toString()===win);
       if(pon) data=data.filter(r=>(r.NMID||r.C||'').toString()===pon);
       filtered=data;
@@ -336,20 +346,36 @@
               drops=r.Drops||r.AB||'',remark=r.Remarks||r.Y||r.remark||r.Remark||'',
               location=r.Location||r.Q||'',procare=r['User status']||r.AF||'';
               const team = r.Team || r.AD || r.team || "";
-        tr.innerHTML=`
-          <td>${pon}</td><td>${uid}</td><td>${mobile}</td><td>${name}</td>
-          <td>${mac}<br><small>${serial}</small></td>
-          <td>${drops?formatTimestamp(drops):''}</td>
-<td><input class="remark-input" data-uid="${uid}" data-source="${r.source}" value="${remark}"></td>
+       
+        tr.innerHTML = `
+<td>${pon}</td>
+<td>${uid}</td>
+<td>${mobile}</td>
+<td>${name}</td>
 
-<td><input class="team-input" data-uid="${uid}" data-source="${r.source}" value="${team}"></td> 
+<td>${mac}<br><small>${serial}</small></td>
+
+<td>${drops ? formatTimestamp(drops) : ''}</td>
 
 <td>
-    <button class="mark-btn" data-uid="${uid}" data-source="${r.source}"></button>
-    <button class="remove-btn" data-uid="${uid}" data-source="${r.source}"></button>
+  <input class="remark-input" data-uid="${uid}" data-source="${r.source}" value="${remark}">
 </td>
 
-          <td>${location}</td><td>${procare}</td>`;
+<td>
+  <input class="team-input" data-uid="${uid}" data-source="${r.source}" value="${team}">
+</td>
+
+<td>${(Number(r.Power || r.S || 0)).toFixed(2)}</td> <!-- ⭐ POWER COLUMN -->
+
+<td>
+  <button class="mark-btn" data-uid="${uid}" data-source="${r.source}"></button>
+  <button class="remove-btn" data-uid="${uid}" data-source="${r.source}"></button>
+</td>
+
+<td>${location}</td>
+<td>${procare}</td>
+`;
+
         tbody.appendChild(tr);
       });
       tbody.querySelectorAll('.mark-btn').forEach(b=>b.onclick=onMarkClick);
@@ -412,7 +438,7 @@ function onMarkClick(e){
         if(currentSort.key===k) currentSort.asc=!currentSort.asc;else{currentSort.key=k;currentSort.asc=true;}renderTable();}
     });
 function downloadCSV(){
-  const rows=[['PON','UserID','Mobile','Name','Mac','Serial','Down time','Remark','Team','Location','Procare']];
+  const rows=[['PON','UserID','Mobile','Name','Mac','Serial','Down time','Remark','Team','Power','Location','Procare']];
   
   document.querySelectorAll('#dataTable tbody tr').forEach(tr=>{
     const tds = tr.cells;
@@ -426,9 +452,10 @@ function downloadCSV(){
       tds[4].querySelector('small')?.innerText || '',// Serial
       tds[5].innerText,                              // Down time
       tds[6].querySelector('input').value,           // Remark
-      tds[7].querySelector('input').value,           // ⭐ TEAM (CORRECT!)
-      tds[9].innerText,                              // Location
-      tds[10].innerText                              // Procare/Status
+      tds[7].querySelector('input').value, // Team
+    tds[8].innerText,                    // ⭐ Power
+    tds[10].innerText,                   // Location
+    tds[11].innerText                    // Procare
     ].map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(','));
   });
 
