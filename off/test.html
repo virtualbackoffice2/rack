@@ -1,4 +1,4 @@
-<!doctype html>
+ok dkho ye file ? --- <!doctype html>
 <html lang="en"><head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -320,13 +320,6 @@ const pMax = parseFloat(document.getElementById('powerMax').value || document.ge
 
 if (!isNaN(pMin)) data = data.filter(r => Number(r.Power || r.S || 0) >= pMin);
 if (!isNaN(pMax)) data = data.filter(r => Number(r.Power || r.S || 0) <= pMax);
-
-      data = data.filter(r => {
-    const st = (r['User status'] || r.AF || r.Status || '').toString().trim().toLowerCase();
-    return st === 'Active';
-});
-
-      
       if(win) data=data.filter(r=>(r.Window||r.window||r.A||'').toString()===win);
       if(pon) data=data.filter(r=>(r.NMID||r.C||'').toString()===pon);
       filtered=data;
