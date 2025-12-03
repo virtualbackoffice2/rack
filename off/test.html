@@ -224,7 +224,7 @@
           <th class="sortable" data-key="Drops">Down</th>
           <th>Remark</th>
           <th>Team</th>
-          <th>Power</th>
+          <th class="sortable" data-key="Power">Power</th>
           <th>Complain</th>
           <th>Location</th>
           <th>Status</th>
@@ -498,6 +498,23 @@ function downloadCSV(){
           applyAllFilters();
         };
       });
+
+     // ⚡ Power filters live update
+['powerMin','powerMax'].forEach(id=>{
+    const desk = document.getElementById(id);
+    const mob  = document.getElementById(id + '_mobile');
+
+    desk.oninput = () => {
+        mob.value = desk.value;
+        applyAllFilters();
+    };
+
+    mob.oninput = () => {
+        desk.value = mob.value;
+        applyAllFilters();
+    };
+});
+ 
       window.onresize=()=>window.innerWidth>880&&drawer.classList.remove('open');
             // ⭐ Close drawer after clicking any mobile menu button
       [
