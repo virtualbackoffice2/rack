@@ -197,6 +197,7 @@
           <th>Mac / Serial</th>
           <th class="sortable" data-key="Drops">Down</th>
           <th>Remark</th>
+          <th>Team</th>
           <th>Complain</th>
           <th>Location</th>
           <th>Status</th>
@@ -312,31 +313,54 @@
               name=r.Name||r.O||'',mac=r.MAC||r.U||'',serial=r.Serial||r.V||'',
               drops=r.Drops||r.AB||'',remark=r.Remarks||r.Y||r.remark||r.Remark||'',
               location=r.Location||r.Q||'',procare=r['User status']||r.AF||'';
+              const team = r.Team || r.AD || r.team || "";
         tr.innerHTML=`
           <td>${pon}</td><td>${uid}</td><td>${mobile}</td><td>${name}</td>
           <td>${mac}<br><small>${serial}</small></td>
           <td>${drops?formatTimestamp(drops):''}</td>
-          <td><input class="remark-input" data-uid="${uid}" data-source="${r.source}" value="${remark}"></td>
-          <td>
-            <button class="mark-btn" data-uid="${uid}" data-source="${r.source}"></button>
-            <button class="remove-btn" data-uid="${uid}" data-source="${r.source}"></button>
-          </td>
+<td><input class="remark-input" data-uid="${uid}" data-source="${r.source}" value="${remark}"></td>
+
+<td><input class="team-input" data-uid="${uid}" data-source="${r.source}" value="${team}"></td> 
+
+<td>
+    <button class="mark-btn" data-uid="${uid}" data-source="${r.source}"></button>
+    <button class="remove-btn" data-uid="${uid}" data-source="${r.source}"></button>
+</td>
+
           <td>${location}</td><td>${procare}</td>`;
         tbody.appendChild(tr);
       });
       tbody.querySelectorAll('.mark-btn').forEach(b=>b.onclick=onMarkClick);
       tbody.querySelectorAll('.remove-btn').forEach(b=>b.onclick=onRemoveClick);
       tbody.querySelectorAll('.remark-input').forEach(i=>i.onchange=onRemarkChange);
+      tbody.querySelectorAll('.team-input').forEach(i => i.onchange = onTeamChange);
     }
     function keyOrAlt(o,k){const m={'NMID':'C','Users':'N','Drops':'AB'};return m[k]||k;}
-    function onMarkClick(e){
-      const btn=e.currentTarget,uid=btn.dataset.uid,src=btn.dataset.source,sheetId=GAS_URLS[src].sheetId;
-      const remark=document.querySelector(`.remark-input[data-uid="${uid}"][data-source="${src}"]`).value;
-      postToGAS({id:uid,action:'mark',remark,timestamp:formatTimestamp(new Date())},sheetId).then(r=>{
-        if(r.success){showToast('Marked!');btn.closest('tr').remove();fetchData();}
-        else showToast('Mark failed');
-      });
+function onMarkClick(e){
+  const btn = e.currentTarget,
+        uid = btn.dataset.uid,
+        src = btn.dataset.source,
+        sheetId = GAS_URLS[src].sheetId;
+
+  const remark = document.querySelector(`.remark-input[data-uid="${uid}"][data-source="${src}"]`).value;
+  const team   = document.querySelector(`.team-input[data-uid="${uid}"][data-source="${src}"]`).value;
+
+  postToGAS({
+      id: uid,
+      action: 'mark',
+      remark: remark,
+      team: team,        // ⭐ NEW FIELD SAVED
+      timestamp: formatTimestamp(new Date())
+  }, sheetId).then(r=>{
+    if(r.success){
+      showToast('Marked!');
+      btn.closest('tr').remove();
+      fetchData();
+    } else {
+      showToast('Mark failed');
     }
+  });
+}
     function onRemoveClick(e){
       const btn=e.currentTarget,uid=btn.dataset.uid,src=btn.dataset.source,sheetId=GAS_URLS[src].sheetId;
       postToGAS({id:uid,action:'remove'},sheetId).then(r=>{
@@ -345,6 +369,7 @@
       });
     }
     function onRemarkChange(e){/* saved on mark */}
+    function onTeamChange(e){/* saved on mark button */}
     function formatTimestamp(i){
       if(!i) return '';
       const m=/^(\d+)-(\w+)\s*\[(\d+):(\d+)\]/.exec(i);
@@ -364,19 +389,35 @@
       if(e.target.matches('th.sortable')){const k=e.target.dataset.key;
         if(currentSort.key===k) currentSort.asc=!currentSort.asc;else{currentSort.key=k;currentSort.asc=true;}renderTable();}
     });
-    function downloadCSV(){
-      const rows=[['PON','UserID','Mobile','Name','Mac','Serial','Down time','Remark','Location','Procare']];
-      document.querySelectorAll('#dataTable tbody tr').forEach(tr=>{
-        const tds=tr.cells;
-        rows.push([
-          tds[0].innerText,tds[1].innerText,tds[2].innerText,tds[3].innerText,
-          tds[4].childNodes[0].nodeValue.trim(),tds[4].querySelector('small')?.innerText||'',
-          tds[5].innerText,tds[6].querySelector('input').value,tds[8].innerText,tds[9].innerText
-        ].map(v=>`"${(v||'').toString().replace(/"/g,'""')} "`).join(','));
-      });
-      const blob=new Blob([rows.join('\n')],{type:'text/csv'});
-      const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='complains.csv';a.click();URL.revokeObjectURL(a.href);
-    }
+function downloadCSV(){
+  const rows=[['PON','UserID','Mobile','Name','Mac','Serial','Down time','Remark','Team','Location','Procare']];
+  
+  document.querySelectorAll('#dataTable tbody tr').forEach(tr=>{
+    const tds = tr.cells;
+
+    rows.push([
+      tds[0].innerText,                              // PON
+      tds[1].innerText,                              // UserID
+      tds[2].innerText,                              // Mobile
+      tds[3].innerText,                              // Name
+      tds[4].childNodes[0].nodeValue.trim(),         // Mac
+      tds[4].querySelector('small')?.innerText || '',// Serial
+      tds[5].innerText,                              // Down time
+      tds[6].querySelector('input').value,           // Remark
+      tds[7].querySelector('input').value,           // ⭐ TEAM (CORRECT!)
+      tds[9].innerText,                              // Location
+      tds[10].innerText                              // Procare/Status
+    ].map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(','));
+  });
+
+  const blob = new Blob([rows.join('\n')], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'complains.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
     async function triggerScreenshotDownload(){
       showSpinner();
       await new Promise(r=>setTimeout(r,100));
