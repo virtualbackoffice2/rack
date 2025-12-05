@@ -157,6 +157,7 @@
       <h1>Complain Manager</h1>
     </div>
     <div class="top-controls" id="topControls">
+      <button id="btnShowAll">Show All Users</button>
       <button id="btnComplains" class="primary">Complains</button>
       <button id="btnOffline">Offline</button>
       <button id="btnDrops">Drops</button>
@@ -172,6 +173,7 @@
         <button id="btnCloseDrawer" aria-label="Close menu" style="border:none;background:transparent;font-size:18px;cursor:pointer">✕</button>
       </div>
       <div class="controls">
+        <button id="m_btnShowAll">Show All Users</button>
         <button id="m_btnComplains">Complains</button>
         <button id="m_btnOffline">Offline</button>
         <button id="m_btnDrops">Drops</button>
@@ -278,6 +280,7 @@
         case'offline':baseFiltered=rawRows.filter(r=>(r.Downs||r.T||'').toString().trim());break;
         case'complains':baseFiltered=rawRows.filter(r=>(r.Ticket||r.X||'').toString().trim());break;
         case'drops':baseFiltered=rawRows.filter(r=>(r.Drops||r.AB||'').toString().trim());break;
+        case 'all':baseFiltered = rawRows.slice();break;
         default:baseFiltered=rawRows;
       }
       populateWindowPon();applyAllFilters();
@@ -300,31 +303,70 @@
       selPon.innerHTML=selPon_mobile.innerHTML='<option value="">Select PON</option>'+opts;
       applyAllFilters();
     }
-    function applyAllFilters(){
-      let data=baseFiltered.slice();
-      const win=selWindow.value||selWindow_mobile.value;
-      const pon=selPon.value||selPon_mobile.value;
-      const searches=['searchUser','searchMobile','searchName','searchMac'].map(id=>
-        (document.getElementById(id).value||document.getElementById(id+'_mobile').value||'').trim().toLowerCase());
-      if(searches.some(s=>s.length>=3)){
-        data=rawRows.filter(r=>{
-          if(searches[0].length>=3 && !(r.Users||r.N||'').toString().toLowerCase().includes(searches[0])) return false;
-          if(searches[1].length>=3 && ![(r['Last called no']||r.AC||''),(r.Number||r.P||'')].some(v=>v.toString().toLowerCase().includes(searches[1]))) return false;
-          if(searches[2].length>=3 && !(r.Name||r.O||'').toString().toLowerCase().includes(searches[2])) return false;
-          if(searches[3].length>=3 && ![(r.MAC||r.U||''),(r.Serial||r.V||'')].some(v=>v.toString().toLowerCase().includes(searches[3]))) return false;
-          return true;
-        });
-      }
-const pMin = parseFloat(document.getElementById('powerMin').value || document.getElementById('powerMin_mobile').value || '');
-const pMax = parseFloat(document.getElementById('powerMax').value || document.getElementById('powerMax_mobile').value || '');
+ function applyAllFilters() {
+    let data = baseFiltered.slice();
 
-if (!isNaN(pMin)) data = data.filter(r => Number(r.Power || r.S || 0) >= pMin);
-if (!isNaN(pMax)) data = data.filter(r => Number(r.Power || r.S || 0) <= pMax);
-      if(win) data=data.filter(r=>(r.Window||r.window||r.A||'').toString()===win);
-      if(pon) data=data.filter(r=>(r.NMID||r.C||'').toString()===pon);
-      filtered=data;
-      renderTable();
+    const win = selWindow.value || selWindow_mobile.value;
+    const pon = selPon.value || selPon_mobile.value;
+
+    // -------------------------------------
+    // 🔍 SEARCH FILTERS
+    // -------------------------------------
+    const searches = ['searchUser', 'searchMobile', 'searchName', 'searchMac'].map(id =>
+        (document.getElementById(id).value || document.getElementById(id + '_mobile').value || '')
+            .trim()
+            .toLowerCase()
+    );
+
+    if (searches.some(s => s.length >= 3)) {
+        data = rawRows.filter(r => {
+            if (searches[0].length >= 3 && !(r.Users || r.N || '').toString().toLowerCase().includes(searches[0])) return false;
+            if (searches[1].length >= 3 && ![(r['Last called no'] || r.AC || ''), (r.Number || r.P || '')]
+                .some(v => v.toString().toLowerCase().includes(searches[1]))) return false;
+            if (searches[2].length >= 3 && !(r.Name || r.O || '').toString().toLowerCase().includes(searches[2])) return false;
+            if (searches[3].length >= 3 && ![(r.MAC || r.U || ''), (r.Serial || r.V || '')]
+                .some(v => v.toString().toLowerCase().includes(searches[3]))) return false;
+            return true;
+        });
     }
+
+    // -------------------------------------
+    // 🔋 POWER FILTERS
+    // -------------------------------------
+    const pMin = parseFloat(document.getElementById('powerMin').value || document.getElementById('powerMin_mobile').value || '');
+    const pMax = parseFloat(document.getElementById('powerMax').value || document.getElementById('powerMax_mobile').value || '');
+
+    if (!isNaN(pMin)) data = data.filter(r => Number(r.Power || r.S || 0) >= pMin);
+    if (!isNaN(pMax)) data = data.filter(r => Number(r.Power || r.S || 0) <= pMax);
+
+    // -------------------------------------
+    // ⭐ ALL MODE → Window/PON ko ignore karo
+    //    (search + power filters allowed)
+    // -------------------------------------
+    if (currentMode === "all") {
+        filtered = data;
+        return renderTable();
+    }
+
+    // -------------------------------------
+    // 🪟 WINDOW FILTER
+    // -------------------------------------
+    if (win) {
+        data = data.filter(r => (r.Window || r.window || r.A || '').toString() === win);
+    }
+
+    // -------------------------------------
+    // 🔌 PON FILTER
+    // -------------------------------------
+    if (pon) {
+        data = data.filter(r => (r.NMID || r.C || '').toString() === pon);
+    }
+
+    // DONE ✔
+    filtered = data;
+    renderTable();
+}
+
     function renderTable(){
       const rows=filtered.slice();
       if(currentSort.key) rows.sort((a,b)=>{
@@ -436,7 +478,33 @@ function onMarkClick(e){
       if(e.target.closest('#btnDrops, #m_btnDrops')){currentMode='drops';updateBaseFiltered();}
       if(e.target.matches('th.sortable')){const k=e.target.dataset.key;
         if(currentSort.key===k) currentSort.asc=!currentSort.asc;else{currentSort.key=k;currentSort.asc=true;}renderTable();}
-    });
+      if (e.target.closest('#btnShowAll, #m_btnShowAll')) {
+    currentMode = 'all';
+
+    // ⭐ RESET ALL FILTERS
+    selWindow.value = "";
+    selPon.value = "";
+    selWindow_mobile.value = "";
+    selPon_mobile.value = "";
+
+    document.getElementById("searchUser").value = "";
+    document.getElementById("searchMobile").value = "";
+    document.getElementById("searchName").value = "";
+    document.getElementById("searchMac").value = "";
+
+    document.getElementById("searchUser_mobile").value = "";
+    document.getElementById("searchMobile_mobile").value = "";
+    document.getElementById("searchName_mobile").value = "";
+    document.getElementById("searchMac_mobile").value = "";
+
+    document.getElementById("powerMin").value = "";
+    document.getElementById("powerMax").value = "";
+    document.getElementById("powerMin_mobile").value = "";
+    document.getElementById("powerMax_mobile").value = "";
+
+    updateBaseFiltered();
+}
+});
 function downloadCSV(){
   const rows=[['PON','UserID','Mobile','Name','Mac','Serial','Down time','Remark','Team','Power','Location','Procare']];
   
