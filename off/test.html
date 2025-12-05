@@ -306,7 +306,7 @@
       applyAllFilters();
     }
  function applyAllFilters() {
-    let data = (currentMode === "all") ? filtered.slice() : baseFiltered.slice();
+    let data = filtered.slice();   // always filter on visible table
     const win = selWindow.value || selWindow_mobile.value;
     const pon = selPon.value || selPon_mobile.value;
 
