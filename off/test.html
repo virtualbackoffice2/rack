@@ -306,8 +306,7 @@
       applyAllFilters();
     }
  function applyAllFilters() {
-    let data = baseFiltered.slice();
-
+    let data = (currentMode === "all") ? filtered.slice() : baseFiltered.slice();
     const win = selWindow.value || selWindow_mobile.value;
     const pon = selPon.value || selPon_mobile.value;
 
