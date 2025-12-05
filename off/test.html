@@ -305,68 +305,55 @@
       selPon.innerHTML=selPon_mobile.innerHTML='<option value="">Select PON</option>'+opts;
       applyAllFilters();
     }
- function applyAllFilters() {
-    let data = filtered.slice();   // always filter on visible table
+    function applyAllFilters() {
+
+    // ⭐ Correct base: depends on mode
+    let data = (currentMode === "all") ? filtered.slice() : baseFiltered.slice();
+
     const win = selWindow.value || selWindow_mobile.value;
     const pon = selPon.value || selPon_mobile.value;
 
-    // -------------------------------------
-    // 🔍 SEARCH FILTERS
-    // -------------------------------------
-    const searches = ['searchUser', 'searchMobile', 'searchName', 'searchMac'].map(id =>
-        (document.getElementById(id).value || document.getElementById(id + '_mobile').value || '')
-            .trim()
-            .toLowerCase()
+    // SEARCH
+    const searches = ['searchUser','searchMobile','searchName','searchMac'].map(id =>
+        (document.getElementById(id).value || document.getElementById(id+'_mobile').value || '')
+            .trim().toLowerCase()
     );
 
     if (searches.some(s => s.length >= 3)) {
         data = rawRows.filter(r => {
-            if (searches[0].length >= 3 && !(r.Users || r.N || '').toString().toLowerCase().includes(searches[0])) return false;
-            if (searches[1].length >= 3 && ![(r['Last called no'] || r.AC || ''), (r.Number || r.P || '')]
-                .some(v => v.toString().toLowerCase().includes(searches[1]))) return false;
-            if (searches[2].length >= 3 && !(r.Name || r.O || '').toString().toLowerCase().includes(searches[2])) return false;
-            if (searches[3].length >= 3 && ![(r.MAC || r.U || ''), (r.Serial || r.V || '')]
-                .some(v => v.toString().toLowerCase().includes(searches[3]))) return false;
+            if (searches[0].length >= 3 && !(r.Users||r.N||'').toString().toLowerCase().includes(searches[0])) return false;
+            if (searches[1].length >= 3 && ![(r['Last called no']||r.AC||''),(r.Number||r.P||'')]
+                .some(v=>v.toString().toLowerCase().includes(searches[1]))) return false;
+            if (searches[2].length >= 3 && !(r.Name||r.O||'').toString().toLowerCase().includes(searches[2])) return false;
+            if (searches[3].length >= 3 && ![(r.MAC||r.U||''),(r.Serial||r.V||'')]
+                .some(v=>v.toString().toLowerCase().includes(searches[3]))) return false;
             return true;
         });
     }
 
-    // -------------------------------------
-    // 🔋 POWER FILTERS
-    // -------------------------------------
+    // POWER
     const pMin = parseFloat(document.getElementById('powerMin').value || document.getElementById('powerMin_mobile').value || '');
     const pMax = parseFloat(document.getElementById('powerMax').value || document.getElementById('powerMax_mobile').value || '');
 
-    if (!isNaN(pMin)) data = data.filter(r => Number(r.Power || r.S || 0) >= pMin);
-    if (!isNaN(pMax)) data = data.filter(r => Number(r.Power || r.S || 0) <= pMax);
+    if (!isNaN(pMin)) data = data.filter(r => Number(r.Power||r.S||0) >= pMin);
+    if (!isNaN(pMax)) data = data.filter(r => Number(r.Power||r.S||0) <= pMax);
 
-    // -------------------------------------
-    // ⭐ ALL MODE → Window/PON ko ignore karo
-    //    (search + power filters allowed)
-    // -------------------------------------
+    // ALL MODE → skip Window/PON
     if (currentMode === "all") {
         filtered = data;
         return renderTable();
     }
 
-    // -------------------------------------
-    // 🪟 WINDOW FILTER
-    // -------------------------------------
-    if (win) {
-        data = data.filter(r => (r.Window || r.window || r.A || '').toString() === win);
-    }
+    // WINDOW
+    if (win) data = data.filter(r => (r.Window||r.window||r.A||'').toString() === win);
 
-    // -------------------------------------
-    // 🔌 PON FILTER
-    // -------------------------------------
-    if (pon) {
-        data = data.filter(r => (r.NMID || r.C || '').toString() === pon);
-    }
+    // PON
+    if (pon) data = data.filter(r => (r.NMID||r.C||'').toString() === pon);
 
-    // DONE ✔
     filtered = data;
     renderTable();
 }
+
 
     function renderTable(){
       const rows=filtered.slice();
