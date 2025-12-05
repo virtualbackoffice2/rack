@@ -476,7 +476,7 @@ document.addEventListener('click', e => {
 
     /* 🌟 DESKTOP — POWER RANGE ON ALL USERS */
     if (e.target.closest('#btnPowerAll')) {
-
+currentMode = "all";
         // ⭐ Reset Window + PON (Desktop + Mobile)
         selWindow.value = "";
         selPon.value = "";
@@ -498,7 +498,7 @@ document.addEventListener('click', e => {
 
     /* 🌟 MOBILE — POWER RANGE ON ALL USERS */
     if (e.target.closest('#m_btnPowerAll')) {
-
+  currentMode = "all"
         // ⭐ Reset Window + PON (Desktop + Mobile)
         selWindow.value = "";
         selPon.value = "";
