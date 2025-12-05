@@ -1,4 +1,4 @@
-<!doctype html>
+--- <!doctype html>
 <html lang="en"><head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -157,7 +157,7 @@
       <h1>Complain Manager</h1>
     </div>
     <div class="top-controls" id="topControls">
-      <button id="btnShowAll">Show All Users</button>
+      <!-- <button id="btnShowAll">Show All Users</button> -->
       <button id="btnComplains" class="primary">Complains</button>
       <button id="btnOffline">Offline</button>
       <button id="btnDrops">Drops</button>
@@ -254,17 +254,17 @@
       setTimeout(()=>t.classList.remove('show'),3000);}
     function jsonpGet(url,timeout=10000){return new Promise((res,rej)=>{const cb='__jsonp_'+Date.now();
       window[cb]=d=>{clearTimeout(t);cleanup();res(d);};
-      const s=document.createElement('script');s.src=url+(url.includes('?')?'&':'?')+`callback=${cb}&_=${Date.now()}`;
+      const s=document.createElement('script');s.src=url+(url.includes('?')?'&':'?')+callback=${cb}&_=${Date.now()};
       const t=setTimeout(()=>{cleanup();rej(new Error('timeout'));},timeout);
       function cleanup(){delete window[cb];s.remove();}
       s.onerror=()=>{cleanup();rej(new Error('script error'));}
       document.head.appendChild(s);});}
     function postToGAS(obj,sheetId){
       const gasUrl=Object.values(GAS_URLS).find(g=>g.sheetId===sheetId).url;
-      const url=`${gasUrl}?token=${encodeURIComponent(TOKEN)}`;
+      const url=${gasUrl}?token=${encodeURIComponent(TOKEN)};
       showSpinner();
       return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(obj)})
-        .then(r=>r.ok?r.json():Promise.reject(`HTTP ${r.status}`))
+        .then(r=>r.ok?r.json():Promise.reject(HTTP ${r.status}))
         .then(d=>d.success?d:Promise.reject(d.error||'fail'))
         .catch(()=>fetch(url,{method:'POST',mode:'no-cors',body:JSON.stringify(obj)}).then(()=>({success:true,fallback:true})))
         .finally(hideSpinner);
@@ -272,7 +272,7 @@
     async function fetchData(){
       showSpinner();
       try{
-        const res=await Promise.all(Object.keys(GAS_URLS).map(k=>jsonpGet(`${GAS_URLS[k].url}?token=${TOKEN}`).then(d=>({key:k,rows:d.rows||[],dashboardA7:d.dashboardA7}))));
+        const res=await Promise.all(Object.keys(GAS_URLS).map(k=>jsonpGet(${GAS_URLS[k].url}?token=${TOKEN}).then(d=>({key:k,rows:d.rows||[],dashboardA7:d.dashboardA7}))));
         rawRows=res.flatMap(r=>r.rows.map(row=>({...row,source:r.key})));
         updateBaseFiltered();
       }catch(e){showToast('Load failed: '+e.message);}finally{hideSpinner();}
@@ -293,7 +293,7 @@
         const w=r.Window||r.window||r.A||'',p=r.NMID||r.C||'';
         windows.add(w);if(!ponsForWindow[w])ponsForWindow[w]=new Set();if(p)ponsForWindow[w].add(p);
       });
-      const html='<option value="">All Window</option>'+Array.from(windows).filter(Boolean).sort().map(w=>`<option value="${w}">${w}</option>`).join('');
+      const html='<option value="">All Window</option>'+Array.from(windows).filter(Boolean).sort().map(w=><option value="${w}">${w}</option>).join('');
       selWindow.innerHTML=selWindow_mobile.innerHTML=html;
       selWindow._ponsMap=selWindow_mobile._ponsMap=ponsForWindow;
       fillPonOptions('');
@@ -301,59 +301,72 @@
     function fillPonOptions(win){
       const map=selWindow._ponsMap||{};
       const set=win?map[win]||new Set():new Set(Object.values(map).flatMap(s=>[...s]));
-      const opts=Array.from(set).sort().map(p=>`<option value="${p}">${p}</option>`).join('');
+      const opts=Array.from(set).sort().map(p=><option value="${p}">${p}</option>).join('');
       selPon.innerHTML=selPon_mobile.innerHTML='<option value="">Select PON</option>'+opts;
       applyAllFilters();
     }
-    function applyAllFilters() {
-
-    // ⭐ Correct base: depends on mode
+ function applyAllFilters() {
     let data = (currentMode === "all") ? filtered.slice() : baseFiltered.slice();
-
     const win = selWindow.value || selWindow_mobile.value;
     const pon = selPon.value || selPon_mobile.value;
 
-    // SEARCH
-    const searches = ['searchUser','searchMobile','searchName','searchMac'].map(id =>
-        (document.getElementById(id).value || document.getElementById(id+'_mobile').value || '')
-            .trim().toLowerCase()
+    // -------------------------------------
+    // 🔍 SEARCH FILTERS
+    // -------------------------------------
+    const searches = ['searchUser', 'searchMobile', 'searchName', 'searchMac'].map(id =>
+        (document.getElementById(id).value || document.getElementById(id + '_mobile').value || '')
+            .trim()
+            .toLowerCase()
     );
 
     if (searches.some(s => s.length >= 3)) {
         data = rawRows.filter(r => {
-            if (searches[0].length >= 3 && !(r.Users||r.N||'').toString().toLowerCase().includes(searches[0])) return false;
-            if (searches[1].length >= 3 && ![(r['Last called no']||r.AC||''),(r.Number||r.P||'')]
-                .some(v=>v.toString().toLowerCase().includes(searches[1]))) return false;
-            if (searches[2].length >= 3 && !(r.Name||r.O||'').toString().toLowerCase().includes(searches[2])) return false;
-            if (searches[3].length >= 3 && ![(r.MAC||r.U||''),(r.Serial||r.V||'')]
-                .some(v=>v.toString().toLowerCase().includes(searches[3]))) return false;
+            if (searches[0].length >= 3 && !(r.Users || r.N || '').toString().toLowerCase().includes(searches[0])) return false;
+            if (searches[1].length >= 3 && ![(r['Last called no'] || r.AC || ''), (r.Number || r.P || '')]
+                .some(v => v.toString().toLowerCase().includes(searches[1]))) return false;
+            if (searches[2].length >= 3 && !(r.Name || r.O || '').toString().toLowerCase().includes(searches[2])) return false;
+            if (searches[3].length >= 3 && ![(r.MAC || r.U || ''), (r.Serial || r.V || '')]
+                .some(v => v.toString().toLowerCase().includes(searches[3]))) return false;
             return true;
         });
     }
 
-    // POWER
+    // -------------------------------------
+    // 🔋 POWER FILTERS
+    // -------------------------------------
     const pMin = parseFloat(document.getElementById('powerMin').value || document.getElementById('powerMin_mobile').value || '');
     const pMax = parseFloat(document.getElementById('powerMax').value || document.getElementById('powerMax_mobile').value || '');
 
-    if (!isNaN(pMin)) data = data.filter(r => Number(r.Power||r.S||0) >= pMin);
-    if (!isNaN(pMax)) data = data.filter(r => Number(r.Power||r.S||0) <= pMax);
+    if (!isNaN(pMin)) data = data.filter(r => Number(r.Power || r.S || 0) >= pMin);
+    if (!isNaN(pMax)) data = data.filter(r => Number(r.Power || r.S || 0) <= pMax);
 
-    // ALL MODE → skip Window/PON
+    // -------------------------------------
+    // ⭐ ALL MODE → Window/PON ko ignore karo
+    //    (search + power filters allowed)
+    // -------------------------------------
     if (currentMode === "all") {
         filtered = data;
         return renderTable();
     }
 
-    // WINDOW
-    if (win) data = data.filter(r => (r.Window||r.window||r.A||'').toString() === win);
+    // -------------------------------------
+    // 🪟 WINDOW FILTER
+    // -------------------------------------
+    if (win) {
+        data = data.filter(r => (r.Window || r.window || r.A || '').toString() === win);
+    }
 
-    // PON
-    if (pon) data = data.filter(r => (r.NMID||r.C||'').toString() === pon);
+    // -------------------------------------
+    // 🔌 PON FILTER
+    // -------------------------------------
+    if (pon) {
+        data = data.filter(r => (r.NMID || r.C || '').toString() === pon);
+    }
 
+    // DONE ✔
     filtered = data;
     renderTable();
 }
-
 
     function renderTable(){
       const rows=filtered.slice();
@@ -377,7 +390,7 @@
               location=r.Location||r.Q||'',procare=r['User status']||r.AF||'';
               const team = r.Team || r.AD || r.team || "";
        
-        tr.innerHTML = `
+        tr.innerHTML = 
 <td>${pon}</td>
 <td>${uid}</td>
 <td>${mobile}</td>
@@ -404,7 +417,7 @@
 
 <td>${location}</td>
 <td>${procare}</td>
-`;
+;
 
         tbody.appendChild(tr);
       });
@@ -420,8 +433,8 @@ function onMarkClick(e){
         src = btn.dataset.source,
         sheetId = GAS_URLS[src].sheetId;
 
-  const remark = document.querySelector(`.remark-input[data-uid="${uid}"][data-source="${src}"]`).value;
-  const team   = document.querySelector(`.team-input[data-uid="${uid}"][data-source="${src}"]`).value;
+  const remark = document.querySelector(.remark-input[data-uid="${uid}"][data-source="${src}"]).value;
+  const team   = document.querySelector(.team-input[data-uid="${uid}"][data-source="${src}"]).value;
 
   postToGAS({
       id: uid,
@@ -453,10 +466,10 @@ function onMarkClick(e){
       const m=/^(\d+)-(\w+)\s*\[(\d+):(\d+)\]/.exec(i);
       if(m){
         const mo={'jan':'01','feb':'02','mar':'03','apr':'04','may':'05','jun':'06','jul':'07','aug':'08','sep':'09','oct':'10','nov':'11','dec':'12'};
-        const d=new Date(`${mo[m[2].toLowerCase()]}/${m[1]}/${new Date().getFullYear()} ${m[3].padStart(2,'0')}:${m[4].padStart(2,'0')}:00`);
-        return isNaN(d)?'':`${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+        const d=new Date(${mo[m[2].toLowerCase()]}/${m[1]}/${new Date().getFullYear()} ${m[3].padStart(2,'0')}:${m[4].padStart(2,'0')}:00);
+        return isNaN(d)?'':${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')};
       }
-      const d=new Date(i);return isNaN(d.getTime())?'':`${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+      const d=new Date(i);return isNaN(d.getTime())?'':${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')};
     }
 document.addEventListener('click', e => {
 
@@ -587,7 +600,7 @@ function downloadCSV(){
     tds[8].innerText,                    // ⭐ Power
     tds[10].innerText,                   // Location
     tds[11].innerText                    // Procare
-    ].map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(','));
+    ].map(v => "${(v||'').toString().replace(/"/g,'""')}").join(','));
   });
 
   const blob = new Blob([rows.join('\n')], {type:'text/csv'});
