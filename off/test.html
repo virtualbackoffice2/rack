@@ -196,6 +196,7 @@
         <input id="searchMac_mobile" placeholder="Enter Mac/Serial">
         <input id="powerMin_mobile" placeholder="Min Power">
         <input id="powerMax_mobile" placeholder="Max Power">
+        <button id="m_btnPowerAll">All Users</button>
         <div class="user-count">User count: <span id="userCount">0</span></div>
       </div>
       <button id="drawerGoBtn" class="go-btn-mobile">Go</button>
@@ -211,6 +212,7 @@
       <input id="searchMac" placeholder="Enter Mac/Serial">
       <input id="powerMin" placeholder="Min Power">
       <input id="powerMax" placeholder="Max Power">
+      <button id="btnPowerAll">All Users</button>
       <div class="user-count">User count: <span id="userCount_desktop">0</span></div>
     </div>
   </div>
@@ -470,41 +472,116 @@ function onMarkClick(e){
       }
       const d=new Date(i);return isNaN(d.getTime())?'':`${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
     }
-    document.addEventListener('click',e=>{
-      if(e.target.closest('#btnDownloadCsv, #m_btnDownloadCsv')){downloadCSV();}
-      if(e.target.closest('#btnScreenshotDownload, #m_btnScreenshot')){triggerScreenshotDownload();}
-      if(e.target.closest('#btnComplains, #m_btnComplains')){currentMode='complains';updateBaseFiltered();}
-      if(e.target.closest('#btnOffline, #m_btnOffline')){currentMode='offline';updateBaseFiltered();}
-      if(e.target.closest('#btnDrops, #m_btnDrops')){currentMode='drops';updateBaseFiltered();}
-      if(e.target.matches('th.sortable')){const k=e.target.dataset.key;
-        if(currentSort.key===k) currentSort.asc=!currentSort.asc;else{currentSort.key=k;currentSort.asc=true;}renderTable();}
-      if (e.target.closest('#btnShowAll, #m_btnShowAll')) {
-    currentMode = 'all';
+document.addEventListener('click', e => {
 
-    // ⭐ RESET ALL FILTERS
-    selWindow.value = "";
-    selPon.value = "";
-    selWindow_mobile.value = "";
-    selPon_mobile.value = "";
+    /* 🌟 DESKTOP — POWER RANGE ON ALL USERS */
+    if (e.target.closest('#btnPowerAll')) {
 
-    document.getElementById("searchUser").value = "";
-    document.getElementById("searchMobile").value = "";
-    document.getElementById("searchName").value = "";
-    document.getElementById("searchMac").value = "";
+        // ⭐ Reset Window + PON (Desktop + Mobile)
+        selWindow.value = "";
+        selPon.value = "";
+        selWindow_mobile.value = "";
+        selPon_mobile.value = "";
 
-    document.getElementById("searchUser_mobile").value = "";
-    document.getElementById("searchMobile_mobile").value = "";
-    document.getElementById("searchName_mobile").value = "";
-    document.getElementById("searchMac_mobile").value = "";
+        const min = parseFloat(document.getElementById('powerMin').value);
+        const max = parseFloat(document.getElementById('powerMax').value);
 
-    document.getElementById("powerMin").value = "";
-    document.getElementById("powerMax").value = "";
-    document.getElementById("powerMin_mobile").value = "";
-    document.getElementById("powerMax_mobile").value = "";
+        let data = rawRows.slice(); // Full data
 
-    updateBaseFiltered();
-}
+        if (!isNaN(min)) data = data.filter(r => Number(r.Power || r.S || 0) >= min);
+        if (!isNaN(max)) data = data.filter(r => Number(r.Power || r.S || 0) <= max);
+
+        filtered = data;
+        renderTable();
+        showToast("Power range applied on ALL USERS!");
+    }
+
+    /* 🌟 MOBILE — POWER RANGE ON ALL USERS */
+    if (e.target.closest('#m_btnPowerAll')) {
+
+        // ⭐ Reset Window + PON (Desktop + Mobile)
+        selWindow.value = "";
+        selPon.value = "";
+        selWindow_mobile.value = "";
+        selPon_mobile.value = "";
+
+        const min = parseFloat(document.getElementById('powerMin_mobile').value);
+        const max = parseFloat(document.getElementById('powerMax_mobile').value);
+
+        let data = rawRows.slice(); // Full data
+
+        if (!isNaN(min)) data = data.filter(r => Number(r.Power || r.S || 0) >= min);
+        if (!isNaN(max)) data = data.filter(r => Number(r.Power || r.S || 0) <= max);
+
+        filtered = data;
+        renderTable();
+        showToast("Power range applied on ALL USERS!");
+    }
+
+    /* CSV DOWNLOAD */
+    if (e.target.closest('#btnDownloadCsv, #m_btnDownloadCsv')) {
+        downloadCSV();
+    }
+
+    /* SCREENSHOT */
+    if (e.target.closest('#btnScreenshotDownload, #m_btnScreenshot')) {
+        triggerScreenshotDownload();
+    }
+
+    /* MODES */
+    if (e.target.closest('#btnComplains, #m_btnComplains')) {
+        currentMode = 'complains';
+        updateBaseFiltered();
+    }
+    if (e.target.closest('#btnOffline, #m_btnOffline')) {
+        currentMode = 'offline';
+        updateBaseFiltered();
+    }
+    if (e.target.closest('#btnDrops, #m_btnDrops')) {
+        currentMode = 'drops';
+        updateBaseFiltered();
+    }
+
+    /* SORTING */
+    if (e.target.matches('th.sortable')) {
+        const k = e.target.dataset.key;
+        if (currentSort.key === k) currentSort.asc = !currentSort.asc;
+        else { currentSort.key = k; currentSort.asc = true; }
+        renderTable();
+    }
+
+    /* SHOW ALL USERS BUTTON */
+    if (e.target.closest('#btnShowAll, #m_btnShowAll')) {
+
+        currentMode = 'all';
+
+        // RESET ALL FILTERS
+        selWindow.value = "";
+        selPon.value = "";
+        selWindow_mobile.value = "";
+        selPon_mobile.value = "";
+
+        document.getElementById("searchUser").value = "";
+        document.getElementById("searchMobile").value = "";
+        document.getElementById("searchName").value = "";
+        document.getElementById("searchMac").value = "";
+
+        document.getElementById("searchUser_mobile").value = "";
+        document.getElementById("searchMobile_mobile").value = "";
+        document.getElementById("searchName_mobile").value = "";
+        document.getElementById("searchMac_mobile").value = "";
+
+        document.getElementById("powerMin").value = "";
+        document.getElementById("powerMax").value = "";
+        document.getElementById("powerMin_mobile").value = "";
+        document.getElementById("powerMax_mobile").value = "";
+
+        updateBaseFiltered();
+    }
+
 });
+
+
 function downloadCSV(){
   const rows=[['PON','UserID','Mobile','Name','Mac','Serial','Down time','Remark','Team','Power','Location','Procare']];
   
