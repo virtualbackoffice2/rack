@@ -282,12 +282,12 @@ th:nth-child(6) {
 
   /* Remark column = Column 1 */
   td:nth-child(1), th:nth-child(1) {
-    min-width: 160px;   /* ← apni desired width daal do */
+    min-width: 130px;   /* ← apni desired width daal do */
   }
 
   /* Mobile No column = Column 4 */
   td:nth-child(4), th:nth-child(4) {
-    min-width: 140px;   /* ← iski width alag */
+    min-width: 120px;   /* ← iski width alag */
   }
 
 }
@@ -607,7 +607,7 @@ th:nth-child(6) {
     async function onRemarkBlur(e){
       const input = e.target;
       const addr = input.dataset.addr;
-      const newVal = input.value;
+      const newVal = input.value.replace(/\s*,\s*/g, ', ').trim();
       const orig = input.dataset.orig;
       if(newVal === orig) return; // unchanged
       // send update
@@ -637,7 +637,7 @@ th:nth-child(6) {
     async function onMobileBlur(e){
       const input = e.target;
       const addr = input.dataset.addr;
-      const newVal = input.value;
+      const newVal = input.value.replace(/\s*,\s*/g, ', ').trim();
       const orig = input.dataset.orig;
       if(newVal === orig) return;
       try{
@@ -699,7 +699,7 @@ th:nth-child(6) {
     document.getElementById('btnSubmitAdd').addEventListener('click', async ()=>{
       const status = document.getElementById('addStatus').value.trim();
       const address = document.getElementById('addAddress').value.trim();
-      const mobile = document.getElementById('addMobile').value.trim();
+      const mobile = document.getElementById('addMobile').value.replace(/\s*,\s*/g, ', ').trim();
       if(!status || !address || !mobile){ showToast("All 3 fields are required"); return; }
       // uniqueness check
       const exists = rows.some(r => (r.Address||'').toLowerCase() === address.toLowerCase());
