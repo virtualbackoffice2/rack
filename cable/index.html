@@ -165,13 +165,27 @@ tbody td{
 label{ font-size:0.88rem; color:var(--muted); min-width:80px; }
 .required{ color:#d23a3a; margin-left:6px; }
 
-/* MOBILE BREAKPOINT */
+
+/* FINAL MOBILE MENU FIX */
 @media (max-width:880px){
-  .search-input{ width:44vw; }
-  .hamburger{ display:block; }
-  .top-actions{ display:none; }
-  #tableWrap{ padding:8px; }
+  .hamburger{
+    display:block !important;
+    margin-right:8px;
+  }
+  .controls{
+    display:none !important;
+  }
+  .top-actions{
+    display:none !important;
+  }
+  .search-input{
+    width:60vw !important;
+  }
+  #tableWrap{
+    padding:8px;
+  }
 }
+
 
 /* Hamburger Icon */
 .hamburger{
@@ -254,6 +268,8 @@ tbody tr.payment td {
   padding:12px 16px;
   background:transparent;
 }
+
+
 
 </style>
 
