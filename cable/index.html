@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cable complain handler</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    :root{
+      --accent:#2b8cff;--danger:#ff3b6f;--pay:#ffd84d;--bg:#f6f8fb;--surface:#fff;--muted:#6b7280;
+      --card-shadow:0 6px 18px rgba(23,31,46,0.06);--gap:12px;
+    }
+    html,body{height:100%;margin:0;padding:0;font-family:Inter,system-ui,-apple-system,"Roboto","Helvetica","Arial",sans-serif;background:var(--bg);color:#111;}
+    a{color:inherit;}img{max-width:100%;display:block;}
+    header.app-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:linear-gradient(180deg,var(--surface),#fbfdff);
+      box-shadow:var(--card-shadow);position:sticky;top:0;z-index:1000;}
+    .brand{display:flex;align-items:center;gap:12px;}
+    .brand h1{margin:0;font-size:1.05rem;font-weight:600;letter-spacing:0.2px;}
+    .controls{display:flex;gap:8px;align-items:center;}
+    button.btn{padding:8px 12px;border-radius:8px;border:1px solid #e6e9ee;background:var(--surface);cursor:pointer;}
+    button.btn.primary{background:var(--accent);color:#fff;border-color:rgba(43,140,255,0.15);}
+    .top-actions {display:flex;gap:8px;align-items:center;}
+    .search-input{padding:8px 10px;border-radius:8px;border:1px solid #e6e9ee;background:#fff;font-size:0.95rem;width:360px;max-width:40vw;}
+    .small{font-size:0.9rem;color:var(--muted);}
+    #tableWrap{padding:16px;}
+    table{width:100%;border-collapse:collapse;background:var(--surface);box-shadow:var(--card-shadow);border-radius:8px;overflow:hidden;}
+    thead th{text-align:left;padding:12px 14px;background:#eef2ff;border-bottom:1px solid #eef2f6;position:sticky;top:0;z-index:2;font-size:0.9rem;color:#000;}
+    tbody td{padding:10px 14px;border-bottom:1px solid #f1f4f8;font-size:0.95rem;vertical-align:middle;}
+    tbody tr.complain td{animation:blink-red 1.2s linear infinite;background:linear-gradient(90deg, rgba(255,235,239,0.6), rgba(255,255,255,0));}
+    tbody tr.payment td{animation:blink-pay 1.6s linear infinite;background:linear-gradient(90deg, rgba(255,255,224,0.6), rgba(255,255,255,0));}
+    @keyframes blink-red { 0% { box-shadow: inset 0 0 0 0 rgba(255,59,111,0.06); } 50% { box-shadow: inset 0 0 16px rgba(255,59,111,0.12);} 100% { box-shadow: inset 0 0 0 0 rgba(255,59,111,0.06); } }
+    @keyframes blink-pay { 0% { box-shadow: inset 0 0 0 0 rgba(255,216,77,0.06); } 50% { box-shadow: inset 0 0 16px rgba(255,216,77,0.12);} 100% { box-shadow: inset 0 0 0 0 rgba(255,216,77,0.06); } }
+
+    .editable{width:100%;box-sizing:border-box;padding:6px 8px;border-radius:6px;border:1px solid #e6e9ee;background:#fff;}
+    .status-select{padding:6px 8px;border-radius:6px;border:1px solid #e6e9ee;background:#fff;}
+    .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,0.12);opacity:0;pointer-events:none;transition:opacity .2s,transform .25s;}
+    .toast.show{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0);}
+    #spinner{display:none;position:fixed;inset:0;background:rgba(255,255,255,0.6);backdrop-filter:blur(2px);align-items:center;justify-content:center;z-index:1200;}
+    #spinner .dot{width:48px;height:48px;border-radius:50%;border:5px solid rgba(0,0,0,0.08);border-top-color:var(--accent);animation:spin 1s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .top-row{display:flex;align-items:center;gap:12px;padding:12px 16px;background:transparent;}
+    .add-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.32);z-index:1500;}
+    .add-modal .panel{width:420px;max-width:94%;background:var(--surface);padding:16px;border-radius:10px;box-shadow:0 24px 48px rgba(10,20,40,0.12);}
+    .row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+    label{font-size:0.88rem;color:var(--muted);min-width:80px;}
+    .required{color:#d23a3a;margin-left:6px;}
+    @media (max-width:880px){
+      .search-input{width:44vw;}
+    }
+    .btn.small{padding:6px 8px;font-size:0.9rem;}
+    .col-fixed{width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <h1>Cable complain handler</h1>
+      <div class="small">Manage, mark & track cable complaints</div>
+    </div>
+    <div class="controls">
+      <div class="top-actions">
+        <button id="btnAdd" class="btn primary">Add new user</button>
+        <input id="globalSearch" class="search-input" placeholder="Address / Mobile no" />
+        <button id="btnRefresh" class="btn">Refresh</button>
+      </div>
+    </div>
+  </header>
+
+  <div id="tableWrap">
+    <div class="top-row small">Showing <span id="count">0</span> rows — Sorted: <strong>Complain → Payment → OK</strong></div>
+    <table id="mainTable" aria-describedby="count">
+      <thead>
+        <tr>
+          <th style="width:200px">Remark</th>
+          <th style="width:120px">Status</th>
+          <th class="col-fixed">Address (unique)</th>
+          <th style="width:150px">Mobile No</th>
+          <th style="width:200px">Start time</th>
+          <th style="width:200px">End time</th>
+          <th style="width:120px">Log</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div id="spinner"><div class="dot"></div></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Add User Modal -->
+  <div id="addModal" class="add-modal" aria-hidden="true">
+    <div class="panel" role="dialog" aria-label="Add user">
+      <h3 style="margin-top:0">Add new user</h3>
+      <div class="row">
+        <label>Status <span class="required">*</span></label>
+        <select id="addStatus" class="status-select">
+          <option value="Complain">Complain</option>
+          <option value="Payment">Payment</option>
+          <option value="OK">OK</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Address <span class="required">*</span></label>
+        <input id="addAddress" class="editable" placeholder="Address (unique)"/>
+      </div>
+      <div class="row">
+        <label>Mobile <span class="required">*</span></label>
+        <input id="addMobile" class="editable" placeholder="Mobile number"/>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+        <button id="btnCancelAdd" class="btn">Cancel</button>
+        <button id="btnSubmitAdd" class="btn primary">Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---------- CONFIG ----------
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyovkJI9-u2LzI_AeklDJkebROZZVhyKXuFfJiUQC5jY0p15BBrzA0PECq0CEXHNjEU2A/exec";
+    // If your GAS requires a token param, set it here (optional)
+    const GAS_TOKEN = ""; // e.g. "abcd123"
+    // ---------- END CONFIG ----------
+
+    const tbody = document.querySelector("#mainTable tbody");
+    const spinner = document.getElementById("spinner");
+    const toastEl = document.getElementById("toast");
+    let rows = []; // raw rows from sheet as objects
+    // expected object keys: Remark, Status, Address, Mobile, Start, End, Log
+    // Address is unique key (column C)
+    // ------------------------------
+
+    function showSpinner(){ spinner.style.display = "flex"; }
+    function hideSpinner(){ spinner.style.display = "none"; }
+    function showToast(msg, ms = 2500){ toastEl.textContent = msg; toastEl.classList.add('show'); setTimeout(()=>toastEl.classList.remove('show'), ms); }
+
+    // fetch wrapper that tolerates different response shapes
+    async function fetchRows(){
+      showSpinner();
+      try{
+        let url = GAS_URL + (GAS_URL.includes('?') ? '&' : '?') + 'action=read';
+        if(GAS_TOKEN) url += '&token=' + encodeURIComponent(GAS_TOKEN);
+        const res = await fetch(url);
+        const txt = await res.text();
+        // Try parse leniently
+        let data;
+        try { data = JSON.parse(txt); }
+        catch(e){
+          // sometimes Google returns "/*O_o*/\n..." with padding - try to extract JSON object
+          const jsonStart = txt.indexOf('{');
+          const jsonEnd = txt.lastIndexOf('}') + 1;
+          if(jsonStart >= 0 && jsonEnd > jsonStart) {
+            try { data = JSON.parse(txt.slice(jsonStart, jsonEnd)); }
+            catch(err){ data = null; }
+          }
+        }
+        if(!data) throw new Error("Invalid response from GAS");
+        // support shapes:
+        // 1) { success:true, headers:[], data: [ {...}, ... ] }
+        // 2) { rows: [ {...}, ... ] }
+        // 3) { success:true, rows: [...] }
+        // 4) direct array
+        let arr = [];
+        if(Array.isArray(data)) arr = data;
+        else if(data.data && Array.isArray(data.data)) arr = data.data;
+        else if(data.rows && Array.isArray(data.rows)) arr = data.rows;
+        else if(data.success && data.headers && data.data) arr = data.data;
+        else {
+          // try find nested arrays/objects: maybe data.table.rows-like (gviz format)
+          if(data.table && data.table.rows){
+            // attempt to reconstruct from gviz
+            arr = data.table.rows.map(r => {
+              const c = r.c || [];
+              return {
+                Remark: c[0]?.v || '',
+                Status: c[1]?.v || '',
+                Address: c[2]?.v || '',
+                Mobile: c[3]?.v || '',
+                Start: c[4]?.v || '',
+                End: c[5]?.v || '',
+                Log: c[6]?.v || '',
+              };
+            });
+          }
+        }
+        // normalize keys to our expected keys
+        rows = arr.map((r, idx) => normalizeRow(r, idx+2)); // idx+2 approximate sheet row number (headers row=1)
+        render();
+      }catch(err){
+        console.error(err);
+        showToast("Failed to load data: " + (err.message||err));
+        rows = [];
+        render();
+      }finally{ hideSpinner(); }
+    }
+
+    // normalize incoming row object to our keys
+    function normalizeRow(r, approxRowNumber){
+      // Accept multiple possible key names
+      const get = (o, ...names) => {
+        for(const n of names) if(o[n] !== undefined && o[n] !== null) return o[n];
+        return "";
+      };
+      const Remark = get(r, 'Remark','Remarks','remark','Y','remarkText') + '';
+      const Status = get(r, 'Status','status','B','State') + '';
+      const Address = get(r, 'Address','address','C','NMID','A') + '';
+      const Mobile = get(r, 'Mobile','mobile','Mobile No.','Last called no','Number','D','P') + '';
+      const Start = get(r, 'Start','Start time','E','start') + '';
+      const End = get(r, 'End','End time','F','end') + '';
+      const Log = get(r, 'Log','log','G','Time log') + '';
+      const __row = r.__row || r.row || r._row || approxRowNumber; // some responses may include row num
+      return { Remark, Status, Address, Mobile, Start, End, Log, __row };
+    }
+
+    // status priority for sorting
+    const statusOrder = { 'Complain': 0, 'Payment': 1, 'OK': 2 };
+
+    function parseTimeString(s){
+      if(!s) return '';
+      // if already looks like "8/25/2025 16:54:11", just return
+      const maybeDate = new Date(s);
+      if(!isNaN(maybeDate.getTime())){
+        return formatDateTime(maybeDate);
+      }
+      // try common patterns
+      return s;
+    }
+    function formatDateTime(d){
+      const mm = d.getMonth()+1, dd = d.getDate(), yyyy = d.getFullYear();
+      const hh = String(d.getHours()).padStart(2,'0'), min = String(d.getMinutes()).padStart(2,'0'), sec = String(d.getSeconds()).padStart(2,'0');
+      return `${mm}/${dd}/${yyyy} ${hh}:${min}:${sec}`;
+    }
+
+    // convert log like "|1 घंटा 6 मिनट|" to "1 Hr 6 Mn"
+    function convertLogToEnglish(log){
+      if(!log) return '';
+      // extract numbers in order
+      // find hours and minutes in Devanagari/Hindi words; fallback to digits
+      const hrMatch = /(\d+)\s*घंट/i.exec(log) || /(\d+)\s*hour/i.exec(log) || /(\d+)\s*hr/i.exec(log);
+      const mnMatch = /(\d+)\s*मि?nि?ट/i.exec(log) || /(\d+)\s*minute/i.exec(log) || /(\d+)\s*min/i.exec(log);
+      const h = hrMatch ? parseInt(hrMatch[1],10) : null;
+      const m = mnMatch ? parseInt(mnMatch[1],10) : null;
+      if(h!=null && m!=null) return `${h} Hr ${m} Mn`;
+      if(h!=null) return `${h} Hr`;
+      if(m!=null) return `${m} Mn`;
+      // fallback: strip | and return clean
+      return log.replace(/\|/g,'').trim();
+    }
+
+    function render(){
+      // sort: Complain -> Payment -> OK, and keep relative order after that
+      const sorted = rows.slice().sort((a,b)=>{
+        const sa = statusOrder[a.Status] !== undefined ? statusOrder[a.Status] : 3;
+        const sb = statusOrder[b.Status] !== undefined ? statusOrder[b.Status] : 3;
+        if(sa !== sb) return sa - sb;
+        // secondary sort: Start time descending (newer first)
+        const da = new Date(a.Start), db = new Date(b.Start);
+        if(!isNaN(da) && !isNaN(db)) return db - da;
+        return (a.Address||'').localeCompare(b.Address||'');
+      });
+
+      // apply global search filter (Address OR Mobile)
+      const q = document.getElementById('globalSearch').value.trim().toLowerCase();
+      const filtered = q ? sorted.filter(r=>{
+        return (r.Address||'').toLowerCase().includes(q) || (r.Mobile||'').toLowerCase().includes(q);
+      }) : sorted;
+
+      document.getElementById('count').textContent = filtered.length;
+      tbody.innerHTML = '';
+      for(const r of filtered){
+        const tr = document.createElement('tr');
+        if((r.Status||'').toLowerCase() === 'complain') tr.classList.add('complain');
+        else if((r.Status||'').toLowerCase() === 'payment') tr.classList.add('payment');
+
+        // create cells
+        // Remark (editable)
+        const tdRemark = document.createElement('td');
+        const inpRemark = document.createElement('input');
+        inpRemark.type = 'text';
+        inpRemark.className = 'editable';
+        inpRemark.value = r.Remark || '';
+        inpRemark.dataset.addr = r.Address;
+        inpRemark.dataset.orig = r.Remark || '';
+        inpRemark.onblur = onRemarkBlur;
+        tdRemark.appendChild(inpRemark);
+
+        // Status (select)
+        const tdStatus = document.createElement('td');
+        const sel = document.createElement('select');
+        sel.className = 'status-select';
+        ['Complain','Payment','OK'].forEach(v=>{
+          const o = document.createElement('option'); o.value = v; o.textContent = v; if(v===r.Status) o.selected = true;
+          sel.appendChild(o);
+        });
+        sel.dataset.addr = r.Address;
+        sel.onchange = onStatusChange;
+        tdStatus.appendChild(sel);
+
+        // Address (readonly)
+        const tdAddr = document.createElement('td');
+        tdAddr.className = 'col-fixed';
+        tdAddr.textContent = r.Address || '';
+
+        // Mobile (editable)
+        const tdMobile = document.createElement('td');
+        const inpMob = document.createElement('input');
+        inpMob.type = 'text';
+        inpMob.className = 'editable';
+        inpMob.value = r.Mobile || '';
+        inpMob.dataset.addr = r.Address;
+        inpMob.dataset.orig = r.Mobile || '';
+        inpMob.onblur = onMobileBlur;
+        tdMobile.appendChild(inpMob);
+
+        // Start time
+        const tdStart = document.createElement('td');
+        tdStart.textContent = parseTimeString(r.Start);
+
+        // End time
+        const tdEnd = document.createElement('td');
+        tdEnd.textContent = parseTimeString(r.End);
+
+        // Log
+        const tdLog = document.createElement('td');
+        tdLog.textContent = convertLogToEnglish(r.Log);
+
+        tr.appendChild(tdRemark);
+        tr.appendChild(tdStatus);
+        tr.appendChild(tdAddr);
+        tr.appendChild(tdMobile);
+        tr.appendChild(tdStart);
+        tr.appendChild(tdEnd);
+        tr.appendChild(tdLog);
+
+        tbody.appendChild(tr);
+      }
+    }
+
+    // ---------- Handlers for edits ----------
+    async function onRemarkBlur(e){
+      const input = e.target;
+      const addr = input.dataset.addr;
+      const newVal = input.value;
+      const orig = input.dataset.orig;
+      if(newVal === orig) return; // unchanged
+      // send update
+      try{
+        showSpinner();
+        const body = {
+          action: "mark", // try 'mark' action supported by many GAS backends
+          address: addr,
+          remark: newVal,
+          mobile: null
+        };
+        // If your GAS expects 'update' with row number, this may fail; backend should handle mark/update by Address
+        const resp = await postToGAS(body);
+        if(resp && resp.success) {
+          input.dataset.orig = newVal;
+          showToast("Remark saved");
+          await fetchRows(); // refresh to pick up server timestamps/sort
+        } else {
+          throw new Error((resp && resp.error) ? resp.error : 'Save failed');
+        }
+      }catch(err){
+        console.error(err);
+        showToast("Save failed");
+      }finally{ hideSpinner(); }
+    }
+
+    async function onMobileBlur(e){
+      const input = e.target;
+      const addr = input.dataset.addr;
+      const newVal = input.value;
+      const orig = input.dataset.orig;
+      if(newVal === orig) return;
+      try{
+        showSpinner();
+        const body = {
+          action: "mark",
+          address: addr,
+          remark: null,
+          mobile: newVal
+        };
+        const resp = await postToGAS(body);
+        if(resp && resp.success) {
+          input.dataset.orig = newVal;
+          showToast("Mobile saved");
+          await fetchRows();
+        } else throw new Error((resp && resp.error) ? resp.error : 'Save failed');
+      }catch(err){ console.error(err); showToast("Save failed"); } finally{ hideSpinner(); }
+    }
+
+    async function onStatusChange(e){
+      const sel = e.target;
+      const addr = sel.dataset.addr;
+      const newStatus = sel.value;
+      try{
+        showSpinner();
+        // For status change we set appropriate timestamps:
+        // if set to Complain -> set Start time now, clear End
+        // if set to OK -> set End time now
+        const body = { action: "status_change", address: addr, status: newStatus };
+        // Try a few action names depending on backend capabilities
+        let resp = await postToGAS(body).catch(()=>null);
+        if(!resp || !resp.success){
+          // fallback to generic 'update' via address
+          resp = await postToGAS({ action: "mark", address: addr, status: newStatus }).catch(()=>null);
+        }
+        if(resp && resp.success){
+          showToast("Status updated");
+          await fetchRows();
+        } else throw new Error('Status update failed');
+      }catch(err){ console.error(err); showToast("Status update failed") } finally{ hideSpinner(); }
+    }
+
+    // ---------- Add new user ----------
+    document.getElementById('btnAdd').addEventListener('click', ()=> {
+      document.getElementById('addModal').style.display = 'flex';
+      document.getElementById('addModal').setAttribute('aria-hidden','false');
+    });
+    document.getElementById('btnCancelAdd').addEventListener('click', ()=> {
+      closeAddModal();
+    });
+    function closeAddModal(){
+      document.getElementById('addStatus').value = 'OK';
+      document.getElementById('addAddress').value = '';
+      document.getElementById('addMobile').value = '';
+      document.getElementById('addModal').style.display = 'none';
+      document.getElementById('addModal').setAttribute('aria-hidden','true');
+    }
+
+    document.getElementById('btnSubmitAdd').addEventListener('click', async ()=>{
+      const status = document.getElementById('addStatus').value.trim();
+      const address = document.getElementById('addAddress').value.trim();
+      const mobile = document.getElementById('addMobile').value.trim();
+      if(!status || !address || !mobile){ showToast("All 3 fields are required"); return; }
+      // uniqueness check
+      const exists = rows.some(r => (r.Address||'').toLowerCase() === address.toLowerCase());
+      if(exists){ showToast("Address already exists (must be unique)"); return; }
+      try{
+        showSpinner();
+        const body = {
+          action: "add",
+          data: {
+            Remark: "",
+            Status: status,
+            Address: address,
+            Mobile: mobile,
+            Start: "",
+            End: "",
+            Log: ""
+          }
+        };
+        const resp = await postToGAS(body);
+        if(resp && resp.success){
+          showToast("User added");
+          closeAddModal();
+          await fetchRows();
+        } else {
+          throw new Error(resp && resp.error ? resp.error : "Add failed");
+        }
+      }catch(err){
+        console.error(err);
+        showToast("Add failed");
+      }finally{ hideSpinner(); }
+    });
+
+    // ---------- Search and UI events ----------
+    document.getElementById('globalSearch').addEventListener('input', ()=> render());
+    document.getElementById('btnRefresh').addEventListener('click', ()=> fetchRows());
+
+    // ---------- POST wrapper to GAS ----------
+    async function postToGAS(obj){
+      // send JSON POST to GAS_URL. Some GAS deployments require token as query param; include if provided.
+      const url = GAS_URL + (GAS_URL.includes('?') ? '&' : '?') + (GAS_TOKEN ? 'token=' + encodeURIComponent(GAS_TOKEN) + '&' : '') + 'ts=' + Date.now();
+      try{
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(obj),
+        });
+        // Some deployments return 204 due to CORS fallback; attempt to parse JSON if available
+        const txt = await res.text().catch(()=>null);
+        if(!txt) return { success: true, fallback: true };
+        try { return JSON.parse(txt); } catch(e) {
+          // attempt to extract JSON substring
+          const start = txt.indexOf('{'), end = txt.lastIndexOf('}');
+          if(start>=0 && end>start) try { return JSON.parse(txt.slice(start,end+1)); } catch(err){}
+        }
+        return { success: true };
+      }catch(err){
+        // last-resort: try no-cors POST (this cannot read response)
+        try{
+          await fetch(url, { method:'POST', mode:'no-cors', body: JSON.stringify(obj) });
+          return { success: true, fallback: true };
+        }catch(e){
+          console.error(e);
+          return { success: false, error: e.message || e };
+        }
+      }
+    }
+
+    // ---------- init ----------
+    fetchRows();
+
+    // ---------- utility: ensure clicking outside modal closes it ----------
+    document.addEventListener('click', (ev) => {
+      if(ev.target.id === 'addModal') closeAddModal();
+    });
+
+    // keyboard escape closes modal
+    document.addEventListener('keydown', (ev)=>{
+      if(ev.key === 'Escape'){
+        if(document.getElementById('addModal').style.display === 'flex') closeAddModal();
+      }
+    });
+  </script>
+</body>
+</html>
