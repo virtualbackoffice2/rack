@@ -295,7 +295,7 @@ tbody tr.payment td {
   </header>
 
   <div id="tableWrap">
-    <div class="top-row small">Showing </div>
+   <div class="top-row small">Showing <span id="count"></span> rows</div>
     <table id="mainTable" aria-describedby="count">
       <thead>
         <tr>
@@ -349,6 +349,11 @@ tbody tr.payment td {
     <button class="drawer-item" id="m_btnAddUser">Add new user</button>
 
     <input id="m_globalSearch" class="search-input" placeholder="Address / Mobile no" style="margin:8px 0" />
+<div class="small" id="m_countBox" style="margin:6px 0 14px 0; color:#555;">
+  Showing <span id="m_count"></span> rows
+</div>
+
+<button id="m_btnGo" class="drawer-item">Go</button>
 
     <button id="m_btnRefresh" class="drawer-item">Refresh</button>
   </div>
@@ -504,6 +509,7 @@ tbody tr.payment td {
       }) : sorted;
 
       document.getElementById('count').textContent = filtered.length;
+      document.getElementById('m_count').textContent = filtered.length;
       tbody.innerHTML = '';
       for(const r of filtered){
         const tr = document.createElement('tr');
@@ -784,6 +790,9 @@ document.getElementById("m_btnRefresh").onclick = () => {
 document.getElementById("m_globalSearch").oninput = (e)=>{
   document.getElementById("globalSearch").value = e.target.value;
   render();
+};
+document.getElementById("m_btnGo").onclick = () => {
+  drawer.classList.remove("open");
 };
 
 
