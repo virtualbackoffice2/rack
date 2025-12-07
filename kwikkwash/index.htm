@@ -4,7 +4,6 @@
   <base target="_top">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=0.5, user-scalable=yes">
 
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="kwikkwash.css">
@@ -12,7 +11,10 @@
 
 <body>
 
-  <header class="header"></header>
+  <header class="header">
+    <h2 style="text-align:center; margin:0; padding:10px; font-weight:700;">Kwikkwash</h2>
+  </header>
+
   <button class="logout-btn" onclick="logout()">Logout</button>
 
   <div class="container">
@@ -28,25 +30,25 @@
           <!-- INTERNET -->
           <div>
             <div class="right-button btn-internet clickable" onclick="toggleOptions(this)">
-              <i class="bi bi-router-fill"></i> Internet
+              Internet
             </div>
 
             <div class="dropdown-options">
 
-              <div class="right-button btn-internet right-button-small clickable" onclick="showComingSoon()" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
-                <i class="bi bi-hdd-rack"></i> Rack
+              <div class="right-button btn-internet right-button-small" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
+                Rack
               </div>
 
-              <a class="right-button btn-internet right-button-small clickable" href="https://trustindealamanwiz-a11y.github.io/merotranetwork/vbo" target="_blank">
-                <i class="bi bi-diagram-3"></i> Line Marking
-              </a>
+              <div class="right-button btn-internet right-button-small" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
+                Line Marking
+              </div>
 
-              <a class="right-button btn-internet right-button-small clickable" href="https://vbo.co.in/ISP/Lucknow/Merotra/level2/recenttag" target="_blank">
-                <i class="bi bi-diagram-3"></i> Recent tags
-              </a>
+              <div class="right-button btn-internet right-button-small" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
+                Recent Tags
+              </div>
 
-              <div class="right-button btn-internet right-button-small clickable" onclick="showComingSoon()" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
-                <i class="bi bi-people"></i> Complaint Management
+              <div class="right-button btn-internet right-button-small" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
+                Complaint Management
               </div>
 
             </div>
@@ -55,18 +57,18 @@
           <!-- CABLE -->
           <div>
             <div class="right-button btn-cable clickable" onclick="toggleOptions(this)">
-              <i class="bi bi-tv"></i> Cable
+              Cable
             </div>
 
             <div class="dropdown-options">
 
-              <a class="right-button btn-cable right-button-small clickable" href="https://docs.google.com/spreadsheets/d/1DkIP-IHouSQjilvSs43IkMAZLMdXr3sEYeNBsCDjdOc/edit?gid=2052862460#gid=2052862460" target="_blank">
-                <i class="bi bi-table"></i> Due Payment Schedule
-              </a>
+              <div class="right-button btn-cable right-button-small" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
+                Due Payment Schedule
+              </div>
 
-              <a class="right-button btn-cable right-button-small clickable" href="https://virtualbackoffice2.github.io/rack/cable/" target="_blank">
-                <i class="bi bi-exclamation-circle"></i> Complaint Management
-              </a>
+              <div class="right-button btn-cable right-button-small" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
+                Complaint Management
+              </div>
 
             </div>
           </div>
@@ -74,21 +76,23 @@
           <!-- ADMINISTRATION -->
           <div>
             <div class="right-button btn-admin clickable" onclick="toggleOptions(this)">
-              <i class="bi bi-buildings"></i> Administration
+              Administration
             </div>
 
             <div class="dropdown-options">
 
-              <a class="right-button btn-admin right-button-small clickable" href="https://virtualbackoffice2.github.io/rack/atn" target="_blank">
-                <i class="bi bi-clipboard-check"></i> Attendance
+              <!-- ONLY ACTIVE BUTTON -->
+              <a class="right-button btn-admin right-button-small"
+                 href="https://virtualbackoffice2.github.io/rack/kwikkwash/atn">
+                Attendance
               </a>
 
-              <div class="right-button btn-admin right-button-small clickable" onclick="showComingSoon()" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
-                <i class="bi bi-cash-coin"></i> Salary Report
+              <div class="right-button btn-admin right-button-small" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
+                Salary Report
               </div>
 
-              <div class="right-button btn-admin right-button-small clickable" onclick="showComingSoon()" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
-                <i class="bi bi-journal-text"></i> Advance Request
+              <div class="right-button btn-admin right-button-small" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
+                Advance Request
               </div>
 
             </div>
@@ -97,17 +101,17 @@
           <!-- STOCK -->
           <div>
             <div class="right-button btn-stock clickable" onclick="toggleOptions(this)">
-              <i class="bi bi-box-arrow-in-down"></i> Stock
+              Stock
             </div>
 
             <div class="dropdown-options">
 
-              <div class="right-button btn-stock right-button-small clickable" onclick="showComingSoon()" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
-                <i class="bi bi-arrow-left-right"></i> Inbound / Outbound
+              <div class="right-button btn-stock right-button-small" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
+                Inbound / Outbound
               </div>
 
-              <div class="right-button btn-stock right-button-small clickable" onclick="showComingSoon()" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
-                <i class="bi bi-journal"></i> Stock Book
+              <div class="right-button btn-stock right-button-small" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
+                Stock Book
               </div>
 
             </div>
