@@ -1,3 +1,4 @@
+/* GENERAL */
 body {
   font-family: 'Roboto', sans-serif;
   margin: 0;
@@ -7,20 +8,21 @@ body {
   height: 100vh;
   overflow: hidden;
 }
+
 a {
   text-decoration: none !important;
 }
+
 .header {
   text-align: center;
   margin: 10px 0;
   position: relative;
-}
-.brand-title {
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: 700;
   color: #2c3e50;
-  margin-bottom: 5px;
 }
+
+/* LOGOUT BUTTON */
 .logout-btn {
   position: absolute;
   top: 17px;
@@ -37,11 +39,11 @@ a {
 .logout-btn:hover {
   background-color: #c0392b;
 }
+
+/* MAIN CONTAINER */
 .container {
   max-width: 100%;
   margin: 0;
-  box-shadow: none;
-  border-radius: 0;
   background: linear-gradient(145deg, #ffffff, #f0f2f5);
   padding: 10px;
   height: 100vh;
@@ -50,9 +52,8 @@ a {
   flex-direction: column;
   position: relative;
 }
-.container:hover {
-  box-shadow: none;
-}
+
+/* BUTTON GRID */
 .right-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -60,120 +61,90 @@ a {
   flex-grow: 1;
   overflow: auto;
 }
-.right-button, .right-button-small, .notes-button {
+
+/* MAIN BUTTONS */
+.right-button {
   border-radius: 15px;
   padding: 2rem 1rem;
-}
-.right-button {
-  color: #202124;
   text-align: center;
+  font-size: 1.2rem;
+  background: #fff;
   display: flex;
-  flex-direction: column;
   justify-content: center;
   align-items: center;
-  font-size: 1.1rem;
-  background: #fff;
-  position: relative;
-  overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.5s ease;
+  height: 90px;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: transform 0.3s ease, box-shadow 0.4s ease;
 }
 .right-button:hover {
   transform: translateY(-5px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.15);
 }
-.right-button i {
-  font-size: 1.8rem;
-  margin-bottom: 0.3rem;
-  transition: color 0.3s ease;
-}
-.right-button:hover i {
-  color: #3498db;
-}
-.dropdown-options {
-  
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-}
-.dropdown-options.show {
-  display: flex;
-}
+
+/* SUB BUTTONS */
 .right-button-small {
-  padding: 0.8rem 1rem;
-  font-size: 0.9rem;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  padding: 0.9rem 1rem;
+  font-size: 0.85rem;
+  border-radius: 10px;
   background: #fff;
   border: 1px solid #e0e4e8;
-  position: relative;
-  overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.5s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 .right-button-small:hover {
   background: #f8fafc;
   transform: translateY(-3px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.15);
 }
-.right-button-small i {
-  font-size: 1rem;
-  transition: color 0.2s;
-}
-.right-button-small:hover i {
-  color: #1a5276;
-}
-.btn-internet { background: #C8E6C9; }
-.btn-cable { background: #FFCDD2; }
+
+/* COLORS FOR CATEGORIES */
 .btn-admin { background: #BBDEFB; }
 .btn-stock { background: #FFE0B2; }
-.btn-disabled {
-  background: #eeeeee;
-  color: #999;
-  cursor: not-allowed;
-  box-shadow: none;
+.btn-tasks { background: #EDE7F6; }
+.btn-score { background: #C8E6C9; }
+
+/* DISABLED BUTTON STYLE */
+.disabled-btn {
+  opacity: 0.45 !important;
+  filter: grayscale(1);
+  cursor: not-allowed !important;
+  box-shadow: none !important;
 }
-.btn-disabled:hover {
-  transform: none;
-  box-shadow: none;
-  background: #eeeeee;
+.disabled-btn:hover {
+  transform: none !important;
+  box-shadow: none !important;
 }
+
+/* DROPDOWN ANIMATION */
+.dropdown-options {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(-15px);
+  transition:
+    max-height 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.3s ease,
+    transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.dropdown-options.show {
+  max-height: 250px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* FOOTER */
 footer {
   margin: 10px 0;
   text-align: center;
   font-size: 0.8rem;
   color: #7f8c8d;
 }
-.notes-section {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  margin-top: 1rem;
-}
-.notes-button {
-  background: #DCEDC8;
-  color: #202124;
-  border-radius: 15px;
-  padding: 2rem 1rem;
-  font-size: 1.1rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease, box-shadow 0.5s ease;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  max-width: 100%;
-  position: relative;
-  overflow: hidden;
-}
-.notes-button:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 6px 16px rgba(0,0,0,0.15);
-}
+
+/* POPUP */
 #popupMessage {
   display: none;
   position: fixed;
@@ -187,193 +158,23 @@ footer {
   font-size: 16px;
   z-index: 100;
   box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-  animation: fadeOut 3s forwards;
-}
-#popupMessage.show {
-  display: block;
-}
-@keyframes fadeOut {
-  0% { opacity: 1; }
-  80% { opacity: 1; }
-  100% { opacity: 0; }
-}
-/* ------------------ TAB SYSTEM ------------------ */
-.tab-bar {
-  display: flex;
-  overflow-x: auto;
-  background: linear-gradient(145deg, #ffffff, #f0f2f5);
-  margin-bottom: 10px;
-  padding: 5px;
-  border-bottom: 1px solid #e0e4e8;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  scrollbar-width: thin;
-  scrollbar-color: #bdc3c7 #f1f2f6;
-  flex-shrink: 0;
-}
-.tab-bar::-webkit-scrollbar {
-  height: 4px;
-}
-.tab-bar::-webkit-scrollbar-track {
-  background: #f1f2f6;
-}
-.tab-bar::-webkit-scrollbar-thumb {
-  background: #bdc3c7;
-  border-radius: 2px;
-}
-.tab-btn {
-  padding: 8px 15px;
-  color: #333;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  font-size: 0.9rem;
-  border-radius: 8px 8px 0 0;
-  margin-right: 2px;
-  background: transparent;
-  border: 1px solid transparent;
-  position: relative;
-}
-.tab-btn:hover {
-  background: rgba(52,152,219,0.1);
-  color: #3498db;
-}
-.tab-btn.active {
-  background: #ffffff;
-  color: #2c3e50;
-  border: 1px solid #e0e4e8;
-  border-bottom: none;
-  box-shadow: 0 -2px 4px rgba(0,0,0,0.05);
-}
-.close-tab {
-  margin-left: 8px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: color 0.3s ease;
-  opacity: 0.7;
-}
-.tab-btn:hover .close-tab {
-  opacity: 1;
-  color: #e74c3c;
-}
-.tab-contents .tab-content {
-  opacity: 0;
-  transform: translateX(-100%);
-  transition: opacity 1.2s ease, transform 1.2s ease;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: calc(100% - 30px);
-  padding: 20px;
-  box-sizing: border-box;
-  overflow: auto;
-}
-.tab-contents .tab-content.active {
-  opacity: 1;
-  transform: translateX(0);
-  position: relative;
-  height: calc(100% - 30px);
-  padding: 20px;
 }
 
-/* MOBILE */
+/* MOBILE OPTIMIZATION */
 @media screen and (max-width: 768px) {
-  .container {
-    height: 100vh;
-    padding: 10px;
-  }
   .right-grid {
     grid-template-columns: 1fr;
     gap: 0.8rem;
-    margin-bottom: 1rem;
   }
-  .notes-section {
-    margin-top: 0.8rem;
-  }
-  .notes-button {
-    padding: 1.5rem 1rem;
-    font-size: 1rem;
-  }
-.right-button, .right-button-small, .notes-button {
-  padding: 1rem 0.7rem;   /* mobile mein chhota kar diya */
-  border-radius: 12px;    /* thoda kam round (optional) */
-  font-size: 1rem;        /* text bhi thoda chhota */
-}
-   .btn-admin.right-button-small {
-    padding: 1.3rem 0.9rem !important;  /* height fix */
-    font-size: 1rem !important;         /* match with other buttons */
-  }
-  .right-button i {
-    font-size: 1.5rem;
-  }
-  .tab-btn {
-    padding: 6px 12px;
-    font-size: 0.8rem;
-  }
-  .brand-title {
-    font-size: 2rem;
-  }
-  .logout-btn {
-    padding: 0.4rem 0.8rem;
-    font-size: 0.8rem;
-  }
-  footer {
-    font-size: 0.7rem;
-  }
-  .tab-contents .tab-content,
-  .tab-contents .tab-content.active {
-    padding: 15px;
-    height: calc(100% - 30px);
-  }
-}
 
-.right-button-small {
-  font-size: 0.70rem !important;   /* ← sub buttons k text ka size */
-}
+  .right-button {
+    padding: 1.2rem 1rem;
+    font-size: 1.05rem;
+    height: 75px;
+  }
 
-.btn-admin.right-button-small {
-  padding: 1rem 1rem !important;
-  font-size: 0.80rem !important;
-}
-
-/* DESKTOP FIX */
-@media screen and (min-width: 769px) {
-  .notes-section {
-    display: flex;
-    justify-content: center;
-  } di
-}
-
-/*Bumentu animation*/
-/* --- Bounce Dropdown Animation --- */
-
-.dropdown-options {
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-  transform: translateY(-15px);
-  transition:
-    max-height 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
-    opacity 0.3s ease,
-    transform 1.45s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.dropdown-options.show {
-  max-height: 300px;
-  opacity: 1;
-  transform: translateY(0);
-}
-
-
-/* Mobile pe tabs ka extra space fix */
-@media screen and (max-width: 768px) {
-  .tab-contents .tab-content,
-  .tab-contents .tab-content.active {
-    padding: 8px 8px !important;   /* left-right space kam kiya */
-    margin: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
+  .right-button-small {
+    padding: 0.7rem 0.8rem;
+    font-size: 0.78rem;
   }
 }
