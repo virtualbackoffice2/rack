@@ -416,3 +416,21 @@ footer {
   box-shadow: none !important;
   cursor: not-allowed !important;
 }
+
+/* --- Clean Professional Header --- */
+.header {
+  width: 100%;
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 700;
+  padding: 15px 0;
+  color: #ffffff;
+  background: linear-gradient(135deg, #1e3c72, #2a5298); /* elegant blue */
+  border-bottom: 3px solid rgba(255,255,255,0.15);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+  position: relative;
+  z-index: 5;
+}
+
