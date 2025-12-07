@@ -215,8 +215,8 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>All Attendance</h1>
-      <p>Merotra Cable Network</p>
+      <h1>Team Attendance</h1>
+      <p>kwikwas.com</p>
     </div>
 
     <button id="addRecordBtn">Add Record</button>
@@ -350,7 +350,7 @@
   <div id="toast">Attendance modified!</div>
 
   <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykf97Wp9J6fPP_LcpzDy1MhfjlbRJIawIXXuW_zmzbx5f9wstjcTL98DlgiEl4rIhj/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyvDNPSNGN9G2Mg7sWn3VWTL29tS7mG7jCelnNVZfuVoZwNPmkZNsVXYpxjvb-k0wJIyQ/exec";
     let allData = [];
     let uniqueEmails = new Set();
 
