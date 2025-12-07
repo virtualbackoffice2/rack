@@ -11,10 +11,7 @@
 
 <body>
 
-  <header class="header">
-    <h2 style="text-align:center; margin:0; padding:10px; font-weight:700;">Kwikkwash</h2>
-  </header>
-
+  <header class="header">Kwikkwash</header>
   <button class="logout-btn" onclick="logout()">Logout</button>
 
   <div class="container">
@@ -27,52 +24,6 @@
 
         <div class="right-grid">
 
-          <!-- INTERNET -->
-          <div>
-            <div class="right-button btn-internet clickable" onclick="toggleOptions(this)">
-              Internet
-            </div>
-
-            <div class="dropdown-options">
-
-              <div class="right-button btn-internet right-button-small" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
-                Rack
-              </div>
-
-              <div class="right-button btn-internet right-button-small" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
-                Line Marking
-              </div>
-
-              <div class="right-button btn-internet right-button-small" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
-                Recent Tags
-              </div>
-
-              <div class="right-button btn-internet right-button-small" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
-                Complaint Management
-              </div>
-
-            </div>
-          </div>
-
-          <!-- CABLE -->
-          <div>
-            <div class="right-button btn-cable clickable" onclick="toggleOptions(this)">
-              Cable
-            </div>
-
-            <div class="dropdown-options">
-
-              <div class="right-button btn-cable right-button-small" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
-                Due Payment Schedule
-              </div>
-
-              <div class="right-button btn-cable right-button-small" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
-                Complaint Management
-              </div>
-
-            </div>
-          </div>
-
           <!-- ADMINISTRATION -->
           <div>
             <div class="right-button btn-admin clickable" onclick="toggleOptions(this)">
@@ -81,18 +32,15 @@
 
             <div class="dropdown-options">
 
-              <!-- ONLY ACTIVE BUTTON -->
-              <a class="right-button btn-admin right-button-small"
+              <!-- Attendance (ACTIVE) -->
+              <a class="right-button btn-admin right-button-small clickable"
                  href="https://virtualbackoffice2.github.io/rack/kwikkwash/atn">
                 Attendance
               </a>
 
-              <div class="right-button btn-admin right-button-small" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
-                Salary Report
-              </div>
-
-              <div class="right-button btn-admin right-button-small" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
-                Advance Request
+              <!-- Tasks (DISABLED) -->
+              <div class="right-button btn-admin right-button-small disabled-btn">
+                Tasks
               </div>
 
             </div>
@@ -106,12 +54,50 @@
 
             <div class="dropdown-options">
 
-              <div class="right-button btn-stock right-button-small" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
-                Inbound / Outbound
+              <div class="right-button btn-stock right-button-small disabled-btn">
+                Inbound
               </div>
 
-              <div class="right-button btn-stock right-button-small" style="opacity:0.5; filter:grayscale(1); cursor:not-allowed;">
-                Stock Book
+              <div class="right-button btn-stock right-button-small disabled-btn">
+                Outbound
+              </div>
+
+            </div>
+          </div>
+
+          <!-- TASKS -->
+          <div>
+            <div class="right-button btn-tasks clickable" onclick="toggleOptions(this)">
+              Tasks
+            </div>
+
+            <div class="dropdown-options">
+
+              <div class="right-button btn-tasks right-button-small disabled-btn">
+                Allocated
+              </div>
+
+              <div class="right-button btn-tasks right-button-small disabled-btn">
+                Unallocated
+              </div>
+
+            </div>
+          </div>
+
+          <!-- MY SCORE -->
+          <div>
+            <div class="right-button btn-score clickable" onclick="toggleOptions(this)">
+              My Score
+            </div>
+
+            <div class="dropdown-options">
+
+              <div class="right-button btn-score right-button-small disabled-btn">
+                My Score
+              </div>
+
+              <div class="right-button btn-score right-button-small disabled-btn">
+                Team Rank
               </div>
 
             </div>
@@ -127,7 +113,14 @@
   <footer>Powered by: Trust In Deal Enterprises</footer>
 
   <div id="popupMessage">Coming soon</div>
-  <audio id="errorSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_d9b5d6c2e8.mp3" preload="auto"></audio>
+
+  <style>
+    .disabled-btn {
+      opacity: 0.5;
+      filter: grayscale(1);
+      cursor: not-allowed;
+    }
+  </style>
 
   <script>
     function showComingSoon() {
