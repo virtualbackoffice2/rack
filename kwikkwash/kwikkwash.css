@@ -414,5 +414,5 @@ footer {
   filter: grayscale(1);
   cursor: not-allowed !important;
   box-shadow: none !important;
-  pointer-events: none !important;
+  cursor: not-allowed !important;
 }
