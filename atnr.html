@@ -110,6 +110,16 @@
       text-align: left;
       font-size: 13px;
     }
+    #summaryTable th, #summaryTable td {
+  border: 1px solid #ddd;
+  padding: 6px 8px;
+  text-align: left;
+  font-size: 13px;
+}
+#summaryTable th {
+  background-color: #f2f2f2;
+}
+
     #attendanceTable th {
       background-color: #f2f2f2;
       position: sticky;
@@ -277,6 +287,24 @@
     </div>
 
     <div id="loadingMessage" class="loading">Loading attendance data...</div>
+    <!-- SUMMARY TABLE -->
+<div class="table-wrapper" style="margin-top:20px;">
+  <h3 style="margin-bottom:10px; color:#667eea;">Summary</h3>
+  <table id="summaryTable" style="width:100%; border-collapse: collapse; display:none;">
+    <thead>
+      <tr>
+        <th>Employee</th>
+        <th>Full Days</th>
+        <th>Half Days</th>
+        <th>Late Days</th>
+        <th>Incomplete</th>
+        <th>Total Bike Running</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
 
     <div class="table-wrapper">
       <table id="attendanceTable" style="display:none;">
@@ -642,7 +670,7 @@ tr.innerHTML = `
           elements.tbody.appendChild(tr);
         });
       }
-
+      renderSummary(rows);
       elements.attendanceTable.style.display = 'table';
       elements.loadingMessage.style.display = 'none';
     }
@@ -683,6 +711,51 @@ tr.innerHTML = `
       if (totalHours >= 7.5 && totalHours < 8.5) return 'Late';
       return 'Half day';
     }
+    function renderSummary(rows) {
+  const summaryMap = new Map();
+
+  rows.forEach(row => {
+    if (!summaryMap.has(row.email)) {
+      summaryMap.set(row.email, {
+        full: 0,
+        half: 0,
+        late: 0,
+        incomplete: 0,
+        bike: 0
+      });
+    }
+
+    const emp = summaryMap.get(row.email);
+
+    if (row.attendance === "Full day") emp.full++;
+    if (row.attendance === "Half day") emp.half++;
+    if (row.attendance === "Late") emp.late++;
+    if (row.attendance === "Incomplete attendance") emp.incomplete++;
+
+    if (row.bikeRunning !== "--" && !isNaN(row.bikeRunning)) {
+      emp.bike += row.bikeRunning;
+    }
+  });
+
+  const tbody = document.querySelector("#summaryTable tbody");
+  tbody.innerHTML = "";
+
+  summaryMap.forEach((val, email) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${email}</td>
+      <td>${val.full}</td>
+      <td>${val.half}</td>
+      <td>${val.late}</td>
+      <td>${val.incomplete}</td>
+      <td>${val.bike}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById("summaryTable").style.display = "table";
+}
+
 
     // Open edit modal
     function openEditModal(emailStr, dateStr, rawRowsStr) {
