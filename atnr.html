@@ -293,12 +293,13 @@
   <table id="summaryTable" style="width:100%; border-collapse: collapse; display:none;">
     <thead>
       <tr>
-        <th>Employee</th>
-        <th>Full Days</th>
-        <th>Half Days</th>
-        <th>Late Days</th>
-        <th>Incomplete</th>
-        <th>Total Bike Running</th>
+<th>Employee</th>
+<th>Full Days</th>
+<th>Half Days</th>
+<th>Late Days</th>
+<th>Incomplete</th>
+<th>Off Days</th>
+<th>Total Bike Running</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -711,7 +712,7 @@ tr.innerHTML = `
       if (totalHours >= 7.5 && totalHours < 8.5) return 'Late';
       return 'Half day';
     }
-    function renderSummary(rows) {
+ function renderSummary(rows) {
   const summaryMap = new Map();
 
   rows.forEach(row => {
@@ -721,6 +722,7 @@ tr.innerHTML = `
         half: 0,
         late: 0,
         incomplete: 0,
+        off: 0,
         bike: 0
       });
     }
@@ -731,6 +733,7 @@ tr.innerHTML = `
     if (row.attendance === "Half day") emp.half++;
     if (row.attendance === "Late") emp.late++;
     if (row.attendance === "Incomplete attendance") emp.incomplete++;
+    if (row.attendance === "Off") emp.off++;
 
     if (row.bikeRunning !== "--" && !isNaN(row.bikeRunning)) {
       emp.bike += row.bikeRunning;
@@ -748,6 +751,7 @@ tr.innerHTML = `
       <td>${val.half}</td>
       <td>${val.late}</td>
       <td>${val.incomplete}</td>
+      <td>${val.off}</td>
       <td>${val.bike}</td>
     `;
     tbody.appendChild(tr);
