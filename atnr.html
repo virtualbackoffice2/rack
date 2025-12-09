@@ -210,6 +210,11 @@
       #attendanceTable th, #attendanceTable td { font-size: 12px; padding: 5px; }
       button { font-size: 15px; padding: 10px; }
     }
+
+    #addRecordBtn {
+  display: none !important;
+}
+
   </style>
 </head>
 <body>
@@ -286,6 +291,7 @@
             <th>Lunch Done</th>
             <th>Duty Off</th>
             <th>Attendance</th>
+            <th>Bike Running</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -581,12 +587,29 @@
           };
           const attendance = computeAttendance(group);
           if (includeAllAtt || selectedAttTypes.includes(attendance)) {
-            rows.push({
-              email, date: dateKey,
-              dutyStart: group.dutyStart || '--', lunchStart: group.lunchStart || '--',
-              lunchDone: group.lunchDone || '--', dutyOff: group.dutyOff || '--',
-              attendance, rawRows: group.rawRows
-            });
+// Extract bike readings
+let dutyStartReading = null;
+let dutyOffReading = null;
+
+group.rawRows.forEach(r => {
+  if (r[2] === "Duty start" && r[3] !== "N/A") dutyStartReading = parseInt(r[3]);
+  if (r[2] === "Duty off" && r[3] !== "N/A") dutyOffReading = parseInt(r[3]);
+});
+
+let bikeRunning = (dutyStartReading != null && dutyOffReading != null)
+  ? (dutyOffReading - dutyStartReading)
+  : "--";
+
+rows.push({
+  email, date: dateKey,
+  dutyStart: group.dutyStart || '--',
+  lunchStart: group.lunchStart || '--',
+  lunchDone: group.lunchDone || '--',
+  dutyOff: group.dutyOff || '--',
+  attendance,
+  bikeRunning,
+  rawRows: group.rawRows
+});
           }
         });
       });
@@ -603,17 +626,19 @@
             editBtn = `<button class="edit-btn" onclick="openEditModal('${row.email.replace(/'/g, "\\'")}', '${row.date.replace(/'/g, "\\'")}', '${rawRowsStr}')">✏️</button>`;
           }
           const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${editBtn}</td>
-            <td>${idx + 1}</td>
-            <td>${row.date}</td>
-            <td>${row.email}</td>
-            <td>${row.dutyStart}</td>
-            <td>${row.lunchStart}</td>
-            <td>${row.lunchDone}</td>
-            <td>${row.dutyOff}</td>
-            <td>${row.attendance}</td>
-          `;
+tr.innerHTML = `
+  <td>${editBtn}</td>
+  <td>${idx + 1}</td>
+  <td>${row.date}</td>
+  <td>${row.email}</td>
+  <td>${row.dutyStart}</td>
+  <td>${row.lunchStart}</td>
+  <td>${row.lunchDone}</td>
+  <td>${row.dutyOff}</td>
+  <td>${row.attendance}</td>
+  <td>${row.bikeRunning}</td>
+`;
+
           elements.tbody.appendChild(tr);
         });
       }
