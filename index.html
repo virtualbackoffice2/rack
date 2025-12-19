@@ -564,35 +564,55 @@ function showUsers(type, nmid, olt, pon) {
   modalButtons.appendChild(downloadBtn);
   const shareBtn = document.createElement('button');
   shareBtn.textContent = 'Share Screenshot on WhatsApp';
-  shareBtn.onclick = () => {
-    html2canvas(document.getElementById('screenshotContent'), {scale: 2}).then(canvas => {
-      canvas.toBlob(blob => {
-        const file = new File([blob], 'screenshot.png', {type: 'image/png'});
-        if (navigator.canShare && navigator.canShare({files: [file]})) {
-          navigator.share({files: [file]}).catch(err => {
-            console.error('Share failed:', err);
-            alert('Sharing failed. Downloading screenshot instead.');
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'screenshot.png';
-            a.click();
-            URL.revokeObjectURL(url);
-          });
-        } else {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'screenshot.png';
-          a.click();
-          URL.revokeObjectURL(url);
-        }
-      });
-    }).catch(err => {
-      console.error('Screenshot error:', err);
-      alert('Failed to capture screenshot. Please check the console for details.');
+  
+shareBtn.onclick = async () => {
+
+  const oldTransform = document.body.style.transform;
+  const oldWidth = document.body.style.width;
+
+  // mobile scaling temporarily off
+  document.body.style.transform = 'none';
+  document.body.style.width = '100%';
+
+  await new Promise(r => setTimeout(r, 120));
+
+  try {
+    const canvas = await html2canvas(
+      document.getElementById('screenshotContent'),
+      {
+        scale: 2.5,                 // 🔥 high quality (PDF jaisa)
+        backgroundColor: '#ffffff',
+        useCORS: true
+      }
+    );
+
+    // restore body
+    document.body.style.transform = oldTransform;
+    document.body.style.width = oldWidth;
+
+    canvas.toBlob(blob => {
+      const file = new File([blob], 'users.png', { type: 'image/png' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file] });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'users.png';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
     });
-  };
+
+  } catch (err) {
+    document.body.style.transform = oldTransform;
+    document.body.style.width = oldWidth;
+    console.error(err);
+    alert('Screenshot failed');
+  }
+};
+
   modalButtons.appendChild(shareBtn);
   document.getElementById('userModal').style.display = 'flex';
 }
@@ -666,35 +686,52 @@ function showOltUsers(type, olt, maxPon) {
   modalButtons.appendChild(downloadBtn);
   const shareBtn = document.createElement('button');
   shareBtn.textContent = 'Share Screenshot on WhatsApp';
-  shareBtn.onclick = () => {
-    html2canvas(document.getElementById('screenshotContent'), {scale: 2}).then(canvas => {
-      canvas.toBlob(blob => {
-        const file = new File([blob], 'screenshot.png', {type: 'image/png'});
-        if (navigator.canShare && navigator.canShare({files: [file]})) {
-          navigator.share({files: [file]}).catch(err => {
-            console.error('Share failed:', err);
-            alert('Sharing failed. Downloading screenshot instead.');
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'screenshot.png';
-            a.click();
-            URL.revokeObjectURL(url);
-          });
-        } else {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'screenshot.png';
-          a.click();
-          URL.revokeObjectURL(url);
-        }
-      });
-    }).catch(err => {
-      console.error('Screenshot error:', err);
-      alert('Failed to capture screenshot. Please check the console for details.');
+  shareBtn.onclick = async () => {
+
+  const oldTransform = document.body.style.transform;
+  const oldWidth = document.body.style.width;
+
+  document.body.style.transform = 'none';
+  document.body.style.width = '100%';
+
+  await new Promise(r => setTimeout(r, 120));
+
+  try {
+    const canvas = await html2canvas(
+      document.getElementById('screenshotContent'),
+      {
+        scale: 2.5,
+        backgroundColor: '#ffffff',
+        useCORS: true
+      }
+    );
+
+    document.body.style.transform = oldTransform;
+    document.body.style.width = oldWidth;
+
+    canvas.toBlob(blob => {
+      const file = new File([blob], 'users.png', { type: 'image/png' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file] });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'users.png';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
     });
-  };
+
+  } catch (err) {
+    document.body.style.transform = oldTransform;
+    document.body.style.width = oldWidth;
+    console.error(err);
+    alert('Screenshot failed');
+  }
+};
+
   modalButtons.appendChild(shareBtn);
   document.getElementById('userModal').style.display = 'flex';
 }
