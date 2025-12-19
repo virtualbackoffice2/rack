@@ -129,19 +129,24 @@
 
 /* Remark & Team inputs — Same design */
 .remark-input,
-.team-input {
+.team-select,
+.team-other-input {
   width: 100%;
   padding: 6px 8px;
   font-size: 0.9rem;
   border: 1px solid #dcdce8;
   border-radius: 6px;
-  background: #ffffff;
+  background: #fff;
   box-sizing: border-box;
-  transition: border 0.2s, box-shadow 0.2s;
 }
 
-.remark-input:focus,
-.team-input:focus {
+.team-other-input {
+  margin-top: 6px;
+}
+
+
+.team-select:focus,
+.team-other-input:focus {
   border-color: #2b8cff;
   box-shadow: 0 0 0 2px rgba(43, 140, 255, 0.2);
   outline: none;
@@ -241,6 +246,20 @@
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
   <script>
+
+function getTeamOptionsFromData(rows) {
+  const set = new Set();
+
+  rows.forEach(r => {
+    const t = (r.Team || r.AD || r.team || "").toString().trim();
+    if (t && t.toLowerCase() !== "other") {
+      set.add(t);
+    }
+  });
+
+  return Array.from(set).sort();
+}
+    
     // 🔥 ONLY FOR DATA FETCH (combined sheet)
 const FETCH_URL = "https://script.google.com/macros/s/AKfycbyX81t0LVPZyqN8AtneMhO2zd0KOzKYljah_yU5RK0JtpBBgfrh3Zi_Wb9_ujNexHPW/exec";
 
@@ -257,6 +276,7 @@ const UPDATE_URLS = {
 };
 
 const TOKEN = "abcd1234";
+    let TEAM_OPTIONS = [];
     let rawRows=[],baseFiltered=[],filtered=[],currentSort={key:null,asc:true},currentMode='offline';
     const spinner=document.getElementById('spinnerOverlay'),tbody=document.querySelector('#dataTable tbody'),
           selWindow=document.getElementById('selWindow'),selPon=document.getElementById('selPon'),
@@ -288,10 +308,13 @@ async function fetchData(){
     const data = await jsonpGet(`${FETCH_URL}?token=${TOKEN}`);
 
     // 🔥 rows already combined from both sheets
-    rawRows = (data.rows || []).map(r => ({
-      ...r,
-      source: r.source || "sheet1" // default, just for safety
-    }));
+rawRows = (data.rows || []).map(r => ({
+  ...r,
+  source: r.source || "sheet1"
+}));
+
+TEAM_OPTIONS = getTeamOptionsFromData(rawRows);
+
 
     updateBaseFiltered();
   } catch(e){
@@ -414,7 +437,7 @@ async function fetchData(){
               drops=r.Drops||r.AB||'',remark=r.Remarks||r.Y||r.remark||r.Remark||'',
               location=r.Location||r.Q||'',procare=r['User status']||r.AF||'';
               const team = r.Team || r.AD || r.team || "";
-       
+       const isOther = team && !TEAM_OPTIONS.includes(team);
         tr.innerHTML = `
 <td>${pon}</td>
 <td>${uid}</td>
@@ -429,9 +452,28 @@ async function fetchData(){
   <input class="remark-input" data-uid="${uid}" data-source="${r.source}" value="${remark}">
 </td>
 
+
 <td>
-  <input class="team-input" data-uid="${uid}" data-source="${r.source}" value="${team}">
+  <select class="team-select"
+          data-uid="${uid}"
+          data-source="${r.source}">
+    <option value="">Select team</option>
+
+    ${TEAM_OPTIONS.map(t =>
+      `<option value="${t}" ${t === team ? "selected" : ""}>${t}</option>`
+    ).join("")}
+
+    <option value="Other" ${isOther ? "selected" : ""}>Other</option>
+  </select>
+
+  <input class="team-other-input"
+         data-uid="${uid}"
+         data-source="${r.source}"
+         placeholder="Enter team name"
+         style="display:${isOther ? "block" : "none"}"
+         value="${isOther ? team : ""}">
 </td>
+
 
 <td>${(Number(r.Power || r.S || 0)).toFixed(2)}</td> <!-- ⭐ POWER COLUMN -->
 
@@ -449,7 +491,8 @@ async function fetchData(){
       tbody.querySelectorAll('.mark-btn').forEach(b=>b.onclick=onMarkClick);
       tbody.querySelectorAll('.remove-btn').forEach(b=>b.onclick=onRemoveClick);
       tbody.querySelectorAll('.remark-input').forEach(i=>i.onchange=onRemarkChange);
-      tbody.querySelectorAll('.team-input').forEach(i => i.onchange = onTeamChange);
+     
+
     }
     function keyOrAlt(o,k){const m={'NMID':'C','Users':'N','Drops':'AB'};return m[k]||k;}
 function onMarkClick(e){
@@ -458,7 +501,19 @@ function onMarkClick(e){
         src = btn.dataset.source,
         sheetId = src;
   const remark = document.querySelector(`.remark-input[data-uid="${uid}"][data-source="${src}"]`).value;
-  const team   = document.querySelector(`.team-input[data-uid="${uid}"][data-source="${src}"]`).value;
+  const teamSelect = document.querySelector(
+  `.team-select[data-uid="${uid}"][data-source="${src}"]`
+);
+
+const teamOther = document.querySelector(
+  `.team-other-input[data-uid="${uid}"][data-source="${src}"]`
+);
+
+const team =
+  teamSelect?.value === "Other"
+    ? (teamOther?.value || "").trim()
+    : (teamSelect?.value || "");
+
 
   postToGAS({
       id: uid,
@@ -620,7 +675,10 @@ function downloadCSV(){
       tds[4].querySelector('small')?.innerText || '',// Serial
       tds[5].innerText,                              // Down time
       tds[6].querySelector('input').value,           // Remark
-      tds[7].querySelector('input').value, // Team
+      tds[7].querySelector('select').value === "Other"
+  ? tds[7].querySelector('.team-other-input')?.value || ""
+  : tds[7].querySelector('select').value,
+
     tds[8].innerText,                    // ⭐ Power
     tds[10].innerText,                   // Location
     tds[11].innerText                    // Procare
@@ -708,6 +766,28 @@ function downloadCSV(){
           });
       }
     });
+
+    document.addEventListener("change", e => {
+  if (!e.target.classList.contains("team-select")) return;
+
+  const uid = e.target.dataset.uid;
+  const src = e.target.dataset.source;
+
+  const otherInput = document.querySelector(
+    `.team-other-input[data-uid="${uid}"][data-source="${src}"]`
+  );
+
+  if (!otherInput) return;
+
+  if (e.target.value === "Other") {
+    otherInput.style.display = "block";
+    otherInput.focus();
+  } else {
+    otherInput.style.display = "none";
+    otherInput.value = "";
+  }
+});
+
   </script>
 </body>
 </html>
