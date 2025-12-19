@@ -173,21 +173,7 @@ h2 {
 }
 .pink { background-color: #ffebee; }
 .red { background-color: #ef5350; color: white; }
-.offStatus {
-  background-color: white;
-  color: #e74c3c;
-  font-weight: bold;
-  border-radius: 50%;
-  animation: blink 1s infinite;   /* ← Ye already hai, bas confirm kar lena */
-}
 
-.onStatus {
-  background-color: white;
-  color: #27ae60;
-  font-weight: bold;
-  border-radius: 50%;
-  animation: none;   /* Green ko blink nahi chahiye */
-}
 /* Loading Overlay */
 #loadingOverlay {
   position: fixed;
@@ -285,14 +271,6 @@ h2 {
 }
 
 @media (max-width: 768px) {
-  body {
-    transform: scale(0.43);
-    transform-origin: top left;
-    width: 233%;
-  }
-}
-
-@media (max-width: 768px) {
 
   #matrixTable th,
   #matrixTable td {
@@ -300,4 +278,30 @@ h2 {
     font-size: 12px;    /* optional: text chhota */
   }
 
+}
+/* Screenshot safe layout */
+#screenshotContent {
+  background: white;
+  padding: 20px;
+}
+
+#screenshotContent table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;   /* 🔥 very important */
+}
+
+#screenshotContent th,
+#screenshotContent td {
+  white-space: normal;
+  word-break: break-word;
+  padding: 10px;
+  font-size: 14px;
+}
+@media (max-width: 768px) {
+  #screenshotContent th,
+  #screenshotContent td {
+    padding: 8px !important;
+    font-size: 13px !important;
+  }
 }
