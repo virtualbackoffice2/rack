@@ -2,564 +2,70 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Complain Manager</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
         integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="styles.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <style>
-    :root {
-      --accent: #2b8cff;
-      --danger: #e74c3c;
-      --success: #4caf50;
-      --bg: #f7f8fb;
-      --border: #e0e4ed;
-    }
-    * { box-sizing: border-box; margin:0; padding:0; }
-    html, body {
-      height: 100%;
-      font-family: system-ui, sans-serif;
-      background: var(--bg);
-      color: #222;
-      overflow-x: hidden;
-    }
-    .app-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 12px;
-      background: white;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-    }
-    .brand h1 { font-size: 1.15rem; font-weight: 600; margin: 0; }
-    .top-controls { display: flex; gap: 6px; flex-wrap: wrap; }
-    .top-controls button, .top-controls select {
-      padding: 8px 12px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: white;
-      font-size: 0.9rem;
-      cursor: pointer;
-    }
-    .top-controls .primary { background: var(--accent); color: white; border: none; }
-    .icon-btn {
-      width: 38px; height: 38px; padding: 0;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.1rem; border-radius: 8px;
-      border: 1px solid var(--border); background: white; color: #555;
-    }
-    .filters-inline {
-      padding: 10px 12px; background: #f9faff;
-      display: flex; flex-direction: column; gap: 8px;
-    }
-    .filters-inline input {
-      width: 100%; padding: 10px;
-      border: 1px solid var(--border); border-radius: 8px;
-      font-size: 0.95rem;
-    }
-    #tableWrap { margin: 0 10px 10px; }
-    table {
-      width: 100%; min-width: 900px; border-collapse: collapse;
-      background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-    thead th {
-      background: #e8ecff; color: #1a237e; padding: 10px 8px;
-      font-size: 0.88rem; font-weight: 600; text-align: left;
-      position: sticky; top: 0; z-index: 10; white-space: nowrap;
-    }
-    .filter-row td {
-      background: #f5f7ff; padding: 6px 8px;
-      position: sticky; top: 40px; z-index: 9;
-    }
-    .filter-row select {
-      width: 100%; padding: 6px; border: 1px solid #d1d9ff;
-      border-radius: 6px; font-size: 0.85rem;
-    }
-    tbody td { padding: 10px 8px; font-size: 0.88rem; border-bottom: 1px solid #f0f2f7; }
-    tbody tr.offline td { background: #fffdf6; }
-    tbody tr.ticket td { background: #ffebee !important; color: #c62828 !important; }
-    .remarkInput, .modeSel, .teamSel {
-      width: 100%; padding: 6px 8px;
-      border: 1px solid #d0d4e0; border-radius: 6px;
-      font-size: 0.88rem;
-    }
-    .mark-btn, .remove-btn {
-      width: 34px; height: 34px; border: none; border-radius: 6px;
-      color: white; font-size: 1rem; cursor: pointer;
-    }
-    .mark-btn { background: var(--success); }
-    .remove-btn { background: var(--danger); }
-    .status-indicator {
-      display: inline-block; width: 12px; height: 12px;
-      border-radius: 50%; margin-right: 6px;
-    }
-    .status-up { background: var(--success); }
-    .status-down { background: var(--danger); animation: blink 1.4s infinite; }
-    @keyframes blink { 0%,100% {opacity:1;} 50% {opacity:0.35;} }
-    #spinnerOverlay {
-      position: fixed; inset: 0;
-      background: rgba(255,255,255,0.85);
-      display: none; flex-direction: column;
-      align-items: center; justify-content: center; z-index: 9999;
-    }
-    .spinner {
-      width: 48px; height: 48px;
-      border: 5px solid #e0e0e0; border-top-color: var(--accent);
-      border-radius: 50%; animation: spin 1s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    #toast {
-      position: fixed; bottom: 20px; left: 50%;
-      transform: translateX(-50%);
-      background: #333; color: white;
-      padding: 12px 20px; border-radius: 8px;
-      opacity: 0; transition: opacity 0.3s; z-index: 9998;
-      font-size: 0.95rem;
-    }
-    #toast.show { opacity: 1; }
-
-    /* Premium glowing red dot for mobile offline users */
-    .card-header .offline-status {
-      width: 14px;
-      height: 14px;
-      background: #ff1744;
-      border-radius: 50%;
-      box-shadow: 
-        0 0 0 4px rgba(255, 23, 68, 0.35),
-        0 0 0 8px rgba(255, 23, 68, 0.22),
-        0 0 12px 6px rgba(255, 23, 68, 0.6);
-      animation: 
-        pulse-glow 1.8s ease-in-out infinite,
-        soft-blink 3.2s ease-in-out infinite;
-    }
-
-    @keyframes pulse-glow {
-      0%, 100% { box-shadow: 0 0 0 4px rgba(255,23,68,0.4), 0 0 0 10px rgba(255,23,68,0.18), 0 0 16px 8px rgba(255,23,68,0.5); }
-      50%      { box-shadow: 0 0 0 6px rgba(255,23,68,0.7), 0 0 0 14px rgba(255,23,68,0.35), 0 0 24px 12px rgba(255,23,68,0.8); }
-    }
-
-    @keyframes soft-blink {
-      0%, 100% { opacity: 1; }
-      40%      { opacity: 0.65; }
-      70%      { opacity: 0.92; }
-    }
-
-    /* ───────────── Mobile Card View ───────────── */
-    .card-view {
-      display: none;
-      flex-direction: column;
-      gap: 12px;
-      padding: 10px;
-    }
-    .complaint-card {
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      padding: 14px;
-      font-size: 0.92rem;
-    }
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-      font-weight: 600;
-      color: #1a237e;
-    }
-    .card-row {
-      display: flex;
-      justify-content: space-between;
-      margin: 6px 0;
-      border-bottom: 1px solid #eee;
-      padding-bottom: 6px;
-    }
-    .card-row:last-child { border-bottom: none; }
-    .card-label { font-weight: 500; color: #555; }
-    .card-value { text-align: right; }
-    
-    /* Hide Complains button */
-    #btnComplains {
-      display: none !important;
-    }
-
-    @media (max-width: 820px) {
-      table, thead, .filter-row { display: none; }
-      .card-view { display: flex; }
-      #tableWrap { margin: 0 8px 16px; }
-    }
-  </style>
+  <script src="script.js" defer></script>
 </head>
 <body>
-<header class="app-header">
-  <div class="brand"><h1>Complain Manager</h1></div>
-  <div class="top-controls">
-    <select id="windowSelect" style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:0.9rem;">
-      <option value="ALL">All Windows</option>
-      <option value="MEROTRA">MEROTRA</option>
-      <option value="SUNNY">SUNNY</option>
-    </select>
-    <button id="btnComplains" class="primary">Complains</button>
-    <button id="btnDrops">Drops</button>
-    <button id="btnRefresh" class="icon-btn" title="Refresh"><i class="fas fa-sync-alt"></i></button>
-    <button id="btnScreenshot" class="icon-btn" title="Screenshot"><i class="fas fa-camera"></i></button>
-    <button id="btnCsv" class="icon-btn" title="CSV"><i class="fas fa-file-csv"></i></button>
+  <header class="app-header">
+    <div class="brand"><h1>Complain Manager <span id="userCount"></span></h1></div>
+    <button id="menuToggle" class="icon-btn hamburger" title="Menu">
+      <i class="fas fa-bars"></i>
+    </button>
+    <div class="top-controls" id="topMenu">
+      <select id="windowSelect">
+        <option value="ALL">All Windows</option>
+        <option value="MEROTRA">MEROTRA</option>
+        <option value="SUNNY">SUNNY</option>
+      </select>
+      <button id="btnComplains" class="primary">Complains</button>
+      <button id="btnDrops">Drops</button>
+      <button id="btnToggleView">Switch to Table</button>
+      <button id="btnRefresh" class="icon-btn" title="Refresh"><i class="fas fa-sync-alt"></i></button>
+      <button id="btnScreenshot" class="icon-btn" title="Screenshot"><i class="fas fa-camera"></i></button>
+      <button id="btnCsv" class="icon-btn" title="CSV"><i class="fas fa-file-csv"></i></button>
+    </div>
+  </header>
+  <div class="filters-inline">
+    <input id="globalSearch" placeholder="Search anything..." type="text">
+    <div class="power-filters">
+      <input id="powerMin" placeholder="Min Power" type="number" step="0.1">
+      <input id="powerMax" placeholder="Max Power" type="number" step="0.1">
+    </div>
+    <div class="select-filters">
+      <select id="filterPon"><option value="">All PON</option></select>
+      <select id="filterTeam"><option value="">All Team</option></select>
+      <select id="filterMode"><option value="">All Mode</option></select>
+      <select id="filterStatus"><option value="">All Status</option></select>
+    </div>
   </div>
-</header>
-<div class="filters-inline">
-  <input id="globalSearch" placeholder="Search anything..." type="text">
-  <input id="powerMin" placeholder="Min Power" type="number" step="0.1">
-  <input id="powerMax" placeholder="Max Power" type="number" step="0.1">
-</div>
-<div id="tableWrap">
-  <!-- Desktop Table -->
-  <table id="dataTable">
-    <thead>
-      <tr>
-        <th>PON</th><th>User ID</th><th>Mobile</th><th>Name</th><th>Mac / Serial</th>
-        <th>Down</th><th>Remark</th><th>Team</th><th>Mode</th><th>Power</th>
-        <th>Complain</th><th>Location</th><th>Status</th>
-      </tr>
-      <tr class="filter-row">
-        <td><select id="filterPon"></select></td>
-        <td></td><td></td><td></td><td></td><td></td><td></td>
-        <td><select id="filterTeam"></select></td>
-        <td><select id="filterMode"></select></td>
-        <td></td><td></td><td></td>
-        <td><select id="filterStatus"></select></td>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-  <!-- Mobile Card View -->
-  <div id="cardView" class="card-view"></div>
-</div>
-<div id="spinnerOverlay">
-  <div class="spinner"></div>
-  <p>Loading users...</p>
-</div>
-<div id="toast"></div>
-
-<script>
-const baseUrl = "https://app.vbo.co.in";
-let currentWindow = "ALL";
-let rawRows = [];
-let filtered = [];
-let currentMode = "all";
-const tbody = document.querySelector("#dataTable tbody");
-const cardContainer = document.getElementById("cardView");
-const spinner = document.getElementById("spinnerOverlay");
-const toastEl = document.getElementById("toast");
-const globalSearch = document.getElementById("globalSearch");
-const powerMin = document.getElementById("powerMin");
-const powerMax = document.getElementById("powerMax");
-const filterPon = document.getElementById("filterPon");
-const filterTeam = document.getElementById("filterTeam");
-const filterMode = document.getElementById("filterMode");
-const filterStatus = document.getElementById("filterStatus");
-
-function showToast(msg) {
-  toastEl.textContent = msg;
-  toastEl.classList.add("show");
-  setTimeout(() => toastEl.classList.remove("show"), 2800);
-}
-
-function showSpinner() { spinner.style.display = "flex"; }
-function hideSpinner() { spinner.style.display = "none"; }
-
-async function fetchWindowData(windowName) {
-  const url = `${baseUrl}/${windowName}/complains`;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    return (data.rows || []).map(row => ({ ...row, _window: windowName }));
-  } catch (err) {
-    showToast(`Failed to load ${windowName}`);
-    return [];
-  }
-}
-
-async function fetchData() {
-  showSpinner();
-  try {
-    if (currentWindow === "ALL") {
-      const [merotraData, sunnyData] = await Promise.all([
-        fetchWindowData("MEROTRA"),
-        fetchWindowData("SUNNY")
-      ]);
-      rawRows = [...merotraData, ...sunnyData];
-    } else {
-      rawRows = await fetchWindowData(currentWindow);
-    }
-    showToast(rawRows.length ? `${rawRows.length} users loaded` : "No users found");
-    populateFilters();
-    applyAllFilters();
-  } catch (err) {
-    showToast("Load failed");
-  } finally {
-    hideSpinner();
-  }
-}
-
-function populateFilters() {
-  const pons = [...new Set(rawRows.map(r => r.PON || "").filter(Boolean))].sort();
-  filterPon.innerHTML = '<option value="">All PON</option>' + pons.map(p => `<option value="${p}">${p}</option>`).join('');
-  
-  const teams = [...new Set(rawRows.map(r => r.Team || "").filter(Boolean))];
-  filterTeam.innerHTML = `
-    <option value="">All Team</option>
-    <option value="Satyam">Satyam</option>
-    <option value="Sushil">Sushil</option>
-    <option value="Shaan">Shaan</option>
-  ` + teams.map(t => `<option value="${t}">${t}</option>`).join('');
-  
-  const modes = [...new Set(rawRows.map(r => r.Mode || "").filter(Boolean))].sort();
-  filterMode.innerHTML = '<option value="">All Mode</option>' + modes.map(m => `<option value="${m}">${m}</option>`).join('');
-  
-  const statuses = [...new Set(rawRows.map(r => r["User status"] || "").filter(Boolean))].sort();
-  let html = '<option value="">All Status</option>';
-  statuses.forEach(s => html += `<option value="${s}" ${s === "DOWN" ? 'selected' : ''}>${s}</option>`);
-  filterStatus.innerHTML = html;
-}
-
-function applyAllFilters() {
-  let data = [...rawRows];
-  if (currentMode === "complains") data = data.filter(r => r.Ticket?.trim());
-  if (currentMode === "drops") data = data.filter(r => r.Drops?.trim());
-  
-  const term = globalSearch.value.trim().toLowerCase();
-  if (term) data = data.filter(r => Object.values(r).some(v => String(v||'').toLowerCase().includes(term)));
-  
-  const minP = parseFloat(powerMin.value);
-  const maxP = parseFloat(powerMax.value);
-  if (!isNaN(minP)) data = data.filter(r => r.Power != null && Number(r.Power) >= minP);
-  if (!isNaN(maxP)) data = data.filter(r => r.Power != null && Number(r.Power) <= maxP);
-  
-  if (filterPon.value) data = data.filter(r => r.PON === filterPon.value);
-  if (filterTeam.value) data = data.filter(r => (r.Team || getDefaultTeam(r._window)) === filterTeam.value);
-  if (filterMode.value) data = data.filter(r => r.Mode === filterMode.value);
-  if (filterStatus.value) data = data.filter(r => r["User status"] === filterStatus.value);
-  
-  if (currentMode === "drops") {
-    data.sort((a,b) => (new Date(b.Drops||0) - new Date(a.Drops||0)));
-  }
-  
-  filtered = data;
-  renderTable();
-  renderCards();
-}
-
-function getDefaultTeam(windowName) {
-  if (windowName === "MEROTRA") return "Sushil";
-  if (windowName === "SUNNY") return "Shaan";
-  return "Satyam";
-}
-
-function renderTable() {
-  tbody.innerHTML = "";
-  if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:30px;color:#777;">No users found</td></tr>';
-    return;
-  }
-  filtered.forEach(r => {
-    const tr = document.createElement("tr");
-    if (r["User status"] === "DOWN") tr.classList.add("offline");
-    if (r.Ticket) tr.classList.add("ticket");
-    
-    const statusHtml = r["User status"] === "UP" ? '<span class="status-indicator status-up"></span>' :
-                      r["User status"] === "DOWN" ? '<span class="status-indicator status-down"></span>' : '';
-    
-    tr.innerHTML = `
-      <td>${r.PON || ""}</td>
-      <td>${r.Users || ""}</td>
-      <td>${r["Last called no"] || ""}</td>
-      <td>${r.Name || ""}</td>
-      <td>${r.MAC || ""}<br><small>${r.Serial || ""}</small></td>
-      <td>${r.Drops || ""}</td>
-      <td><input class="remarkInput" value="${r.Remarks || ""}"></td>
-      <td>
-        <select class="teamSel">
-          <option>Satyam</option>
-          <option>Sushil</option>
-          <option>Shaan</option>
-        </select>
-      </td>
-      <td>
-        <select class="modeSel">
-          <option>Manual</option>
-          <option>Auto</option>
-        </select>
-      </td>
-      <td>${r.Power != null ? Number(r.Power).toFixed(2) : ""}</td>
-      <td>
-        <button class="mark-btn"><i class="fas fa-check"></i></button>
-        <button class="remove-btn"><i class="fas fa-trash"></i></button>
-      </td>
-      <td>${r.Location || ""}</td>
-      <td>${statusHtml}</td>
-    `;
-    
-    const teamSelect = tr.querySelector(".teamSel");
-    teamSelect.value = r.Team || getDefaultTeam(r._window);
-    const modeSelect = tr.querySelector(".modeSel");
-    modeSelect.value = r.Mode || "Manual";
-
-    tr.querySelector(".mark-btn").onclick = async () => {
-      const payload = {
-        user_id: r.Users || "",
-        name: r.Name || "",
-        address: r.Location || "",
-        reason: tr.querySelector(".remarkInput").value || "",
-        Mode: modeSelect.value,
-        Power: r.Power,
-        Phone: r["Last called no"] || "",
-        Team: teamSelect.value,
-        pon: r.PON || "",
-        window: r._window
-      };
-      try {
-        await fetch(`${baseUrl}/${r._window}/mark_complain`, {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify(payload)
-        });
-        showToast("Marked ✓");
-        fetchData();
-      } catch {
-        showToast("Mark failed");
-      }
-    };
-
-    tr.querySelector(".remove-btn").onclick = async () => {
-      try {
-        await fetch(`${baseUrl}/${r._window}/delete_complain`, {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({ user_id: r.Users || "" })
-        });
-        showToast("Deleted 🗑");
-        fetchData();
-      } catch {
-        showToast("Delete failed");
-      }
-    };
-
-    tbody.appendChild(tr);
-  });
-}
-
-function renderCards() {
-  cardContainer.innerHTML = "";
-  if (!filtered.length) {
-    cardContainer.innerHTML = '<div style="text-align:center;padding:30px;color:#777;">No users found</div>';
-    return;
-  }
-  
-  filtered.forEach(r => {
-    const card = document.createElement("div");
-    card.className = "complaint-card";
-    card.innerHTML = `
-      <div class="card-header">
-        ${r.Name || "Unknown"} 
-        <span ${r["User status"] === "DOWN" ? 'class="offline-status"' : ''}>
-          ${r["User status"] === "DOWN" ? '' : '🟢'}
-        </span>
-      </div>
-      <div class="card-row"><span class="card-label">User ID:</span><span class="card-value">${r.Users || ""}</span></div>
-      <div class="card-row"><span class="card-label">Mobile:</span><span class="card-value">${r["Last called no"] || ""}</span></div>
-      <div class="card-row"><span class="card-label">PON:</span><span class="card-value">${r.PON || ""}</span></div>
-      <div class="card-row"><span class="card-label">Location:</span><span class="card-value">${r.Location || ""}</span></div>
-      <div class="card-row"><span class="card-label">Power:</span><span class="card-value">${r.Power?.toFixed(2) || ""}</span></div>
-      <div class="card-row"><span class="card-label">Down:</span><span class="card-value">${r.Drops || ""}</span></div>
-      <div class="card-row"><span class="card-label">Remark:</span><input class="remarkInput" value="${r.Remarks || ""}" style="width:60%;"></div>
-      <div class="card-row">
-        <span class="card-label">Team:</span>
-        <select class="teamSel" style="width:60%;">
-          <option>Satyam</option><option>Sushil</option><option>Shaan</option>
-        </select>
-      </div>
-      <div class="card-row">
-        <span class="card-label">Mode:</span>
-        <select class="modeSel" style="width:60%;">
-          <option>Manual</option><option>Auto</option>
-        </select>
-      </div>
-      <div style="margin-top:12px;text-align:right;">
-        <button class="mark-btn" style="margin-right:8px;"><i class="fas fa-check"></i></button>
-        <button class="remove-btn"><i class="fas fa-trash"></i></button>
-      </div>
-    `;
-    
-    const teamSel = card.querySelector(".teamSel");
-    teamSel.value = r.Team || getDefaultTeam(r._window);
-    const modeSel = card.querySelector(".modeSel");
-    modeSel.value = r.Mode || "Manual";
-
-    card.querySelector(".mark-btn").onclick = async () => {
-      const payload = {
-        user_id: r.Users || "",
-        name: r.Name || "",
-        address: r.Location || "",
-        reason: card.querySelector(".remarkInput").value || "",
-        Mode: modeSel.value,
-        Power: r.Power,
-        Phone: r["Last called no"] || "",
-        Team: teamSel.value,
-        pon: r.PON || "",
-        window: r._window
-      };
-      try {
-        await fetch(`${baseUrl}/${r._window}/mark_complain`, {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify(payload)
-        });
-        showToast("Marked ✓");
-        fetchData();
-      } catch {
-        showToast("Mark failed");
-      }
-    };
-
-    card.querySelector(".remove-btn").onclick = async () => {
-      try {
-        await fetch(`${baseUrl}/${r._window}/delete_complain`, {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({ user_id: r.Users || "" })
-        });
-        showToast("Deleted 🗑");
-        fetchData();
-      } catch {
-        showToast("Delete failed");
-      }
-    };
-
-    cardContainer.appendChild(card);
-  });
-}
-
-// Events
-document.getElementById("windowSelect").onchange = (e) => {
-  currentWindow = e.target.value;
-  fetchData();
-};
-document.getElementById("btnComplains").onclick = () => { currentMode = "complains"; applyAllFilters(); };
-document.getElementById("btnDrops").onclick = () => { currentMode = "drops"; applyAllFilters(); };
-document.getElementById("btnRefresh").onclick = fetchData;
-globalSearch.oninput = applyAllFilters;
-powerMin.oninput = applyAllFilters;
-powerMax.oninput = applyAllFilters;
-filterPon.onchange = applyAllFilters;
-filterTeam.onchange = applyAllFilters;
-filterMode.onchange = applyAllFilters;
-filterStatus.onchange = applyAllFilters;
-
-fetchData();
-</script>
+  <div id="contentWrap">
+    <div id="cardView" class="card-view"></div>
+    <div id="tableWrap" style="display:none;">
+      <table id="dataTable">
+        <thead>
+          <tr>
+            <th>PON</th><th>User ID</th><th>Mobile</th><th>Name</th><th>Mac / Serial</th>
+            <th>Down</th><th>Remark</th><th>Team</th><th>Mode</th><th>Power</th>
+            <th>Actions</th><th>Location</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+  <div id="spinnerOverlay">
+    <div class="spinner">
+      <div class="double-bounce1"></div>
+      <div class="double-bounce2"></div>
+    </div>
+    <p>Loading users...</p>
+  </div>
+  <div id="toast"></div>
 </body>
 </html>
