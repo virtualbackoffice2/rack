@@ -29,11 +29,9 @@ function buildDefaultList(allRows) {
 
 // Build Offline / Power issue / All users lists from FULL data (rawRows)
 function buildOfflineList() {
-  return (rawRows || []).filter(r =>
-    String(r["User status"] || "").toUpperCase() === "DOWN"
-  );
+  // Offline list = only DOWN (📵). Exclude other/offline/blank (💀)
+  return (rawRows || []).filter(r => String(r["User status"] || "").toUpperCase() === "DOWN");
 }
-
 
 function buildPowerIssueList() {
   return (rawRows || []).filter(r => {
@@ -593,13 +591,7 @@ function renderSingleCard(r, index, container) {
           <option>Sushil</option><option>Shaan</option>
         </select>
       </div>
-      <div class="card-row">
-        <span class="card-label">Mode:</span>
-        <select class="modeSel" disabled>
-          <option>Manual</option><option>Auto</option>
-        </select>
-      </div>
-      <div style="margin-top:10px;display:flex;justify-content:flex-end;gap:10px;">
+<div style="margin-top:10px;display:flex;justify-content:flex-end;gap:10px;">
       
       
 
@@ -615,9 +607,6 @@ function renderSingleCard(r, index, container) {
 
   const teamSel = card.querySelector(".teamSel");
   teamSel.value = r.Team || getDefaultTeam(r._window);
-
-  const modeSel = card.querySelector(".modeSel");
-  modeSel.value = r.Mode || "Manual";
   // employee: mark/remove disabled
 
   container.appendChild(card);
@@ -689,13 +678,7 @@ function renderTable() {
           <option>Shaan</option>
         </select>
       </td>
-      <td class="modeCol resizableCol">
-        <select class="modeSel" disabled>
-          <option>Manual</option>
-          <option>Auto</option>
-        </select>
-      </td>
-      <td>${r.Power != null ? Number(r.Power).toFixed(2) : ""}</td>
+<td>${r.Power != null ? Number(r.Power).toFixed(2) : ""}</td>
       <td>
 
 
@@ -715,9 +698,6 @@ function renderTable() {
 
     const teamSelect = tr.querySelector(".teamSel");
     teamSelect.value = r.Team || getDefaultTeam(r._window);
-
-    const modeSelect = tr.querySelector(".modeSel");
-    modeSelect.value = r.Mode || "Manual";
     // employee: mark/remove disabled
 
     tbody.appendChild(tr);
