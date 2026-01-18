@@ -8,7 +8,7 @@
 
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- html2canvas disabled for employee -->
 </head>
 
 <body>
@@ -41,40 +41,40 @@
                 <option value="SUNNY">SUNNY</option>
             </select>
 
-            <button class="nav-btn" id="btnComplains">Complains</button>
-            <button class="nav-btn" id="btnDrops">Drops</button>
-            <button class="nav-btn" id="btnRefresh">Refresh</button>
+            <select id="listSelect">
+                <option value="complain" selected>Complain</option>
+                <option value="offline">Offline</option>
+                <option value="power">Power issue</option>
+                <option value="all">All users</option>
+            </select>
+
+            <select id="ponSelect">
+                <option value="" selected>All PON</option>
+            </select>
+
+<button class="nav-btn" id="btnRefresh">Refresh</button>
             <button class="nav-btn" id="btnToggleView">Switch to Table</button>
-            <button class="nav-btn" id="btnCsv">Export CSV</button>
-            <button class="nav-btn" id="btnScreenshot">Screenshot</button>
+            <!-- <button class="nav-btn" id="btnCsv">Export CSV</button> -->
+            <!-- <button class="nav-btn" id="btnScreenshot">Screenshot</button> -->
         </nav>
     </header>
 
     <main id="contentWrap">
         <section class="filters">
-            <input type="text" id="globalSearch" placeholder="Search user..." />
+            <input type="text" id="globalSearch" placeholder="Search user ID/Mobile no" />
 
-            <input type="number" id="powerMin" placeholder="Min Power" />
-            <input type="number" id="powerMax" placeholder="Max Power" />
+<!-- <input type="text" id="powerRange" placeholder="Power range eg 26-30" /> -->
 
-            <select id="filterPon">
-                <option value="">All PON</option>
-            </select>
 
-            <select id="filterTeam">
+<!-- <select id="filterTeam">
                 <option value="">All Team</option>
                 <option value="Sushil">Sushil</option>
                 <option value="Shaan">Shaan</option>
-            </select>
+            </select> -->
 
-            <select id="filterMode">
+            <!-- <select id="filterMode">
                 <option value="">All Mode</option>
-            </select>
-
-            <select id="filterStatus">
-                <option value="">All Status</option>
-            </select>
-        </section>
+            </select> --></section>
 
         <div id="spinnerOverlay">
             <div class="spinner"></div>
