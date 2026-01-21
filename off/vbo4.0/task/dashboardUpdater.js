@@ -219,3 +219,14 @@ function updateCharts() {
     }
   });
 }
+
+// Add formatTime function if not defined elsewhere
+if (typeof formatTime === 'undefined') {
+  function formatTime(minutes) {
+    if (!minutes || minutes <= 0) return '—';
+    if (minutes < 60) return `${Math.round(minutes)}m`;
+    const hours = minutes / 60;
+    if (hours < 24) return `${hours.toFixed(1)}h`;
+    return `${(hours/24).toFixed(1)}d`;
+  }
+}
