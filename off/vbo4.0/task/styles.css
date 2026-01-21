@@ -516,3 +516,163 @@ tr:hover {
 .timeline-time {
   color: #64748b;
 }
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 900px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-tools {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  gap: 1rem;
+  background: #f8fafc;
+}
+
+.modal-search {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+}
+
+.modal-select {
+  padding: 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: white;
+}
+
+.modal-stats {
+  padding: 0.75rem 1.5rem;
+  background: #f1f5f9;
+  display: flex;
+  gap: 2rem;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.task-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: white;
+}
+
+.task-card.open {
+  border-left: 4px solid #ef4444;
+}
+
+.task-card.close {
+  border-left: 4px solid #10b981;
+}
+
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.task-id {
+  font-weight: bold;
+  color: #1e293b;
+}
+
+.task-priority {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.priority-1 {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.priority-2 {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.priority-3 {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.task-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.task-status.open {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.task-status.close {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.task-body > div {
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.no-tasks {
+  text-align: center;
+  padding: 3rem;
+  color: #94a3b8;
+}
+
+/* KPI Card clickable */
+.kpi-card {
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
