@@ -5,19 +5,23 @@ function processComplaints(rows, window) {
   rows.forEach(row => {
     if (!row.user_id) return;
     
-    const user_id = row.user_id.trim();
+    const user_id = row.user_id.toString().trim();
     const timestamp = row.created_at ? new Date(row.created_at.replace(' ', 'T')).getTime() : Date.now();
     
     if (!complaintsByUser[user_id]) {
       complaintsByUser[user_id] = [];
     }
     
+    // IMPORTANT: Check both "Team" (capital T) and "team" (lowercase)
+    const team = row.Team || row.team || 'UNKNOWN';
+    
     complaintsByUser[user_id].push({
       ...row,
       window: window,
       timestamp: timestamp,
-      status: row.status,
-      priority: parseInt(row.priority) || 3
+      status: (row.status || 'open').toLowerCase(), // Ensure lowercase
+      priority: parseInt(row.priority) || getPriority(row.page_id),
+      team: team
     });
   });
   
@@ -50,8 +54,28 @@ function processComplaints(rows, window) {
       tatMinutes = Math.round((closeTime - openTime) / (1000 * 60));
     }
     
-    // Determine team (from first open complaint if available)
-    const team = firstOpen ? firstOpen.team : latest.team;
+    // Determine team - use latest complaint's team
+    let team = latest.team || 'UNKNOWN';
+    
+    // If team is still UNKNOWN, try other complaints
+    if (team === 'UNKNOWN') {
+      const complaintWithTeam = userComplaints.find(c => c.team && c.team !== 'UNKNOWN');
+      if (complaintWithTeam) {
+        team = complaintWithTeam.team;
+      }
+    }
+    
+    // Clean up team name
+    if (team && typeof team === 'string') {
+      team = team.trim();
+      if (team === '') team = 'UNKNOWN';
+    }
+    
+    // Determine page_id
+    let page_id = latest.page_id || 'UNKNOWN';
+    if (!page_id || page_id === 'null' || page_id === 'NULL') {
+      page_id = 'UNKNOWN';
+    }
     
     // Check if task should be carried forward
     const shouldCarryForward = checkCarryForward(latest, firstOpen);
@@ -59,8 +83,8 @@ function processComplaints(rows, window) {
     processed.push({
       user_id: user_id,
       window: window,
-      team: team || 'UNKNOWN',
-      page_id: latest.page_id || 'UNKNOWN',
+      team: team,
+      page_id: page_id,
       priority: latest.priority || 3,
       status: latest.status || 'open',
       reason: latest.reason || '',
@@ -78,6 +102,9 @@ function processComplaints(rows, window) {
       highPriority: shouldCarryForward.highPriority
     });
   });
+  
+  console.log(`Processed ${processed.length} complaints for window ${window}`);
+  console.log('Unique teams found:', [...new Set(processed.map(p => p.team))]);
   
   return processed;
 }
@@ -114,12 +141,12 @@ function checkCarryForward(latestTask, firstOpen) {
 
 // Helper function to get carry forward tasks
 function getCarryForwardTasks() {
-  return ALL_DATA.filter(task => task.carryForward === true);
+  return window.ALL_DATA.filter(task => task.carryForward === true);
 }
 
 // Helper function to get high priority pending tasks
 function getHighPriorityPending() {
-  return ALL_DATA.filter(task => 
+  return window.ALL_DATA.filter(task => 
     task.status === 'open' && 
     (task.priority === 1 || task.priority === 2)
   );
