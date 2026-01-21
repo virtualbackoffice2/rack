@@ -2,28 +2,34 @@
 let MODAL_TASKS = [];
 let CURRENT_MODAL_TYPE = '';
 
-function openModal(type) {
-  CURRENT_MODAL_TYPE = type;
+// KPI cards ke liye function (HTML mein onclick="openTasksModal()" hai)
+function openTasksModal(type) {
+  console.log('openTasksModal called with:', type);
+  
   let title = '';
   let tasks = [];
   
   switch(type) {
     case 'all':
-      title = 'All Complaints (Latest Status)';
+      title = 'All Tasks';
       tasks = CURRENT_DATA;
       break;
     case 'closed':
-      title = 'Resolved Complaints';
+      title = 'Resolved Tasks';
       tasks = CURRENT_DATA.filter(t => t.status === 'close');
       break;
     case 'open':
-      title = 'Pending Complaints';
+      title = 'Pending Tasks';
       tasks = CURRENT_DATA.filter(t => t.status === 'open');
       break;
     case 'tat':
-      title = 'Complaints with TAT';
-      tasks = CURRENT_DATA.filter(t => t.tatMinutes);
+      title = 'Tasks by Average Time';
+      // Sort by TAT (descending)
+      tasks = [...CURRENT_DATA].sort((a, b) => (b.tatMinutes || 0) - (a.tatMinutes || 0));
       break;
+    default:
+      title = 'Task Details';
+      tasks = CURRENT_DATA;
   }
   
   showModal(title, tasks);
@@ -71,45 +77,75 @@ function openTeamModal(team, type) {
 function showModal(title, tasks) {
   MODAL_TASKS = tasks;
   
-  document.getElementById('modalTitle').textContent = title;
-  document.getElementById('modalCount').textContent = `${tasks.length} complaints`;
+  const modalTitle = document.getElementById('modalTitle');
+  const modalCount = document.getElementById('modalCount');
+  const modalWindow = document.getElementById('modalWindow');
+  const modalTeam = document.getElementById('modalTeam');
+  
+  if (!modalTitle || !modalCount) {
+    console.error('Modal elements not found');
+    return;
+  }
+  
+  modalTitle.textContent = title;
+  modalCount.textContent = `${tasks.length} tasks`;
   
   // Get unique windows and teams for stats
   const windows = [...new Set(tasks.map(t => t.window))];
   const teams = [...new Set(tasks.map(t => t.team))];
   
-  document.getElementById('modalWindow').textContent = `Windows: ${windows.join(', ')}`;
-  document.getElementById('modalTeam').textContent = `Teams: ${teams.slice(0, 3).join(', ')}${teams.length > 3 ? '...' : ''}`;
+  if (modalWindow) {
+    modalWindow.textContent = `Window: ${windows.join(', ')}`;
+  }
+  
+  if (modalTeam) {
+    modalTeam.textContent = `Teams: ${teams.slice(0, 3).join(', ')}${teams.length > 3 ? '...' : ''}`;
+  }
   
   // Reset filters
-  document.getElementById('modalSearch').value = '';
-  document.getElementById('modalStatusFilter').value = 'all';
-  document.getElementById('modalSort').value = 'new';
+  const modalSearch = document.getElementById('modalSearch');
+  const modalFilter = document.getElementById('modalFilter');
+  const modalSort = document.getElementById('modalSort');
+  
+  if (modalSearch) modalSearch.value = '';
+  if (modalFilter) modalFilter.value = 'all';
+  if (modalSort) modalSort.value = 'new';
   
   // Show modal
-  document.getElementById('tasksModal').style.display = 'flex';
+  const modal = document.getElementById('tasksModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
   
   // Load tasks
   updateModalContent();
 }
 
 function closeModal() {
-  document.getElementById('tasksModal').style.display = 'none';
+  const modal = document.getElementById('tasksModal');
+  if (modal) {
+    modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+  }
 }
 
 function updateModalContent() {
+  const modalBody = document.getElementById('modalBody');
+  if (!modalBody) return;
+  
   if (!MODAL_TASKS || MODAL_TASKS.length === 0) {
-    document.getElementById('modalBody').innerHTML = `
-      <div style="text-align: center; padding: 3rem; color: #94a3b8;">
-        No complaints found.
+    modalBody.innerHTML = `
+      <div class="no-tasks">
+        <p>No tasks found for this filter.</p>
       </div>
     `;
     return;
   }
   
-  const searchTerm = document.getElementById('modalSearch').value.toLowerCase();
-  const filter = document.getElementById('modalStatusFilter').value;
-  const sort = document.getElementById('modalSort').value;
+  const searchTerm = document.getElementById('modalSearch')?.value.toLowerCase() || '';
+  const filter = document.getElementById('modalFilter')?.value || 'all';
+  const sort = document.getElementById('modalSort')?.value || 'new';
   
   let filtered = [...MODAL_TASKS];
   
@@ -146,69 +182,67 @@ function updateModalContent() {
   });
   
   // Update count
-  document.getElementById('modalCount').textContent = `${filtered.length} complaints`;
+  const modalCount = document.getElementById('modalCount');
+  if (modalCount) {
+    modalCount.textContent = `${filtered.length} tasks`;
+  }
   
   // Generate modal content
-  const modalBody = document.getElementById('modalBody');
-  modalBody.innerHTML = '';
+  let html = '';
   
   filtered.forEach((task) => {
-    const taskCard = document.createElement('div');
-    taskCard.className = 'task-card';
-    
-    const priorityClass = `priority-badge priority-${task.priority}`;
-    const statusClass = `status-badge status-${task.status}`;
+    const priorityClass = `priority-${task.priority}`;
+    const statusClass = task.status === 'open' ? 'status-open' : 'status-close';
     const statusText = task.status === 'open' ? 'Pending' : 'Resolved';
     
     // Format dates
-    const dateStr = task.created_at ? 
-      new Date(task.created_at.replace(' ', 'T')).toLocaleString('en-IN') : 'Unknown';
+    const dateStr = task.timestamp ? 
+      new Date(task.timestamp).toLocaleString('en-IN') : 'Unknown';
     
-    const firstOpenStr = task.firstOpenAt ? 
-      task.firstOpenAt.toLocaleString('en-IN') : 'N/A';
+    // Check if task is carry forward
+    const carryForwardBadge = task.carryForward ? 
+      `<span class="carry-forward-badge" title="Carried forward for ${task.daysPending} days">↻ ${task.daysPending}d</span>` : '';
     
-    const lastCloseStr = task.lastCloseAt ? 
-      task.lastCloseAt.toLocaleString('en-IN') : 'N/A';
+    // Priority text
+    let priorityText = '';
+    switch(task.priority) {
+      case 1: priorityText = 'Repairs (P1)'; break;
+      case 2: priorityText = 'Installation (P2)'; break;
+      case 3: priorityText = 'Others (P3)'; break;
+    }
     
-    // History badge
-    const historyBadge = task.historyCount > 1 ? 
-      `<span class="history-badge" title="${task.historyCount} status changes">📜 ${task.historyCount}</span>` : '';
-    
-    taskCard.innerHTML = `
-      <div class="task-header">
-        <div class="task-id">
-          <strong>User ID:</strong> ${task.user_id || 'N/A'}
-          ${historyBadge}
+    html += `
+      <div class="task-card ${task.status}">
+        <div class="task-header">
+          <div class="task-id">
+            <strong>${task.user_id || 'N/A'}</strong>
+            ${carryForwardBadge}
+          </div>
+          <div class="task-status">
+            <span class="task-priority ${priorityClass}">${priorityText}</span>
+            <span class="task-status-badge ${statusClass}">${statusText}</span>
+          </div>
         </div>
-        <div class="task-status">
-          <span class="${priorityClass}">P${task.priority}</span>
-          <span class="${statusClass}">${statusText}</span>
+        
+        <div class="task-body">
+          <div><strong>Team:</strong> ${task.team || 'N/A'}</div>
+          <div><strong>Page:</strong> ${task.page_id || 'N/A'}</div>
+          <div><strong>Window:</strong> ${task.window || 'N/A'}</div>
+          <div><strong>Last Updated:</strong> ${dateStr}</div>
+          
+          ${task.tatMinutes ? `
+            <div><strong>Time to Resolve:</strong> ${formatTime(task.tatMinutes)}</div>
+          ` : ''}
+          
+          ${task.reason ? `<div><strong>Reason:</strong> ${task.reason}</div>` : ''}
+          
+          ${task.name ? `<div><strong>Name:</strong> ${task.name}</div>` : ''}
+          
+          ${task.address ? `<div><strong>Address:</strong> ${task.address}</div>` : ''}
         </div>
       </div>
-      
-      <div class="task-info">
-        <div><strong>Team:</strong> ${task.team} <small>(From first open)</small></div>
-        <div><strong>Window:</strong> ${task.window}</div>
-        <div><strong>Page:</strong> ${task.page_id}</div>
-        <div><strong>Reason:</strong> ${task.reason || 'N/A'}</div>
-      </div>
-      
-      <div class="task-details">
-        <div><strong>Latest Update:</strong> ${dateStr}</div>
-        ${task.tatMinutes ? `<div><strong>TAT:</strong> ${formatTime(task.tatMinutes)}</div>` : ''}
-        ${task.name ? `<div><strong>Name:</strong> ${task.name}</div>` : ''}
-        ${task.address ? `<div><strong>Address:</strong> ${task.address}</div>` : ''}
-      </div>
-      
-      ${task.historyCount > 1 ? `
-      <div class="task-history">
-        <div><strong>History:</strong> ${task.historyCount} status changes</div>
-        <div><strong>First Open:</strong> ${firstOpenStr}</div>
-        ${lastCloseStr !== 'N/A' ? `<div><strong>Last Close:</strong> ${lastCloseStr}</div>` : ''}
-      </div>
-      ` : ''}
     `;
-    
-    modalBody.appendChild(taskCard);
   });
+  
+  modalBody.innerHTML = html;
 }
