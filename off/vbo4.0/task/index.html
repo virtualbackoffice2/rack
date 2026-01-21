@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Merotra Networks • Team Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<!-- DATA SUMMARY -->
+<div id="dataSummary" class="data-summary" style="display: none;">
+  <div class="summary-item">
+    <span class="summary-label">Total Data Points:</span>
+    <span id="summaryTotal">0</span>
+  </div>
+  <div class="summary-item">
+    <span class="summary-label">Date Range:</span>
+    <span id="summaryDateRange">—</span>
+  </div>
+  <div class="summary-item">
+    <span class="summary-label">Teams Found:</span>
+    <span id="summaryTeams">—</span>
+  </div>
+</div>
+
+<!-- DEBUG PANEL -->
+<div id="debugPanel" class="debug-panel" style="display: none;">
+  <div class="debug-title">Debug Information</div>
+  <div id="debugContent"></div>
+</div>
+
+<!-- LOADER -->
+<div class="loader" id="loader">
+  <div class="spinner"></div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-title">📊 Merotra Networks - Team Performance Dashboard</div>
+  <div class="header-sub">Daily Target: 4 tasks per team • Priority: Repairs (P1) > Installation (P2) > Others (P3)</div>
+</header>
+
+<!-- FILTERS -->
+<div class="filters-bar">
+  <div class="filter-group">
+    <div class="filter-label">Window</div>
+    <select id="filterWindow">
+      <option value="all">All Windows</option>
+      <option value="MEROTRA">MEROTRA</option>
+      <option value="SUNNY">SUNNY</option>
+    </select>
+  </div>
+  
+  <div class="filter-group">
+    <div class="filter-label">Team</div>
+    <select id="filterTeam">
+      <option value="all">All Teams</option>
+    </select>
+  </div>
+  
+  <div class="filter-group">
+    <div class="filter-label">Page</div>
+    <select id="filterPage">
+      <option value="all">All Pages</option>
+    </select>
+  </div>
+  
+  <div class="filter-group">
+    <div class="filter-label">Priority</div>
+    <select id="filterPriority">
+      <option value="all">All Priorities</option>
+      <option value="1">Repairs (P1)</option>
+      <option value="2">Installation (P2)</option>
+      <option value="3">Others (P3)</option>
+    </select>
+  </div>
+  
+  <div class="filter-group">
+    <div class="filter-label">Date Range</div>
+    <select id="filterDateRange">
+      <option value="all">All Time</option>
+      <option value="today">Today</option>
+      <option value="yesterday">Yesterday</option>
+      <option value="last7days">Last 7 Days</option>
+      <option value="last30days">Last 30 Days</option>
+      <option value="custom">Custom Range</option>
+    </select>
+  </div>
+  
+  <div class="filter-group" id="customDateGroup" style="display: none;">
+    <div class="filter-label">Custom Dates</div>
+    <div style="display: flex; gap: 0.5rem;">
+      <input type="date" id="filterDateFrom" style="flex: 1; min-width: 0;">
+      <span style="align-self: center;">to</span>
+      <input type="date" id="filterDateTo" style="flex: 1; min-width: 0;">
+    </div>
+  </div>
+  
+  <div class="filter-group">
+    <div class="filter-label" style="opacity: 0;">Actions</div>
+    <button id="refreshBtn" class="btn-primary">
+      🔄 Refresh
+    </button>
+  </div>
+</div>
+
+<!-- KPI SECTION -->
+<div class="kpi-section">
+  <div class="kpi-grid">
+    <div class="kpi-card" onclick="openTasksModal('all')">
+      <div class="kpi-label">Total Tasks</div>
+      <div class="kpi-value" id="kpiTotal">0</div>
+      <div class="kpi-note">Tracked by user_id</div>
+    </div>
+    
+    <div class="kpi-card" onclick="openTasksModal('closed')">
+      <div class="kpi-label">Resolved</div>
+      <div class="kpi-value" id="kpiClosed">0</div>
+      <div class="kpi-note">Closed status</div>
+    </div>
+    
+    <div class="kpi-card" onclick="openTasksModal('open')">
+      <div class="kpi-label">Pending</div>
+      <div class="kpi-value" id="kpiOpen">0</div>
+      <div class="kpi-note">Open status</div>
+    </div>
+    
+    <div class="kpi-card" onclick="openTasksModal('tat')">
+      <div class="kpi-label">Avg. Time</div>
+      <div class="kpi-value" id="kpiTat">—</div>
+      <div class="kpi-note">From Open to Close</div>
+    </div>
+  </div>
+</div>
+
+<!-- CHARTS SECTION -->
+<div class="charts-section">
+  <div class="chart-container">
+    <div class="chart-title">Priority Distribution</div>
+    <div class="chart-box">
+      <canvas id="chartPriority"></canvas>
+    </div>
+  </div>
+  
+  <div class="chart-container">
+    <div class="chart-title">Team Performance (Today)</div>
+    <div class="chart-box">
+      <canvas id="chartTarget"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- TABLE SECTION -->
+<div class="table-section">
+  <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+    <div class="chart-title">Team Performance</div>
+    <div style="display: flex; gap: 0.5rem;">
+      <button onclick="showDataSummary()" class="btn-secondary">
+        📋 Data Summary
+      </button>
+      <button onclick="exportCSV()" class="btn-success">
+        📥 Export CSV
+      </button>
+    </div>
+  </div>
+  
+  <div class="table-container">
+    <table id="teamTable">
+      <thead>
+        <tr>
+          <th>Team</th>
+          <th>Today's Tasks</th>
+          <th>Target (4)</th>
+          <th>Repairs (P1)</th>
+          <th>Installation (P2)</th>
+          <th>Others (P3)</th>
+          <th>Resolved</th>
+          <th>Pending</th>
+          <th>Avg. Time</th>
+        </tr>
+      </thead>
+      <tbody id="teamTableBody">
+        <tr>
+          <td colspan="9" style="text-align: center; padding: 2rem; color: #94a3b8;">
+            Loading data...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL POPUP -->
+<div id="tasksModal" class="modal-overlay" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="modalTitle">Task Details</h2>
+      <button onclick="closeModal()" class="btn-danger">✕ Close</button>
+    </div>
+    
+    <div class="modal-tools">
+      <input type="text" id="modalSearch" placeholder="Search user_id, team, page..." class="modal-search">
+      <select id="modalFilter" class="modal-select">
+        <option value="all">All Status</option>
+        <option value="open">Open Only</option>
+        <option value="close">Closed Only</option>
+      </select>
+      <select id="modalSort" class="modal-select">
+        <option value="new">Newest First</option>
+        <option value="old">Oldest First</option>
+        <option value="tatHigh">Longest TAT</option>
+        <option value="tatLow">Shortest TAT</option>
+      </select>
+    </div>
+    
+    <div class="modal-stats">
+      <span id="modalCount">0 tasks</span>
+      <span id="modalWindow"></span>
+      <span id="modalTeam"></span>
+    </div>
+    
+    <div id="modalBody" class="modal-body">
+      <!-- Tasks will be loaded here -->
+    </div>
+  </div>
+</div>
+
+<!-- Include JavaScript -->
+<script src="script.js"></script>
+</body>
+</html>
