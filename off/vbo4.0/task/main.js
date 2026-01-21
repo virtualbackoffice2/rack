@@ -2,11 +2,19 @@
 function setupEventListeners() {
   console.log('Setting up event listeners...');
   
-  // Filter changes - CORRECT IDs
+  // Filter changes
   ['filterWindow', 'filterTeam', 'filterPage', 'filterPriority', 'filterDateRange'].forEach(id => {
     const element = document.getElementById(id);
     if (element) {
-      element.addEventListener('change', applyFilters);
+      element.addEventListener('change', function() {
+        console.log(`Filter ${id} changed to:`, this.value);
+        // Call applyFilters only if it exists
+        if (typeof applyFilters === 'function') {
+          applyFilters();
+        } else {
+          console.warn('applyFilters function not available yet');
+        }
+      });
     } else {
       console.warn(`Element #${id} not found`);
     }
@@ -15,41 +23,65 @@ function setupEventListeners() {
   // Refresh button
   const refreshBtn = document.getElementById('refreshBtn');
   if (refreshBtn) {
-    refreshBtn.addEventListener('click', fetchAllData);
+    refreshBtn.addEventListener('click', function() {
+      console.log('Refresh button clicked');
+      if (typeof fetchAllData === 'function') {
+        fetchAllData();
+      } else {
+        console.error('fetchAllData function not available');
+        alert('Please wait, functions are still loading...');
+      }
+    });
   } else {
     console.warn('Refresh button not found');
   }
   
-  // Modal search and filters - ONLY IF MODAL ELEMENTS EXIST
+  // Modal search and filters
   const modalSearch = document.getElementById('modalSearch');
-  const modalFilter = document.getElementById('modalFilter'); // NOT modalStatusFilter
+  const modalFilter = document.getElementById('modalFilter');
   const modalSort = document.getElementById('modalSort');
   
   if (modalSearch) {
-    modalSearch.addEventListener('input', updateModalContent);
+    modalSearch.addEventListener('input', function() {
+      console.log('Modal search:', this.value);
+      if (typeof updateModalContent === 'function') {
+        updateModalContent();
+      }
+    });
   }
   if (modalFilter) {
-    modalFilter.addEventListener('change', updateModalContent);
+    modalFilter.addEventListener('change', function() {
+      console.log('Modal filter:', this.value);
+      if (typeof updateModalContent === 'function') {
+        updateModalContent();
+      }
+    });
   }
   if (modalSort) {
-    modalSort.addEventListener('change', updateModalContent);
+    modalSort.addEventListener('change', function() {
+      console.log('Modal sort:', this.value);
+      if (typeof updateModalContent === 'function') {
+        updateModalContent();
+      }
+    });
   }
   
   // Close modal on overlay click
   const tasksModal = document.getElementById('tasksModal');
   if (tasksModal) {
     tasksModal.addEventListener('click', function(e) {
-      if (e.target === this) closeModal();
+      if (e.target === this && typeof closeModal === 'function') {
+        closeModal();
+      }
     });
   }
   
   // Close modal with Escape key
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Escape' && typeof closeModal === 'function') {
+      closeModal();
+    }
   });
-  
-  // REMOVE THIS LINE - dataSummary shouldn't have click listener
-  // document.getElementById('dataSummary').addEventListener('click', showDataSummary);
   
   // Custom date range toggle
   const dateRangeSelect = document.getElementById('filterDateRange');
@@ -64,11 +96,19 @@ function setupEventListeners() {
   
   console.log('Event listeners setup complete');
 }
+
 // ==================== DATA SUMMARY ====================
 function showDataSummary() {
+  console.log('showDataSummary called, ALL_DATA length:', ALL_DATA.length);
+  
   const totalSpan = document.getElementById('summaryTotal');
   const teamsSpan = document.getElementById('summaryTeams');
   const dateRangeSpan = document.getElementById('summaryDateRange');
+  
+  if (!totalSpan || !teamsSpan || !dateRangeSpan) {
+    console.error('Data summary elements not found');
+    return;
+  }
   
   // Calculate date range
   const dates = ALL_DATA.map(d => d.timestamp).filter(Boolean);
@@ -86,16 +126,28 @@ function showDataSummary() {
   teamsSpan.textContent = teams.join(', ') || 'None found';
   
   dateRangeSpan.textContent = dateRangeText;
+  
+  // Show the summary
+  const summaryDiv = document.getElementById('dataSummary');
+  if (summaryDiv) {
+    summaryDiv.style.display = 'block';
+  }
 }
 
 // ==================== UTILITY FUNCTIONS ====================
 function showLoader(show) {
-  document.getElementById('loader').style.display = show ? 'flex' : 'none';
+  const loader = document.getElementById('loader');
+  if (loader) {
+    loader.style.display = show ? 'flex' : 'none';
+    console.log('Loader:', show ? 'shown' : 'hidden');
+  }
 }
 
 // ==================== EXPORT CSV ====================
 function exportCSV() {
-  if (CURRENT_DATA.length === 0) {
+  console.log('exportCSV called, CURRENT_DATA length:', CURRENT_DATA.length);
+  
+  if (!CURRENT_DATA || CURRENT_DATA.length === 0) {
     alert('No data to export');
     return;
   }
@@ -127,6 +179,8 @@ function exportCSV() {
   a.download = `merotra_complaints_${new Date().toISOString().split('T')[0]}.csv`;
   a.click();
   window.URL.revokeObjectURL(url);
+  
+  console.log('CSV exported successfully');
 }
 
 // ==================== INITIALIZATION ====================
@@ -136,24 +190,63 @@ async function initialize() {
   setupEventListeners();
   
   // Set default date range to "All Time"
-  document.getElementById('filterDateRange').value = 'all';
-  
-  // Try to fetch data immediately
-  try {
-    await fetchAllData();
-  } catch (error) {
-    console.error('Initial fetch failed:', error);
-    
-    // Show error state
-    document.getElementById('kpiTotal').textContent = 'Error';
-    document.getElementById('teamTableBody').innerHTML = `
-      <tr>
-        <td colspan="9" style="text-align: center; padding: 2rem; color: #ef4444;">
-          Failed to load data. Click Refresh to try again.
-        </td>
-      </tr>
-    `;
+  const dateRangeSelect = document.getElementById('filterDateRange');
+  if (dateRangeSelect) {
+    dateRangeSelect.value = 'all';
   }
+  
+  // Try to fetch data immediately - but wait a bit for all scripts to load
+  setTimeout(async () => {
+    try {
+      console.log('Attempting to fetch initial data...');
+      
+      if (typeof fetchAllData === 'function') {
+        console.log('fetchAllData function is available, calling it...');
+        await fetchAllData();
+      } else {
+        console.error('fetchAllData function not available yet');
+        console.log('Available functions:', {
+          fetchAllData: typeof fetchAllData,
+          showLoader: typeof showLoader,
+          applyFilters: typeof applyFilters,
+          updateDashboard: typeof updateDashboard
+        });
+        
+        // Show error state
+        const kpiTotal = document.getElementById('kpiTotal');
+        if (kpiTotal) kpiTotal.textContent = 'Loading...';
+        
+        const teamTableBody = document.getElementById('teamTableBody');
+        if (teamTableBody) {
+          teamTableBody.innerHTML = `
+            <tr>
+              <td colspan="9" style="text-align: center; padding: 2rem; color: #ef4444;">
+                Functions not loaded. Click Refresh to try again.
+              </td>
+            </tr>
+          `;
+        }
+      }
+    } catch (error) {
+      console.error('Initial fetch failed:', error);
+      
+      // Show error state
+      const kpiTotal = document.getElementById('kpiTotal');
+      if (kpiTotal) kpiTotal.textContent = 'Error';
+      
+      const teamTableBody = document.getElementById('teamTableBody');
+      if (teamTableBody) {
+        teamTableBody.innerHTML = `
+          <tr>
+            <td colspan="9" style="text-align: center; padding: 2rem; color: #ef4444;">
+              Failed to load data. Click Refresh to try again.
+              <br><small>Error: ${error.message}</small>
+            </td>
+          </tr>
+        `;
+      }
+    }
+  }, 500); // Wait 500ms for all scripts to load
   
   console.log('Application initialized');
 }
