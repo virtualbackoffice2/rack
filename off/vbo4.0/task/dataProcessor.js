@@ -1,82 +1,130 @@
 // ==================== DATA PROCESSING FUNCTIONS ====================
-function processComplaints(rawData, window) {
-  // Group by user_id + page_id + reason combination
-  // We'll track the team from the FIRST OPEN entry
-  const complaintsByKey = {};
+// ==================== DATA PROCESSING ====================
+function processComplaints(rows, window) {
+  const complaintsByUser = {};
   
-  rawData.forEach(row => {
-    const key = `${row.user_id}_${row.page_id}_${row.reason}`;
+  rows.forEach(row => {
+    if (!row.user_id) return;
     
-    if (!complaintsByKey[key]) {
-      complaintsByKey[key] = [];
+    const user_id = row.user_id.trim();
+    const timestamp = row.created_at ? new Date(row.created_at.replace(' ', 'T')).getTime() : Date.now();
+    
+    if (!complaintsByUser[user_id]) {
+      complaintsByUser[user_id] = [];
     }
     
-    complaintsByKey[key].push({
+    complaintsByUser[user_id].push({
+      ...row,
       window: window,
-      user_id: String(row.user_id || '').trim(),
-      team: String(row.Team || 'UNKNOWN').trim(),
-      page_id: String(row.page_id || 'UNKNOWN').trim(),
-      reason: String(row.reason || '').trim(),
-      name: String(row.name || '').trim(),
-      address: String(row.address || '').trim(),
-      status: String(row.status || '').toLowerCase(),
-      created_at: String(row.created_at || ''),
-      timestamp: parseDate(row.created_at),
-      id: row.id || null
+      timestamp: timestamp,
+      status: row.status,
+      priority: parseInt(row.priority) || 3
     });
   });
   
-  // Process each complaint group
-  const processedComplaints = [];
+  // For each user, find latest status and calculate TAT if applicable
+  const processed = [];
   
-  Object.values(complaintsByKey).forEach(complaints => {
-    // Sort by timestamp (oldest to newest)
-    complaints.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+  Object.keys(complaintsByUser).forEach(user_id => {
+    const userComplaints = complaintsByUser[user_id];
     
-    // Find the FIRST OPEN entry - this determines the team
-    const firstOpen = complaints.find(c => c.status === 'open');
-    const finalTeam = firstOpen ? firstOpen.team : complaints[0].team;
+    // Sort by timestamp (newest first)
+    userComplaints.sort((a, b) => b.timestamp - a.timestamp);
     
-    // Get the LATEST entry for current status
-    const latestComplaint = complaints[complaints.length - 1];
+    const latest = userComplaints[0];
     
-    // Calculate TAT: find first open and last close
-    let openTimestamp = null;
-    let closeTimestamp = null;
+    // Find first open complaint
+    const openComplaints = userComplaints.filter(c => c.status === 'open');
+    const firstOpen = openComplaints.length > 0 ? 
+      openComplaints[openComplaints.length - 1] : null;
     
-    for (const complaint of complaints) {
-      if (complaint.status === 'open' && !openTimestamp) {
-        openTimestamp = complaint.timestamp;
-      } else if (complaint.status === 'close') {
-        closeTimestamp = complaint.timestamp;
-      }
-    }
+    // Find last close complaint (if any)
+    const closeComplaints = userComplaints.filter(c => c.status === 'close');
+    const lastClose = closeComplaints.length > 0 ? 
+      closeComplaints[0] : null;
     
-    // Calculate TAT if we have both
+    // Calculate TAT (in minutes) if closed
     let tatMinutes = null;
-    if (openTimestamp && closeTimestamp && closeTimestamp > openTimestamp) {
-      tatMinutes = (closeTimestamp - openTimestamp) / (1000 * 60);
+    if (lastClose && firstOpen) {
+      const openTime = firstOpen.timestamp;
+      const closeTime = lastClose.timestamp;
+      tatMinutes = Math.round((closeTime - openTime) / (1000 * 60));
     }
     
-    // Create final complaint object
-    const finalComplaint = {
-      ...latestComplaint,
-      team: finalTeam, // Always use the team from FIRST OPEN
-      tatMinutes: tatMinutes,
-      priority: getPriority(latestComplaint.page_id),
-      history: complaints,
-      historyCount: complaints.length,
-      firstOpenAt: openTimestamp,
-      lastCloseAt: closeTimestamp,
-      firstOpenTeam: finalTeam
-    };
+    // Determine team (from first open complaint if available)
+    const team = firstOpen ? firstOpen.team : latest.team;
     
-    processedComplaints.push(finalComplaint);
+    // Check if task should be carried forward
+    const shouldCarryForward = checkCarryForward(latest, firstOpen);
+    
+    processed.push({
+      user_id: user_id,
+      window: window,
+      team: team || 'UNKNOWN',
+      page_id: latest.page_id || 'UNKNOWN',
+      priority: latest.priority || 3,
+      status: latest.status || 'open',
+      reason: latest.reason || '',
+      created_at: latest.created_at || '',
+      name: latest.name || '',
+      address: latest.address || '',
+      timestamp: latest.timestamp,
+      historyCount: userComplaints.length,
+      firstOpenAt: firstOpen ? firstOpen.timestamp : null,
+      lastCloseAt: lastClose ? lastClose.timestamp : null,
+      tatMinutes: tatMinutes,
+      // Carry forward properties
+      carryForward: shouldCarryForward.carryForward,
+      daysPending: shouldCarryForward.daysPending,
+      highPriority: shouldCarryForward.highPriority
+    });
   });
   
-  return processedComplaints;
+  return processed;
 }
 
+// ==================== CARRY FORWARD LOGIC ====================
+function checkCarryForward(latestTask, firstOpen) {
+  const result = {
+    carryForward: false,
+    daysPending: 0,
+    highPriority: false
+  };
+  
+  // Only check for open tasks with priority 1 or 2
+  if (latestTask.status === 'open' && (latestTask.priority === 1 || latestTask.priority === 2)) {
+    result.highPriority = true;
+    
+    if (firstOpen) {
+      const now = new Date();
+      const openDate = new Date(firstOpen.timestamp);
+      const diffTime = Math.abs(now - openDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      result.daysPending = diffDays;
+      
+      // Mark as carry forward if pending for more than 1 day
+      if (diffDays > 1) {
+        result.carryForward = true;
+      }
+    }
+  }
+  
+  return result;
+}
+
+// Helper function to get carry forward tasks
+function getCarryForwardTasks() {
+  return ALL_DATA.filter(task => task.carryForward === true);
+}
+
+// Helper function to get high priority pending tasks
+function getHighPriorityPending() {
+  return ALL_DATA.filter(task => 
+    task.status === 'open' && 
+    (task.priority === 1 || task.priority === 2)
+  );
+}
 // ==================== UTILITY FUNCTIONS ====================
 function getPriority(pageId) {
   if (!pageId) return 3;
