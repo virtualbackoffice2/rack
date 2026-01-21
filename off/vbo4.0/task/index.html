@@ -227,11 +227,43 @@
   </div>
 </div>
 
-<!-- Include JavaScript -->
-<script src="dataProcessor.js"></script>   <!-- UTILITY functions first -->
-<script src="dashboardUpdater.js"></script> <!-- UPDATE functions -->
-<script src="dataFetcher.js"></script>     <!-- Uses above functions -->
-<script src="modalManager.js"></script>    <!-- MODAL functions -->
-<script src="main.js"></script>            <!-- INITIALIZATION last -->
+<!-- Load scripts in correct order -->
+<script src="dataProcessor.js"></script>
+<script src="dashboardUpdater.js"></script>
+<script src="dataFetcher.js"></script>
+<script src="modalManager.js"></script>
+<script src="main.js"></script>
+
+<script>
+// Initialize after all scripts are loaded
+window.addEventListener('load', function() {
+  console.log('All scripts loaded, initializing app...');
+  console.log('Available functions:', {
+    fetchAllData: typeof fetchAllData,
+    showLoader: typeof showLoader,
+    applyFilters: typeof applyFilters
+  });
+  
+  // Set default date range
+  const dateRangeSelect = document.getElementById('filterDateRange');
+  if (dateRangeSelect) {
+    dateRangeSelect.value = 'all';
+  }
+  
+  // Fetch data after a short delay
+  setTimeout(() => {
+    if (typeof fetchAllData === 'function') {
+      console.log('Calling fetchAllData...');
+      fetchAllData();
+    } else {
+      console.error('fetchAllData not found! Available functions:', 
+        Object.keys(window).filter(key => typeof window[key] === 'function')
+      );
+      alert('Error: Application not loaded properly. Please refresh the page.');
+    }
+  }, 100);
+});
+</script>
+
 </body>
 </html>
