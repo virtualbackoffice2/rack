@@ -228,10 +228,10 @@
 </div>
 
 <!-- Include JavaScript -->
-<script src="main.js"></script>           <!-- Basic setup, DOM ready wait kare -->
-<script src="dataFetcher.js"></script>    <!-- API calls -->
-<script src="dataProcessor.js"></script>  <!-- Data process -->
-<script src="dashboardUpdater.js"></script><!-- UI update -->
-<script src="modalManager.js"></script>   <!-- Modal functions define -->
+<script src="dataProcessor.js"></script>   <!-- UTILITY functions first -->
+<script src="dashboardUpdater.js"></script> <!-- UPDATE functions -->
+<script src="dataFetcher.js"></script>     <!-- Uses above functions -->
+<script src="modalManager.js"></script>    <!-- MODAL functions -->
+<script src="main.js"></script>            <!-- INITIALIZATION last -->
 </body>
 </html>
