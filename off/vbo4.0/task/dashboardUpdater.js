@@ -1,17 +1,24 @@
 // ==================== DASHBOARD UPDATE ====================
 function updateDashboard() {
-  const total = CURRENT_DATA.length;
-  const closed = CURRENT_DATA.filter(t => t.status === 'close').length;
-  const open = CURRENT_DATA.filter(t => t.status === 'open').length;
+  console.log('updateDashboard called, CURRENT_DATA:', window.CURRENT_DATA ? window.CURRENT_DATA.length : 'undefined');
+  
+  if (!window.CURRENT_DATA || !Array.isArray(window.CURRENT_DATA)) {
+    console.error('CURRENT_DATA not available for dashboard update');
+    return;
+  }
+  
+  const total = window.CURRENT_DATA.length;
+  const closed = window.CURRENT_DATA.filter(t => t.status === 'close').length;
+  const open = window.CURRENT_DATA.filter(t => t.status === 'open').length;
   
   // Calculate average TAT only for closed complaints
-  const closedWithTat = CURRENT_DATA.filter(t => t.status === 'close' && t.tatMinutes);
+  const closedWithTat = window.CURRENT_DATA.filter(t => t.status === 'close' && t.tatMinutes);
   const totalTat = closedWithTat.reduce((sum, task) => sum + task.tatMinutes, 0);
   const avgTat = closedWithTat.length > 0 ? totalTat / closedWithTat.length : 0;
   
   // Get carry forward stats
-  const carryForwardTasks = CURRENT_DATA.filter(t => t.carryForward);
-  const highPriorityPending = CURRENT_DATA.filter(t => 
+  const carryForwardTasks = window.CURRENT_DATA.filter(t => t.carryForward);
+  const highPriorityPending = window.CURRENT_DATA.filter(t => 
     t.status === 'open' && (t.priority === 1 || t.priority === 2)
   );
   
@@ -49,17 +56,26 @@ function updateDashboard() {
       openKpi.appendChild(badge);
     }
   }
+  
+  console.log('Dashboard updated:', { total, closed, open, avgTat });
 }
 
 // ==================== TEAM TABLE ====================
 function updateTeamTable() {
-  const teams = [...new Set(CURRENT_DATA.map(t => t.team))].sort();
+  console.log('updateTeamTable called, CURRENT_DATA:', window.CURRENT_DATA ? window.CURRENT_DATA.length : 'undefined');
+  
+  if (!window.CURRENT_DATA || !Array.isArray(window.CURRENT_DATA)) {
+    console.error('CURRENT_DATA not available for team table');
+    return;
+  }
+  
+  const teams = [...new Set(window.CURRENT_DATA.map(t => t.team))].sort();
   const today = new Date().toISOString().split('T')[0];
   
   let tableHTML = '';
   
   teams.forEach(team => {
-    const teamTasks = CURRENT_DATA.filter(t => t.team === team);
+    const teamTasks = window.CURRENT_DATA.filter(t => t.team === team);
     const todayTasks = teamTasks.filter(t => 
       t.created_at && t.created_at.includes(today)
     ).length;
@@ -136,16 +152,24 @@ function updateTeamTable() {
   }
   
   document.getElementById('teamTableBody').innerHTML = tableHTML;
+  console.log('Team table updated with', teams.length, 'teams');
 }
 
 // ==================== CHARTS ====================
 function updateCharts() {
+  console.log('updateCharts called, CURRENT_DATA:', window.CURRENT_DATA ? window.CURRENT_DATA.length : 'undefined');
+  
+  if (!window.CURRENT_DATA || !Array.isArray(window.CURRENT_DATA)) {
+    console.error('CURRENT_DATA not available for charts');
+    return;
+  }
+  
   // Priority Chart
   const priorityCtx = document.getElementById('chartPriority').getContext('2d');
   const priorityData = {
-    'Repairs (P1)': CURRENT_DATA.filter(t => t.priority === 1).length,
-    'Installation (P2)': CURRENT_DATA.filter(t => t.priority === 2).length,
-    'Others (P3)': CURRENT_DATA.filter(t => t.priority === 3).length
+    'Repairs (P1)': window.CURRENT_DATA.filter(t => t.priority === 1).length,
+    'Installation (P2)': window.CURRENT_DATA.filter(t => t.priority === 2).length,
+    'Others (P3)': window.CURRENT_DATA.filter(t => t.priority === 3).length
   };
   
   if (window.priorityChart) window.priorityChart.destroy();
@@ -171,10 +195,10 @@ function updateCharts() {
   });
   
   // Team Performance Chart
-  const teams = [...new Set(CURRENT_DATA.map(t => t.team))].sort();
+  const teams = [...new Set(window.CURRENT_DATA.map(t => t.team))].sort();
   const today = new Date().toISOString().split('T')[0];
   const todayCounts = teams.map(team => {
-    return CURRENT_DATA.filter(t => 
+    return window.CURRENT_DATA.filter(t => 
       t.team === team && 
       t.created_at && 
       t.created_at.includes(today)
@@ -218,6 +242,8 @@ function updateCharts() {
       }
     }
   });
+  
+  console.log('Charts updated');
 }
 
 // Add formatTime function if not defined elsewhere
