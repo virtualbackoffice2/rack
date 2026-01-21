@@ -1,4 +1,3 @@
-// ==================== DATA PROCESSING FUNCTIONS ====================
 // ==================== DATA PROCESSING ====================
 function processComplaints(rows, window) {
   const complaintsByUser = {};
@@ -125,6 +124,7 @@ function getHighPriorityPending() {
     (task.priority === 1 || task.priority === 2)
   );
 }
+
 // ==================== UTILITY FUNCTIONS ====================
 function getPriority(pageId) {
   if (!pageId) return 3;
@@ -205,75 +205,4 @@ function getDateRange(rangeType) {
         to: new Date('2030-12-31')
       };
   }
-}
-// dataProcessor.js
-
-// Add these helper functions
-function isTaskPending(task) {
-  return task.status === 'open' && 
-         (task.priority === 1 || task.priority === 2); // Only P1 and P2
-}
-
-function getTaskAgeInDays(task) {
-  if (!task.timestamp) return 0;
-  const now = new Date();
-  const taskDate = new Date(task.timestamp);
-  const diffTime = Math.abs(now - taskDate);
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-}
-
-function markCarryForwardTasks() {
-  ALL_DATA.forEach(task => {
-    if (isTaskPending(task)) {
-      const ageInDays = getTaskAgeInDays(task);
-      if (ageInDays > 1) {
-        // Mark as carry forward
-        task.carryForward = true;
-        task.daysPending = ageInDays;
-      }
-    }
-  });
-}
-
-// Update your processComplaints function to include carry forward logic
-function processComplaints(rows, window) {
-  // ... existing processing logic ...
-  
-  // After processing, mark carry forward tasks
-  const processedData = []; // Your processed data array
-  
-  // ... your existing processing code ...
-  
-  return processedData.map(task => {
-    if (isTaskPending(task)) {
-      const ageInDays = getTaskAgeInDays(task);
-      if (ageInDays > 1) {
-        return {
-          ...task,
-          carryForward: true,
-          daysPending: ageInDays,
-          priority: task.priority, // Maintain original priority
-          highPriority: true // Flag for highlighting
-        };
-      }
-    }
-    return task;
-  });
-}
-
-// Update dashboard to show carry forward tasks
-function updateDashboard() {
-  // ... existing dashboard code ...
-  
-  // Add carry forward stats
-  const carryForwardTasks = CURRENT_DATA.filter(task => task.carryForward);
-  const highPriorityPending = CURRENT_DATA.filter(task => 
-    isTaskPending(task) && (task.priority === 1 || task.priority === 2)
-  );
-  
-  console.log('Carry Forward Tasks:', carryForwardTasks.length);
-  console.log('High Priority Pending:', highPriorityPending.length);
-  
-  // You can add a new KPI card for carry forward tasks
-  // Or highlight them in the table
 }
