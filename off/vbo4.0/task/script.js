@@ -8,32 +8,8 @@ const DAILY_TARGET = 4;
 let ALL_DATA = [];
 let CURRENT_DATA = [];
 let CHARTS = {};
-let MODAL_TYPE = 'all'; // 'all', 'closed', 'open', 'tat'
-
-// ==================== DEBUG FUNCTIONS ====================
-function debugLog(message, data = null) {
-  console.log(`[DEBUG] ${message}`, data || '');
-  const debugPanel = document.getElementById('debugPanel');
-  const debugContent = document.getElementById('debugContent');
-  
-  const timestamp = new Date().toLocaleTimeString();
-  const logEntry = document.createElement('div');
-  logEntry.style.marginBottom = '0.25rem';
-  logEntry.style.paddingBottom = '0.25rem';
-  logEntry.style.borderBottom = '1px solid #334155';
-  logEntry.innerHTML = `<span style="color: #94a3b8">[${timestamp}]</span> ${message}`;
-  
-  if (data) {
-    const dataDiv = document.createElement('div');
-    dataDiv.style.color = '#cbd5e1';
-    dataDiv.style.fontSize = '0.75rem';
-    dataDiv.style.marginTop = '0.25rem';
-    dataDiv.textContent = JSON.stringify(data, null, 2).slice(0, 200) + '...';
-    logEntry.appendChild(dataDiv);
-  }
-  
-  debugContent.prepend(logEntry);
-}
+let MODAL_TYPE = 'all';
+let MODAL_TASKS = [];
 
 // ==================== UTILITY FUNCTIONS ====================
 function showLoader(show) {
@@ -70,6 +46,205 @@ function parseDate(dateStr) {
     console.warn('Date parse error:', dateStr, e);
     return null;
   }
+}
+
+// ==================== DATA PROCESSING FUNCTIONS ====================
+function processComplaints(rawData, window) {
+  // Group by user_id + page_id + reason combination
+  const complaintsByKey = {};
+  
+  rawData.forEach(row => {
+    const key = `${row.user_id}_${row.page_id}_${row.reason}`;
+    
+    if (!complaintsByKey[key]) {
+      complaintsByKey[key] = [];
+    }
+    
+    complaintsByKey[key].push({
+      window: window,
+      user_id: String(row.user_id || '').trim(),
+      team: String(row.Team || 'UNKNOWN').trim(),
+      page_id: String(row.page_id || 'UNKNOWN').trim(),
+      reason: String(row.reason || '').trim(),
+      name: String(row.name || '').trim(),
+      address: String(row.address || '').trim(),
+      status: String(row.status || '').toLowerCase(),
+      created_at: String(row.created_at || ''),
+      timestamp: parseDate(row.created_at)
+    });
+  });
+  
+  // Process each complaint group to get latest status
+  const processedComplaints = [];
+  
+  Object.values(complaintsByKey).forEach(complaints => {
+    // Sort by timestamp (oldest to newest)
+    complaints.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    
+    // Get the latest entry
+    const latestComplaint = complaints[complaints.length - 1];
+    
+    // Calculate TAT if there was an open and then close
+    let tatMinutes = null;
+    let openTimestamp = null;
+    let closeTimestamp = null;
+    
+    // Find the first open and last close
+    for (const complaint of complaints) {
+      if (complaint.status === 'open') {
+        openTimestamp = complaint.timestamp;
+      } else if (complaint.status === 'close') {
+        closeTimestamp = complaint.timestamp;
+      }
+    }
+    
+    // If we have both open and close timestamps, calculate TAT
+    if (openTimestamp && closeTimestamp && closeTimestamp > openTimestamp) {
+      tatMinutes = (closeTimestamp - openTimestamp) / (1000 * 60);
+    }
+    
+    // Create final complaint object with latest status
+    const finalComplaint = {
+      ...latestComplaint,
+      tatMinutes: tatMinutes,
+      priority: getPriority(latestComplaint.page_id),
+      history: complaints, // Keep history for reference
+      firstOpenAt: openTimestamp,
+      lastCloseAt: closeTimestamp
+    };
+    
+    processedComplaints.push(finalComplaint);
+  });
+  
+  return processedComplaints;
+}
+
+// ==================== DATA FETCHING ====================
+async function fetchAllData() {
+  showLoader(true);
+  
+  try {
+    const promises = API_URLS.map(async (url, index) => {
+      try {
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        return {
+          source: url.includes('MEROTRA') ? 'MEROTRA' : 'SUNNY',
+          data: data.rows || []
+        };
+      } catch (error) {
+        console.error(`Error fetching ${url}:`, error);
+        return { source: url.includes('MEROTRA') ? 'MEROTRA' : 'SUNNY', data: [] };
+      }
+    });
+    
+    const results = await Promise.all(promises);
+    
+    // Process all data
+    ALL_DATA = [];
+    
+    results.forEach(result => {
+      const window = result.source;
+      const rows = result.data;
+      
+      // Process complaints to get latest status for each user_id
+      const processed = processComplaints(rows, window);
+      ALL_DATA.push(...processed);
+    });
+    
+    console.log('Data loaded:', {
+      totalComplaints: ALL_DATA.length,
+      windows: [...new Set(ALL_DATA.map(d => d.window))],
+      teams: [...new Set(ALL_DATA.map(d => d.team))]
+    });
+    
+    // Show data summary
+    showDataSummary();
+    
+    updateFilters();
+    applyFilters();
+    
+  } catch (error) {
+    console.error('Critical error in fetchAllData:', error);
+    alert('Error loading data. Please check console for details.');
+  } finally {
+    showLoader(false);
+  }
+}
+
+// ==================== FILTER FUNCTIONS ====================
+function updateFilters() {
+  // Teams
+  const teams = [...new Set(ALL_DATA.map(d => d.team).filter(t => t && t !== 'UNKNOWN'))].sort();
+  const teamSelect = document.getElementById('filterTeam');
+  teamSelect.innerHTML = '<option value="all">All Teams</option>' +
+    teams.map(team => `<option value="${team}">${team}</option>`).join('');
+  
+  // Pages
+  const pages = [...new Set(ALL_DATA.map(d => d.page_id).filter(p => p && p !== 'UNKNOWN'))].sort();
+  const pageSelect = document.getElementById('filterPage');
+  pageSelect.innerHTML = '<option value="all">All Pages</option>' +
+    pages.map(page => `<option value="${page}">${page}</option>`).join('');
+}
+
+function applyFilters() {
+  const windowFilter = document.getElementById('filterWindow').value;
+  const teamFilter = document.getElementById('filterTeam').value;
+  const pageFilter = document.getElementById('filterPage').value;
+  const priorityFilter = document.getElementById('filterPriority').value;
+  const dateRangeType = document.getElementById('filterDateRange').value;
+  
+  let dateRange = getDateRange(dateRangeType);
+  
+  // If custom range, use custom dates
+  if (dateRangeType === 'custom') {
+    const fromDate = document.getElementById('filterDateFrom').value;
+    const toDate = document.getElementById('filterDateTo').value;
+    
+    if (fromDate && toDate) {
+      dateRange = {
+        from: new Date(fromDate),
+        to: new Date(toDate)
+      };
+      dateRange.to.setHours(23, 59, 59, 999);
+    }
+  }
+  
+  CURRENT_DATA = ALL_DATA.filter(task => {
+    // Window filter
+    if (windowFilter !== 'all' && task.window !== windowFilter) return false;
+    
+    // Team filter
+    if (teamFilter !== 'all' && task.team !== teamFilter) return false;
+    
+    // Page filter
+    if (pageFilter !== 'all' && task.page_id !== pageFilter) return false;
+    
+    // Priority filter
+    if (priorityFilter !== 'all' && String(task.priority) !== priorityFilter) return false;
+    
+    // Date filter (use latest timestamp)
+    if (task.timestamp) {
+      if (task.timestamp < dateRange.from || task.timestamp > dateRange.to) return false;
+    }
+    
+    return true;
+  });
+  
+  console.log('Filtered data:', {
+    originalCount: ALL_DATA.length,
+    filteredCount: CURRENT_DATA.length
+  });
+  
+  updateDashboard();
+  updateCharts();
+  updateTeamTable();
 }
 
 // ==================== DATE RANGE FUNCTIONS ====================
@@ -122,218 +297,26 @@ function getDateRange(rangeType) {
   }
 }
 
-// ==================== DATA FETCHING ====================
-async function fetchAllData() {
-  showLoader(true);
-  debugLog('Starting data fetch from APIs...');
-  
-  try {
-    const promises = API_URLS.map(async (url, index) => {
-      try {
-        debugLog(`Fetching from: ${url}`);
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        debugLog(`API ${index + 1} response received`, { 
-          rows: data.rows?.length || 0
-        });
-        
-        return {
-          source: url.includes('MEROTRA') ? 'MEROTRA' : 'SUNNY',
-          data: data.rows || []
-        };
-      } catch (error) {
-        debugLog(`Error fetching ${url}:`, error.message);
-        return { source: url.includes('MEROTRA') ? 'MEROTRA' : 'SUNNY', data: [] };
-      }
-    });
-    
-    const results = await Promise.all(promises);
-    
-    // Process all data
-    ALL_DATA = [];
-    
-    results.forEach(result => {
-      const window = result.source;
-      const rows = result.data;
-      
-      rows.forEach(row => {
-        try {
-          const task = {
-            window: window,
-            user_id: String(row.user_id || '').trim(),
-            team: String(row.Team || 'UNKNOWN').trim(),
-            page_id: String(row.page_id || 'UNKNOWN').trim(),
-            reason: String(row.reason || '').trim(),
-            name: String(row.name || '').trim(),
-            address: String(row.address || '').trim(),
-            status: String(row.status || '').toLowerCase(),
-            created_at: String(row.created_at || ''),
-            timestamp: parseDate(row.created_at),
-            priority: getPriority(row.page_id)
-          };
-          
-          ALL_DATA.push(task);
-        } catch (error) {
-          debugLog('Error processing row:', error.message);
-        }
-      });
-    });
-    
-    debugLog('Data processing complete', {
-      totalTasks: ALL_DATA.length,
-      windows: [...new Set(ALL_DATA.map(d => d.window))],
-      teams: [...new Set(ALL_DATA.map(d => d.team))]
-    });
-    
-    // Show data summary
-    showDataSummary();
-    
-    updateFilters();
-    applyFilters();
-    
-  } catch (error) {
-    debugLog('Critical error in fetchAllData:', error.message);
-    alert('Error loading data. Please check console for details.');
-  } finally {
-    showLoader(false);
-  }
-}
-
-// ==================== FILTER FUNCTIONS ====================
-function updateFilters() {
-  debugLog('Updating filters...');
-  
-  // Teams
-  const teams = [...new Set(ALL_DATA.map(d => d.team).filter(t => t && t !== 'UNKNOWN'))].sort();
-  const teamSelect = document.getElementById('filterTeam');
-  teamSelect.innerHTML = '<option value="all">All Teams</option>' +
-    teams.map(team => `<option value="${team}">${team}</option>`).join('');
-  
-  // Pages
-  const pages = [...new Set(ALL_DATA.map(d => d.page_id).filter(p => p && p !== 'UNKNOWN'))].sort();
-  const pageSelect = document.getElementById('filterPage');
-  pageSelect.innerHTML = '<option value="all">All Pages</option>' +
-    pages.map(page => `<option value="${page}">${page}</option>`).join('');
-  
-  debugLog('Filters updated', { teamCount: teams.length, pageCount: pages.length });
-}
-
-function applyFilters() {
-  debugLog('Applying filters...');
-  
-  const windowFilter = document.getElementById('filterWindow').value;
-  const teamFilter = document.getElementById('filterTeam').value;
-  const pageFilter = document.getElementById('filterPage').value;
-  const priorityFilter = document.getElementById('filterPriority').value;
-  const dateRangeType = document.getElementById('filterDateRange').value;
-  
-  let dateRange = getDateRange(dateRangeType);
-  
-  // If custom range, use custom dates
-  if (dateRangeType === 'custom') {
-    const fromDate = document.getElementById('filterDateFrom').value;
-    const toDate = document.getElementById('filterDateTo').value;
-    
-    if (fromDate && toDate) {
-      dateRange = {
-        from: new Date(fromDate),
-        to: new Date(toDate)
-      };
-      dateRange.to.setHours(23, 59, 59, 999);
-    }
-  }
-  
-  CURRENT_DATA = ALL_DATA.filter(task => {
-    // Window filter
-    if (windowFilter !== 'all' && task.window !== windowFilter) return false;
-    
-    // Team filter
-    if (teamFilter !== 'all' && task.team !== teamFilter) return false;
-    
-    // Page filter
-    if (pageFilter !== 'all' && task.page_id !== pageFilter) return false;
-    
-    // Priority filter
-    if (priorityFilter !== 'all' && String(task.priority) !== priorityFilter) return false;
-    
-    // Date filter
-    if (task.timestamp) {
-      if (task.timestamp < dateRange.from || task.timestamp > dateRange.to) return false;
-    }
-    
-    return true;
-  });
-  
-  debugLog('Filtered data:', {
-    originalCount: ALL_DATA.length,
-    filteredCount: CURRENT_DATA.length
-  });
-  
-  updateDashboard();
-  updateCharts();
-  updateTeamTable();
-}
-
 // ==================== DASHBOARD UPDATE ====================
 function updateDashboard() {
-  debugLog('Updating dashboard KPIs...');
-  
   const total = CURRENT_DATA.length;
   const closed = CURRENT_DATA.filter(t => t.status === 'close').length;
   const open = CURRENT_DATA.filter(t => t.status === 'open').length;
   
-  // Calculate TAT
-  let totalMinutes = 0;
-  let tatCount = 0;
-  
-  // Group by user_id to find open-close pairs
-  const userTasks = {};
-  CURRENT_DATA.forEach(task => {
-    const key = `${task.window}_${task.user_id}_${task.page_id}_${task.reason}`;
-    if (!userTasks[key]) userTasks[key] = [];
-    userTasks[key].push(task);
-  });
-  
-  Object.values(userTasks).forEach(tasks => {
-    tasks.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-    
-    let openTask = null;
-    tasks.forEach(task => {
-      if (task.status === 'open') {
-        openTask = task;
-      } else if (task.status === 'close' && openTask) {
-        if (openTask.timestamp && task.timestamp) {
-          const timeDiff = (task.timestamp - openTask.timestamp) / (1000 * 60);
-          if (timeDiff > 0) {
-            totalMinutes += timeDiff;
-            tatCount++;
-          }
-        }
-        openTask = null;
-      }
-    });
-  });
-  
-  const avgTat = tatCount > 0 ? totalMinutes / tatCount : 0;
+  // Calculate average TAT only for closed complaints
+  const closedWithTat = CURRENT_DATA.filter(t => t.status === 'close' && t.tatMinutes);
+  const totalTat = closedWithTat.reduce((sum, task) => sum + task.tatMinutes, 0);
+  const avgTat = closedWithTat.length > 0 ? totalTat / closedWithTat.length : 0;
   
   // Update UI
   document.getElementById('kpiTotal').textContent = total.toLocaleString();
   document.getElementById('kpiClosed').textContent = closed.toLocaleString();
   document.getElementById('kpiOpen').textContent = open.toLocaleString();
   document.getElementById('kpiTat').textContent = formatTime(avgTat);
-  
-  debugLog('KPIs updated', { total, closed, open, avgTat, tatCount });
 }
 
 // ==================== CHARTS ====================
 function updateCharts() {
-  debugLog('Updating charts...');
-  
   // Priority Chart
   const priorityCtx = document.getElementById('chartPriority').getContext('2d');
   const priorityData = {
@@ -342,9 +325,9 @@ function updateCharts() {
     'Others (P3)': CURRENT_DATA.filter(t => t.priority === 3).length
   };
   
-  if (CHARTS.priority) CHARTS.priority.destroy();
+  if (window.priorityChart) window.priorityChart.destroy();
   
-  CHARTS.priority = new Chart(priorityCtx, {
+  window.priorityChart = new Chart(priorityCtx, {
     type: 'doughnut',
     data: {
       labels: Object.keys(priorityData),
@@ -376,9 +359,9 @@ function updateCharts() {
   });
   
   const targetCtx = document.getElementById('chartTarget').getContext('2d');
-  if (CHARTS.target) CHARTS.target.destroy();
+  if (window.targetChart) window.targetChart.destroy();
   
-  CHARTS.target = new Chart(targetCtx, {
+  window.targetChart = new Chart(targetCtx, {
     type: 'bar',
     data: {
       labels: teams,
@@ -412,14 +395,10 @@ function updateCharts() {
       }
     }
   });
-  
-  debugLog('Charts updated');
 }
 
 // ==================== TEAM TABLE ====================
 function updateTeamTable() {
-  debugLog('Updating team table...');
-  
   const teams = [...new Set(CURRENT_DATA.map(t => t.team))].sort();
   const today = new Date().toISOString().split('T')[0];
   
@@ -436,42 +415,14 @@ function updateTeamTable() {
     const installation = teamTasks.filter(t => t.priority === 2).length;
     const others = teamTasks.filter(t => t.priority === 3).length;
     
-    // Status counts
+    // Status counts (latest status only)
     const resolved = teamTasks.filter(t => t.status === 'close').length;
     const pending = teamTasks.filter(t => t.status === 'open').length;
     
-    // Calculate average TAT for this team
-    let teamTotalMinutes = 0;
-    let teamTatCount = 0;
-    const teamUserTasks = {};
-    
-    teamTasks.forEach(task => {
-      const key = `${task.window}_${task.user_id}_${task.page_id}_${task.reason}`;
-      if (!teamUserTasks[key]) teamUserTasks[key] = [];
-      teamUserTasks[key].push(task);
-    });
-    
-    Object.values(teamUserTasks).forEach(tasks => {
-      tasks.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-      let openTask = null;
-      
-      tasks.forEach(task => {
-        if (task.status === 'open') {
-          openTask = task;
-        } else if (task.status === 'close' && openTask) {
-          if (openTask.timestamp && task.timestamp) {
-            const timeDiff = (task.timestamp - openTask.timestamp) / (1000 * 60);
-            if (timeDiff > 0) {
-              teamTotalMinutes += timeDiff;
-              teamTatCount++;
-            }
-          }
-          openTask = null;
-        }
-      });
-    });
-    
-    const avgTeamTat = teamTatCount > 0 ? teamTotalMinutes / teamTatCount : 0;
+    // Calculate average TAT for this team (only closed complaints)
+    const closedTasks = teamTasks.filter(t => t.status === 'close' && t.tatMinutes);
+    const totalTat = closedTasks.reduce((sum, task) => sum + task.tatMinutes, 0);
+    const avgTeamTat = closedTasks.length > 0 ? totalTat / closedTasks.length : 0;
     
     // Target status
     const targetClass = todayTasks >= DAILY_TARGET ? 'target-met' : 'target-missed';
@@ -519,7 +470,6 @@ function updateTeamTable() {
   }
   
   document.getElementById('teamTableBody').innerHTML = tableHTML;
-  debugLog('Team table updated', { teamCount: teams.length });
 }
 
 // ==================== MODAL FUNCTIONS ====================
@@ -530,46 +480,20 @@ function openTasksModal(type) {
   
   switch(type) {
     case 'all':
-      title = 'All Tasks';
+      title = 'All Tasks (Latest Status)';
       tasks = CURRENT_DATA;
       break;
     case 'closed':
-      title = 'Resolved Tasks';
+      title = 'Resolved Tasks (Closed Status)';
       tasks = CURRENT_DATA.filter(t => t.status === 'close');
       break;
     case 'open':
-      title = 'Pending Tasks';
+      title = 'Pending Tasks (Open Status)';
       tasks = CURRENT_DATA.filter(t => t.status === 'open');
       break;
     case 'tat':
-      title = 'Tasks with TAT';
-      // Get only closed tasks with TAT calculation
-      tasks = [];
-      const userTasks = {};
-      
-      CURRENT_DATA.forEach(task => {
-        const key = `${task.window}_${task.user_id}_${task.page_id}_${task.reason}`;
-        if (!userTasks[key]) userTasks[key] = [];
-        userTasks[key].push(task);
-      });
-      
-      Object.values(userTasks).forEach(taskList => {
-        taskList.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-        let openTask = null;
-        
-        taskList.forEach(task => {
-          if (task.status === 'open') {
-            openTask = task;
-          } else if (task.status === 'close' && openTask) {
-            if (openTask.timestamp && task.timestamp) {
-              const timeDiff = (task.timestamp - openTask.timestamp) / (1000 * 60);
-              const taskWithTat = { ...task, tatMinutes: timeDiff };
-              tasks.push(taskWithTat);
-            }
-            openTask = null;
-          }
-        });
-      });
+      title = 'Tasks with TAT Calculation';
+      tasks = CURRENT_DATA.filter(t => t.tatMinutes);
       break;
   }
   
@@ -723,6 +647,20 @@ function updateModalContent() {
       </div>`;
     }
     
+    // Show history if available
+    let historyDisplay = '';
+    if (task.history && task.history.length > 1) {
+      historyDisplay = `
+        <div class="task-details">
+          <div><strong>History:</strong> ${task.history.length} status changes</div>
+          <div style="font-size: 0.8rem; color: #64748b;">
+            First open: ${task.firstOpenAt ? task.firstOpenAt.toLocaleString('en-IN') : 'N/A'}
+            ${task.lastCloseAt ? `<br>Last close: ${task.lastCloseAt.toLocaleString('en-IN')}` : ''}
+          </div>
+        </div>
+      `;
+    }
+    
     taskCard.innerHTML = `
       <div class="task-row">
         <span class="task-label">User ID:</span>
@@ -753,10 +691,13 @@ function updateModalContent() {
       ${tatDisplay}
       
       <div class="task-details">
-        <div><strong>Time:</strong> ${dateStr}</div>
+        <div><strong>Latest Update:</strong> ${dateStr}</div>
+        <div><strong>Status:</strong> ${statusText} (Latest)</div>
         ${task.name ? `<div><strong>Name:</strong> ${task.name}</div>` : ''}
         ${task.address ? `<div><strong>Address:</strong> ${task.address}</div>` : ''}
       </div>
+      
+      ${historyDisplay}
     `;
     
     modalBody.appendChild(taskCard);
@@ -781,7 +722,7 @@ function showDataSummary() {
   }
   
   totalSpan.textContent = ALL_DATA.length.toLocaleString();
-  dateRangeSpan.textContent = dateRangeText;
+  dateRangeText = dateRangeText;
   
   const teams = [...new Set(ALL_DATA.map(d => d.team).filter(t => t && t !== 'UNKNOWN'))];
   teamsSpan.textContent = teams.join(', ') || 'None found';
@@ -796,11 +737,15 @@ function exportCSV() {
     return;
   }
   
-  const headers = ['window', 'team', 'user_id', 'page_id', 'priority', 'status', 'reason', 'created_at', 'name', 'address'];
+  const headers = ['window', 'team', 'user_id', 'page_id', 'priority', 'status', 'reason', 'created_at', 'name', 'address', 'tat_minutes'];
   const csvRows = [
     headers.join(','),
     ...CURRENT_DATA.map(row => 
       headers.map(header => {
+        if (header === 'tat_minutes') {
+          const value = row.tatMinutes || '';
+          return `"${String(value)}"`;
+        }
         const value = row[header] || '';
         return `"${String(value).replace(/"/g, '""')}"`;
       }).join(',')
@@ -815,8 +760,6 @@ function exportCSV() {
   a.download = `merotra_team_data_${new Date().toISOString().split('T')[0]}.csv`;
   a.click();
   window.URL.revokeObjectURL(url);
-  
-  debugLog('CSV exported', { rowCount: CURRENT_DATA.length });
 }
 
 // ==================== EVENT LISTENERS ====================
@@ -855,27 +798,26 @@ function setupEventListeners() {
     if (e.target === this) closeModal();
   });
   
-  // Debug toggle (Ctrl+D)
-  document.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && e.key === 'd') {
-      e.preventDefault();
-      const debugPanel = document.getElementById('debugPanel');
-      debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
-    }
+  // Close modal with Escape key
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
   });
 }
 
 // ==================== INITIALIZATION ====================
 async function initialize() {
-  debugLog('Initializing application...');
+  console.log('Initializing application...');
   
   setupEventListeners();
+  
+  // Set default date range to "All Time"
+  document.getElementById('filterDateRange').value = 'all';
   
   // Try to fetch data immediately
   try {
     await fetchAllData();
   } catch (error) {
-    debugLog('Initial fetch failed:', error.message);
+    console.error('Initial fetch failed:', error);
     
     // Show error state
     document.getElementById('kpiTotal').textContent = 'Error';
@@ -889,7 +831,7 @@ async function initialize() {
     `;
   }
   
-  debugLog('Application initialized');
+  console.log('Application initialized');
 }
 
 // Start the application
