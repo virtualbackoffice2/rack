@@ -91,7 +91,7 @@ function applyFilters() {
   const windowFilter = document.getElementById('filterWindow')?.value || 'all';
   const teamFilter = document.getElementById('filterTeam')?.value || 'all';
   const pageFilter = document.getElementById('filterPage')?.value || 'all';
-  const priorityFilter = document.getElementById('filterPriority')?.value || 'all'; // FIXED: filterStatus to filterPriority
+  const priorityFilter = document.getElementById('filterPriority')?.value || 'all';
   const dateRangeType = document.getElementById('filterDateRange')?.value || 'all';
   
   let dateRange = getDateRange(dateRangeType);
@@ -106,7 +106,7 @@ function applyFilters() {
     // Page filter
     if (pageFilter !== 'all' && task.page_id !== pageFilter) return false;
     
-    // Priority filter (NEW - matches HTML)
+    // Priority filter
     if (priorityFilter !== 'all') {
       const priorityNum = parseInt(priorityFilter);
       if (task.priority !== priorityNum) return false;
@@ -127,8 +127,17 @@ function applyFilters() {
     closeCount: CURRENT_DATA.filter(t => t.status === 'close').length
   });
   
-  // Update UI if functions exist
-  if (typeof updateDashboard === 'function') updateDashboard();
-  if (typeof updateCharts === 'function') updateCharts();
-  if (typeof updateTeamTable === 'function') updateTeamTable();
+  // FORCE UPDATE ALL COMPONENTS
+  try {
+    updateDashboard();
+    updateCharts();
+    updateTeamTable();
+  } catch (error) {
+    console.error('Error updating components:', error);
+    
+    // Fallback: Direct DOM update
+    document.getElementById('kpiTotal').textContent = CURRENT_DATA.length;
+    document.getElementById('kpiClosed').textContent = CURRENT_DATA.filter(t => t.status === 'close').length;
+    document.getElementById('kpiOpen').textContent = CURRENT_DATA.filter(t => t.status === 'open').length;
+  }
 }
