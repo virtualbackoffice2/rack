@@ -1,32 +1,69 @@
 // ==================== EVENT LISTENERS ====================
 function setupEventListeners() {
-  // Filter changes
-  ['filterWindow', 'filterTeam', 'filterPage', 'filterStatus', 'filterDateRange'].forEach(id => {
-    document.getElementById(id).addEventListener('change', applyFilters);
+  console.log('Setting up event listeners...');
+  
+  // Filter changes - CORRECT IDs
+  ['filterWindow', 'filterTeam', 'filterPage', 'filterPriority', 'filterDateRange'].forEach(id => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.addEventListener('change', applyFilters);
+    } else {
+      console.warn(`Element #${id} not found`);
+    }
   });
   
   // Refresh button
-  document.getElementById('refreshBtn').addEventListener('click', fetchAllData);
+  const refreshBtn = document.getElementById('refreshBtn');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', fetchAllData);
+  } else {
+    console.warn('Refresh button not found');
+  }
   
-  // Modal search and filters
-  document.getElementById('modalSearch').addEventListener('input', updateModalContent);
-  document.getElementById('modalStatusFilter').addEventListener('change', updateModalContent);
-  document.getElementById('modalSort').addEventListener('change', updateModalContent);
+  // Modal search and filters - ONLY IF MODAL ELEMENTS EXIST
+  const modalSearch = document.getElementById('modalSearch');
+  const modalFilter = document.getElementById('modalFilter'); // NOT modalStatusFilter
+  const modalSort = document.getElementById('modalSort');
+  
+  if (modalSearch) {
+    modalSearch.addEventListener('input', updateModalContent);
+  }
+  if (modalFilter) {
+    modalFilter.addEventListener('change', updateModalContent);
+  }
+  if (modalSort) {
+    modalSort.addEventListener('change', updateModalContent);
+  }
   
   // Close modal on overlay click
-  document.getElementById('tasksModal').addEventListener('click', function(e) {
-    if (e.target === this) closeModal();
-  });
+  const tasksModal = document.getElementById('tasksModal');
+  if (tasksModal) {
+    tasksModal.addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+  }
   
   // Close modal with Escape key
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeModal();
   });
   
-  // Show data summary on click
-  document.getElementById('dataSummary').addEventListener('click', showDataSummary);
+  // REMOVE THIS LINE - dataSummary shouldn't have click listener
+  // document.getElementById('dataSummary').addEventListener('click', showDataSummary);
+  
+  // Custom date range toggle
+  const dateRangeSelect = document.getElementById('filterDateRange');
+  if (dateRangeSelect) {
+    dateRangeSelect.addEventListener('change', function() {
+      const customGroup = document.getElementById('customDateGroup');
+      if (customGroup) {
+        customGroup.style.display = this.value === 'custom' ? 'block' : 'none';
+      }
+    });
+  }
+  
+  console.log('Event listeners setup complete');
 }
-
 // ==================== DATA SUMMARY ====================
 function showDataSummary() {
   const totalSpan = document.getElementById('summaryTotal');
