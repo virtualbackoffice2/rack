@@ -25,11 +25,24 @@ function setupEventListeners() {
   if (refreshBtn) {
     refreshBtn.addEventListener('click', function() {
       console.log('Refresh button clicked');
+      // Add loading state to button
+      const originalHTML = this.innerHTML;
+      this.innerHTML = '⏳ Refreshing...';
+      this.disabled = true;
+      
       if (typeof fetchAllData === 'function') {
-        fetchAllData();
+        fetchAllData().finally(() => {
+          // Restore button state
+          setTimeout(() => {
+            this.innerHTML = originalHTML;
+            this.disabled = false;
+          }, 500);
+        });
       } else {
         console.error('fetchAllData function not available');
         alert('Please wait, functions are still loading...');
+        this.innerHTML = originalHTML;
+        this.disabled = false;
       }
     });
   } else {
@@ -42,12 +55,12 @@ function setupEventListeners() {
   const modalSort = document.getElementById('modalSort');
   
   if (modalSearch) {
-    modalSearch.addEventListener('input', function() {
+    modalSearch.addEventListener('input', debounce(function() {
       console.log('Modal search:', this.value);
       if (typeof updateModalContent === 'function') {
         updateModalContent();
       }
-    });
+    }, 300));
   }
   if (modalFilter) {
     modalFilter.addEventListener('change', function() {
@@ -76,23 +89,27 @@ function setupEventListeners() {
     });
   }
   
-  // Close modal with Escape key
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && typeof closeModal === 'function') {
-      closeModal();
-    }
-  });
-  
   // Custom date range toggle
   const dateRangeSelect = document.getElementById('filterDateRange');
   if (dateRangeSelect) {
     dateRangeSelect.addEventListener('change', function() {
       const customGroup = document.getElementById('customDateGroup');
       if (customGroup) {
-        customGroup.style.display = this.value === 'custom' ? 'block' : 'none';
+        customGroup.style.display = this.value === 'custom' ? 'flex' : 'none';
       }
     });
   }
+  
+  // KPI cards accessibility - add keyboard support
+  document.querySelectorAll('.kpi-card').forEach(card => {
+    card.setAttribute('tabindex', '0');
+    card.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        this.click();
+      }
+    });
+  });
   
   console.log('Event listeners setup complete');
 }
@@ -131,6 +148,11 @@ function showDataSummary() {
   const summaryDiv = document.getElementById('dataSummary');
   if (summaryDiv) {
     summaryDiv.style.display = 'block';
+    
+    // Auto-hide after 10 seconds
+    setTimeout(() => {
+      summaryDiv.style.display = 'none';
+    }, 10000);
   }
 }
 
@@ -143,6 +165,19 @@ function showLoader(show) {
   }
 }
 
+// Debounce function for search
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
 // ==================== EXPORT CSV ====================
 function exportCSV() {
   console.log('exportCSV called, CURRENT_DATA length:', CURRENT_DATA.length);
@@ -152,35 +187,62 @@ function exportCSV() {
     return;
   }
   
-  const headers = ['window', 'team', 'user_id', 'page_id', 'priority', 'status', 'reason', 'created_at', 'name', 'address', 'tat_minutes'];
-  const csvRows = [
-    headers.join(','),
-    ...CURRENT_DATA.map(row => 
-      headers.map(header => {
-        if (header === 'tat_minutes') {
-          const value = row.tatMinutes || '';
-          return `"${String(value)}"`;
-        }
-        if (header === 'priority') {
-          const value = row.priority === 1 ? 'Repairs (P1)' : row.priority === 2 ? 'Installation (P2)' : 'Others (P3)';
-          return `"${value}"`;
-        }
-        const value = row[header] || '';
-        return `"${String(value).replace(/"/g, '""')}"`;
-      }).join(',')
-    )
-  ];
+  // Show loading state on button
+  const exportBtn = document.querySelector('.btn-success');
+  const originalText = exportBtn ? exportBtn.innerHTML : '';
+  if (exportBtn) {
+    exportBtn.innerHTML = '⏳ Preparing...';
+    exportBtn.disabled = true;
+  }
   
-  const csvContent = csvRows.join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `merotra_complaints_${new Date().toISOString().split('T')[0]}.csv`;
-  a.click();
-  window.URL.revokeObjectURL(url);
-  
-  console.log('CSV exported successfully');
+  try {
+    const headers = ['window', 'team', 'user_id', 'page_id', 'priority', 'status', 'reason', 'created_at', 'name', 'address', 'tat_minutes'];
+    const csvRows = [
+      headers.join(','),
+      ...CURRENT_DATA.map(row => 
+        headers.map(header => {
+          if (header === 'tat_minutes') {
+            const value = row.tatMinutes || '';
+            return `"${String(value)}"`;
+          }
+          if (header === 'priority') {
+            const value = row.priority === 1 ? 'Repairs (P1)' : row.priority === 2 ? 'Installation (P2)' : 'Others (P3)';
+            return `"${value}"`;
+          }
+          const value = row[header] || '';
+          return `"${String(value).replace(/"/g, '""')}"`;
+        }).join(',')
+      )
+    ];
+    
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `merotra_complaints_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    console.log('CSV exported successfully');
+    
+    // Show success message
+    alert(`CSV file downloaded successfully!\n\nFilename: merotra_complaints_${new Date().toISOString().split('T')[0]}.csv\nRows: ${CURRENT_DATA.length}`);
+    
+  } catch (error) {
+    console.error('Export error:', error);
+    alert('Error exporting CSV. Please check console for details.');
+  } finally {
+    // Restore button state
+    if (exportBtn) {
+      setTimeout(() => {
+        exportBtn.innerHTML = originalText;
+        exportBtn.disabled = false;
+      }, 1000);
+    }
+  }
 }
 
 // ==================== INITIALIZATION ====================
@@ -214,18 +276,22 @@ async function initialize() {
         
         // Show error state
         const kpiTotal = document.getElementById('kpiTotal');
-        if (kpiTotal) kpiTotal.textContent = 'Loading...';
+        if (kpiTotal) kpiTotal.textContent = 'Error';
         
         const teamTableBody = document.getElementById('teamTableBody');
         if (teamTableBody) {
           teamTableBody.innerHTML = `
             <tr>
               <td colspan="9" style="text-align: center; padding: 2rem; color: #ef4444;">
-                Functions not loaded. Click Refresh to try again.
+                <div style="margin-bottom: 0.5rem;">⚠️ Functions not loaded</div>
+                <div style="font-size: 0.85rem;">Click Refresh to try again</div>
               </td>
             </tr>
           `;
         }
+        
+        // Hide loader
+        showLoader(false);
       }
     } catch (error) {
       console.error('Initial fetch failed:', error);
@@ -239,12 +305,16 @@ async function initialize() {
         teamTableBody.innerHTML = `
           <tr>
             <td colspan="9" style="text-align: center; padding: 2rem; color: #ef4444;">
-              Failed to load data. Click Refresh to try again.
-              <br><small>Error: ${error.message}</small>
+              <div style="margin-bottom: 0.5rem;">❌ Failed to load data</div>
+              <div style="font-size: 0.85rem;">Error: ${error.message}</div>
+              <div style="font-size: 0.85rem; margin-top: 0.5rem;">Click Refresh to try again</div>
             </td>
           </tr>
         `;
       }
+      
+      // Hide loader
+      showLoader(false);
     }
   }, 500); // Wait 500ms for all scripts to load
   
