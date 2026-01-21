@@ -472,3 +472,47 @@ tr:hover {
     padding: 0 1rem 1rem;
   }
 }
+/* Add to existing styles.css file */
+
+/* HISTORY INDICATOR */
+.history-indicator {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  background: #f1f5f9;
+  color: #475569;
+  border-radius: 0.5rem;
+  font-size: 0.7rem;
+  margin-left: 0.5rem;
+  cursor: help;
+}
+
+/* STATUS TIMELINE */
+.status-timeline {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: #f8fafc;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.timeline-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.timeline-item:last-child {
+  border-bottom: none;
+}
+
+.timeline-status {
+  font-weight: 600;
+}
+
+.timeline-open { color: #92400e; }
+.timeline-close { color: #166534; }
+
+.timeline-time {
+  color: #64748b;
+}
