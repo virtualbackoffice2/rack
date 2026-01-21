@@ -72,22 +72,27 @@ function updateFilters() {
   // Teams
   const teams = [...new Set(ALL_DATA.map(d => d.team).filter(t => t && t !== 'UNKNOWN'))].sort();
   const teamSelect = document.getElementById('filterTeam');
-  teamSelect.innerHTML = '<option value="all">All Teams</option>' +
-    teams.map(team => `<option value="${team}">${team}</option>`).join('');
+  if (teamSelect) {
+    teamSelect.innerHTML = '<option value="all">All Teams</option>' +
+      teams.map(team => `<option value="${team}">${team}</option>`).join('');
+  }
   
   // Pages
   const pages = [...new Set(ALL_DATA.map(d => d.page_id).filter(p => p && p !== 'UNKNOWN'))].sort();
   const pageSelect = document.getElementById('filterPage');
-  pageSelect.innerHTML = '<option value="all">All Pages</option>' +
-    pages.map(page => `<option value="${page}">${page}</option>`).join('');
+  if (pageSelect) {
+    pageSelect.innerHTML = '<option value="all">All Pages</option>' +
+      pages.map(page => `<option value="${page}">${page}</option>`).join('');
+  }
 }
 
 function applyFilters() {
-  const windowFilter = document.getElementById('filterWindow').value;
-  const teamFilter = document.getElementById('filterTeam').value;
-  const pageFilter = document.getElementById('filterPage').value;
-  const statusFilter = document.getElementById('filterStatus').value;
-  const dateRangeType = document.getElementById('filterDateRange').value;
+  // Safely get filter values with null checks
+  const windowFilter = document.getElementById('filterWindow')?.value || 'all';
+  const teamFilter = document.getElementById('filterTeam')?.value || 'all';
+  const pageFilter = document.getElementById('filterPage')?.value || 'all';
+  const priorityFilter = document.getElementById('filterPriority')?.value || 'all'; // FIXED: filterStatus to filterPriority
+  const dateRangeType = document.getElementById('filterDateRange')?.value || 'all';
   
   let dateRange = getDateRange(dateRangeType);
   
@@ -95,14 +100,17 @@ function applyFilters() {
     // Window filter
     if (windowFilter !== 'all' && task.window !== windowFilter) return false;
     
-    // Team filter (use the team from FIRST OPEN)
+    // Team filter
     if (teamFilter !== 'all' && task.team !== teamFilter) return false;
     
     // Page filter
     if (pageFilter !== 'all' && task.page_id !== pageFilter) return false;
     
-    // Status filter (use LATEST status)
-    if (statusFilter !== 'all' && task.status !== statusFilter) return false;
+    // Priority filter (NEW - matches HTML)
+    if (priorityFilter !== 'all') {
+      const priorityNum = parseInt(priorityFilter);
+      if (task.priority !== priorityNum) return false;
+    }
     
     // Date filter (use latest timestamp)
     if (task.timestamp) {
@@ -119,7 +127,8 @@ function applyFilters() {
     closeCount: CURRENT_DATA.filter(t => t.status === 'close').length
   });
   
-  updateDashboard();
-  updateCharts();
-  updateTeamTable();
+  // Update UI if functions exist
+  if (typeof updateDashboard === 'function') updateDashboard();
+  if (typeof updateCharts === 'function') updateCharts();
+  if (typeof updateTeamTable === 'function') updateTeamTable();
 }
