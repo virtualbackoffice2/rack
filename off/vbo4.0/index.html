@@ -42,6 +42,7 @@
             </select>
 
             <button class="nav-btn" id="btnComplains">Complains</button>
+            <button class="nav-btn" id="btnPower">Power & event analysis</button>
             <button class="nav-btn" id="btnDrops">Drops</button>
             <button class="nav-btn" id="btnRefresh">Refresh</button>
             <button class="nav-btn" id="btnToggleView">Switch to Table</button>
@@ -50,6 +51,16 @@
         </nav>
     </header>
 
+<script>
+    const btnGoogle = document.getElementById("btnPower");
+
+if (btnGoogle) {
+  btnGoogle.onclick = () => {
+    window.location.href = "https://virtualbackoffice2.github.io/rack/off/vbo4.0/power/";
+  };
+}
+    </script>
+    
     <main id="contentWrap">
         <section class="filters">
             <input type="text" id="globalSearch" placeholder="Search by any information .. " />
