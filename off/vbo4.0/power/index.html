@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Power Variance Analysis</title>
+
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+
+<body>
+
+  <!-- ✅ Modal -->
+  <div id="complaintModal" class="modalOverlay">
+    <div class="modalBox">
+      <div class="modalHead">
+        <div class="modalTitle" id="modalTitle">Details</div>
+        <button class="modalClose" id="modalCloseBtn">Close</button>
+      </div>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <header>
+    <div class="headerTop">
+      <h1>
+        Power Variance Analysis
+        <span id="userCount">(0)</span>
+      </h1>
+
+      <button class="hamburger-btn" id="menuToggle" aria-label="Menu">
+        <i class="fas fa-bars"></i>
+      </button>
+    </div>
+
+    <nav class="top-menu" id="topMenu">
+      <div class="menuRow">
+        <select id="windowSelect">
+          <option value="ALL" selected>ALL</option>
+          <option value="MEROTRA">MEROTRA</option>
+          <option value="SUNNY">SUNNY</option>
+        </select>
+
+        <button class="nav-btn" id="btnPowerHistory"><i class="fa-solid fa-chart-line"></i> Power</button>
+        <button class="nav-btn" id="btnEventHistory"><i class="fa-solid fa-bolt"></i> Event</button>
+
+        <!-- ✅ Toggle card/table -->
+        <button class="nav-btn" id="btnToggleView">
+          <i class="fa-solid fa-table"></i> Table
+        </button>
+      </div>
+
+      <div class="menuRow">
+        <button class="nav-btn ghost" id="btnRefresh"><i class="fa-solid fa-rotate"></i> Refresh</button>
+        <button class="nav-btn ghost" id="btnCsv"><i class="fa-solid fa-file-csv"></i> CSV</button>
+        <button class="nav-btn ghost" id="btnScreenshot"><i class="fa-solid fa-camera"></i> Screenshot</button>
+      </div>
+    </nav>
+  </header>
+
+  <main id="contentWrap">
+
+    <!-- ✅ Power Filters -->
+    <section class="filters" id="filtersPower">
+      <input type="text" id="powerGapSearch" placeholder="Search power gap in dBm, use + - power gap" />
+      <input type="text" id="powerKeywordSearch" placeholder="Search power history by any keay word" />
+    </section>
+
+    <!-- ✅ Event Filters -->
+    <section class="filters" id="filtersEvent" style="display:none;">
+      <input type="text" id="eventKeywordSearch" placeholder="Search event history by any keay word" />
+    </section>
+
+    <div id="spinnerOverlay">
+      <div class="spinner"></div>
+    </div>
+
+    <!-- ✅ Cards View -->
+    <section id="cardView" class="card-view"></section>
+
+    <!-- ✅ Table View -->
+    <section id="tableWrap" class="table-wrap" style="display:none;">
+      <table id="dataTable">
+        <thead>
+          <tr>
+            <th>Window</th>
+            <th>User ID</th>
+            <th>Name</th>
+            <th>MAC</th>
+            <th>PON</th>
+            <th>Status</th>
+            <th id="thMode">Variance / Last Event</th>
+            <th>Last Updated</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <div id="toast"></div>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
