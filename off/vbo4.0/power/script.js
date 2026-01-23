@@ -75,10 +75,24 @@ menuToggle.onclick = () => {
   topMenu.classList.toggle("mobileHidden");
 };
 
-// Auto close menu after click on mobile
-topMenu.addEventListener("click", () => {
-  if (window.innerWidth <= 720) topMenu.classList.add("mobileHidden");
+// ✅ Auto close menu after clicking ONLY buttons (not select)
+topMenu.addEventListener("click", (e) => {
+  if (window.innerWidth > 720) return;
+
+  const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
+
+  // do NOT close when selecting options
+  if (tag === "select" || tag === "option" || tag === "input") {
+    return;
+  }
+
+  // close only on button clicks
+  const btn = e.target.closest("button");
+  if (btn) {
+    topMenu.classList.add("mobileHidden");
+  }
 });
+
 
 // Modal events
 if (modalCloseBtn && complaintModal) modalCloseBtn.onclick = () => complaintModal.style.display = "none";
@@ -552,6 +566,9 @@ function applyFilters() {
 document.getElementById("windowSelect").onchange = (e) => {
   currentWindow = e.target.value;
   loadAll();
+
+  // ✅ optional: auto close after selection
+  if (window.innerWidth <= 720) topMenu.classList.add("mobileHidden");
 };
 
 btnPowerHistory.onclick = () => {
