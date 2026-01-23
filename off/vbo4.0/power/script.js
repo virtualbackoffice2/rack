@@ -45,6 +45,8 @@ const complaintModal = document.getElementById("complaintModal");
 const modalBody = document.getElementById("modalBody");
 const modalTitle = document.getElementById("modalTitle");
 const modalCloseBtn = document.getElementById("modalCloseBtn");
+const btnPopupScreenshot = document.getElementById("btnPopupScreenshot");
+
 
 // ---------------- Toast + Spinner ----------------
 function showToast(msg) {
@@ -99,6 +101,57 @@ if (modalCloseBtn && complaintModal) modalCloseBtn.onclick = () => complaintModa
 if (complaintModal) {
   complaintModal.onclick = (e) => {
     if (e.target === complaintModal) complaintModal.style.display = "none";
+  };
+}
+// ✅ Popup Screenshot (Full popup content, High quality PNG)
+if (btnPopupScreenshot) {
+  btnPopupScreenshot.onclick = async () => {
+    const contentEl = document.getElementById("modalBody");   // ✅ only content
+    if (!contentEl) {
+      showToast("Popup content not found");
+      return;
+    }
+
+    // store style
+    const prevOver = contentEl.style.overflow;
+    const prevMaxH = contentEl.style.maxHeight;
+
+    try {
+      // ✅ expand content so full data comes in screenshot
+      contentEl.style.overflow = "visible";
+      contentEl.style.maxHeight = "none";
+
+      // wait for layout
+      await new Promise(r => setTimeout(r, 80));
+
+      const canvas = await html2canvas(contentEl, {
+        scale: 3,                 // ✅ high quality
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+        scrollY: -window.scrollY
+      });
+
+      const title = (modalTitle?.textContent || "popup")
+        .replace(/[^\w\s-]/g, "")
+        .trim()
+        .replace(/\s+/g, "_");
+
+      const link = document.createElement("a");
+      link.download = `${title}_content.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+
+      showToast("Popup content screenshot downloaded ✅");
+
+    } catch (err) {
+      console.error(err);
+      showToast("Popup screenshot failed ❌");
+    } finally {
+      // ✅ restore styles
+      contentEl.style.overflow = prevOver;
+      contentEl.style.maxHeight = prevMaxH;
+    }
   };
 }
 
