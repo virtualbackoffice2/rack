@@ -419,3 +419,76 @@ tbody tr:hover{
   .filters input{ min-width:100%; }
   .card-view{ grid-template-columns: 1fr; }
 }
+/* Day selection modal options */
+.day-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 15px;
+}
+
+.day-option, .event-option {
+    padding: 14px 12px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--blueSoft);
+    color: #1e3a8a;
+    cursor: pointer;
+    font-weight: 1000;
+    font-size: 16px;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.day-option:hover, .event-option:hover {
+    background: var(--blue);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+/* Analysis mode indicator */
+.analysis-indicator {
+    display: inline-block;
+    margin-left: 10px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 800;
+    background: #16a34a;
+    color: white;
+}
+
+/* Power comparison styling */
+.power-comparison {
+    margin-top: 8px;
+    padding: 8px;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+
+.comparison-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 13px;
+}
+
+.comparison-label {
+    font-weight: 900;
+    color: var(--muted);
+}
+
+.comparison-value {
+    font-weight: 1000;
+    color: var(--text);
+}
+
+.gap-positive {
+    color: #16a34a;
+}
+
+.gap-negative {
+    color: #dc2626;
+}

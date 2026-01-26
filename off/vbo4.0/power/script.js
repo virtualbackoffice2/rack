@@ -5,7 +5,7 @@
 const baseUrl = "https://app.vbo.co.in";
 let currentWindow = "ALL";
 
-let mode = "power"; // power | event
+let mode = "power"; // power | event | daywise | eventwise
 let viewMode = "cards"; // cards | table
 
 let powerRows = [];
@@ -13,6 +13,8 @@ let eventRows = [];
 
 let powerUsers = [];
 let eventUsers = [];
+let dayWiseUsers = [];
+let eventWiseUsers = [];
 
 let filtered = [];
 
@@ -28,15 +30,21 @@ const userCount = document.getElementById("userCount");
 
 const btnPowerHistory = document.getElementById("btnPowerHistory");
 const btnEventHistory = document.getElementById("btnEventHistory");
+const btnDayWise = document.getElementById("btnDayWise");
+const btnEventWise = document.getElementById("btnEventWise");
 const btnRefresh = document.getElementById("btnRefresh");
 const btnToggleView = document.getElementById("btnToggleView");
 
 const powerGapSearch = document.getElementById("powerGapSearch");
 const powerKeywordSearch = document.getElementById("powerKeywordSearch");
 const eventKeywordSearch = document.getElementById("eventKeywordSearch");
+const dayKeywordSearch = document.getElementById("dayKeywordSearch");
+const eventWiseKeywordSearch = document.getElementById("eventWiseKeywordSearch");
 
 const filtersPower = document.getElementById("filtersPower");
 const filtersEvent = document.getElementById("filtersEvent");
+const filtersDay = document.getElementById("filtersDay");
+const filtersEventWise = document.getElementById("filtersEventWise");
 
 const thMode = document.getElementById("thMode");
 
@@ -47,6 +55,18 @@ const modalTitle = document.getElementById("modalTitle");
 const modalCloseBtn = document.getElementById("modalCloseBtn");
 const btnPopupScreenshot = document.getElementById("btnPopupScreenshot");
 
+// New Modals
+const daySelectionModal = document.getElementById("daySelectionModal");
+const eventSelectionModal = document.getElementById("eventSelectionModal");
+const dayModalCloseBtn = document.getElementById("dayModalCloseBtn");
+const eventModalCloseBtn = document.getElementById("eventModalCloseBtn");
+
+// Variables for day/event wise analysis
+let selectedDays = 2; // Default 2 days
+let selectedEvents = 1; // Default 1 event
+
+// Window list
+const WINDOWS = ["MEROTRA", "SUNNY"];
 
 // ---------------- Toast + Spinner ----------------
 function showToast(msg) {
@@ -95,7 +115,6 @@ topMenu.addEventListener("click", (e) => {
   }
 });
 
-
 // Modal events
 if (modalCloseBtn && complaintModal) modalCloseBtn.onclick = () => complaintModal.style.display = "none";
 if (complaintModal) {
@@ -103,57 +122,52 @@ if (complaintModal) {
     if (e.target === complaintModal) complaintModal.style.display = "none";
   };
 }
-// ✅ Popup Screenshot (Full popup content, High quality PNG)
-if (btnPopupScreenshot) {
-  btnPopupScreenshot.onclick = async () => {
-    const contentEl = document.getElementById("modalBody");   // ✅ only content
-    if (!contentEl) {
-      showToast("Popup content not found");
-      return;
-    }
 
-    // store style
-    const prevOver = contentEl.style.overflow;
-    const prevMaxH = contentEl.style.maxHeight;
-
-    try {
-      // ✅ expand content so full data comes in screenshot
-      contentEl.style.overflow = "visible";
-      contentEl.style.maxHeight = "none";
-
-      // wait for layout
-      await new Promise(r => setTimeout(r, 80));
-
-      const canvas = await html2canvas(contentEl, {
-        scale: 3,                 // ✅ high quality
-        useCORS: true,
-        logging: false,
-        backgroundColor: "#ffffff",
-        scrollY: -window.scrollY
-      });
-
-      const title = (modalTitle?.textContent || "popup")
-        .replace(/[^\w\s-]/g, "")
-        .trim()
-        .replace(/\s+/g, "_");
-
-      const link = document.createElement("a");
-      link.download = `${title}_content.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
-
-      showToast("Popup content screenshot downloaded ✅");
-
-    } catch (err) {
-      console.error(err);
-      showToast("Popup screenshot failed ❌");
-    } finally {
-      // ✅ restore styles
-      contentEl.style.overflow = prevOver;
-      contentEl.style.maxHeight = prevMaxH;
-    }
+// Day Selection Modal events
+if (dayModalCloseBtn && daySelectionModal) dayModalCloseBtn.onclick = () => daySelectionModal.style.display = "none";
+if (daySelectionModal) {
+  daySelectionModal.onclick = (e) => {
+    if (e.target === daySelectionModal) daySelectionModal.style.display = "none";
   };
 }
+
+// Event Selection Modal events
+if (eventModalCloseBtn && eventSelectionModal) eventModalCloseBtn.onclick = () => eventSelectionModal.style.display = "none";
+if (eventSelectionModal) {
+  eventSelectionModal.onclick = (e) => {
+    if (e.target === eventSelectionModal) eventSelectionModal.style.display = "none";
+  };
+}
+
+// Day selection buttons
+document.querySelectorAll('.day-option').forEach(btn => {
+  btn.onclick = (e) => {
+    selectedDays = parseInt(e.target.getAttribute('data-days'));
+    daySelectionModal.style.display = "none";
+    showToast(`Day-wise analysis for ${selectedDays} days selected`);
+    
+    // Load day-wise data
+    if (powerRows.length > 0) {
+      processDayWiseData();
+      applyFilters(); // ✅ Apply filters after processing
+    }
+  };
+});
+
+// Event selection buttons
+document.querySelectorAll('.event-option').forEach(btn => {
+  btn.onclick = (e) => {
+    selectedEvents = parseInt(e.target.getAttribute('data-events'));
+    eventSelectionModal.style.display = "none";
+    showToast(`Event-wise analysis for ${selectedEvents} events selected`);
+    
+    // Load event-wise data
+    if (powerRows.length > 0) {
+      processEventWiseData();
+      applyFilters(); // ✅ Apply filters after processing
+    }
+  };
+});
 
 // ---------------- Fetchers ----------------
 async function fetchWindowPower(windowName) {
@@ -272,6 +286,209 @@ function groupEventUsers(rows) {
   return out;
 }
 
+// ---------------- Day Wise Processing ----------------
+function processDayWiseData() {
+  const dayWiseMap = {};
+  
+  // Group data by user
+  powerRows.forEach(r => {
+    const key = norm(r.user_id || r.mac_address || "");
+    if (!key) return;
+
+    if (!dayWiseMap[key]) {
+      dayWiseMap[key] = {
+        key,
+        _window: r._window,
+        user_id: r.user_id || "",
+        name: r.name || "",
+        address: r.address || "",
+        primary_phone: r.primary_phone || "",
+        mac_address: r.mac_address || "",
+        window_name: r.window_name || "",
+        pon_number: r.pon_number || "",
+        status: r.status || "",
+        logs: [],
+        dayLogs: {} // Store logs by date
+      };
+    }
+    
+    const logDate = new Date(r.inserted_at || "");
+    if (!isNaN(logDate.getTime())) {
+      const dateKey = logDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+      
+      if (!dayWiseMap[key].dayLogs[dateKey]) {
+        dayWiseMap[key].dayLogs[dateKey] = {
+          totalPower: 0,
+          count: 0,
+          date: dateKey
+        };
+      }
+      
+      if (r.rxPower != null) {
+        dayWiseMap[key].dayLogs[dateKey].totalPower += Number(r.rxPower);
+        dayWiseMap[key].dayLogs[dateKey].count += 1;
+      }
+    }
+    
+    // Also keep original logs for spark chart
+    dayWiseMap[key].logs.push({
+      rxPower: (r.rxPower != null ? Number(r.rxPower) : null),
+      inserted_at: r.inserted_at || "",
+      date: new Date(r.inserted_at || "")
+    });
+  });
+
+  const out = Object.values(dayWiseMap);
+
+  out.forEach(u => {
+    // Sort logs by date
+    u.logs.sort((a, b) => a.date - b.date);
+    
+    // Process day logs
+    const dayEntries = Object.values(u.dayLogs);
+    
+    // Calculate average power for each day
+    dayEntries.forEach(day => {
+      if (day.count > 0) {
+        day.avgPower = day.totalPower / day.count;
+      } else {
+        day.avgPower = null;
+      }
+    });
+    
+    // Sort day entries by date
+    dayEntries.sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    // Get current and previous day power
+    if (dayEntries.length >= selectedDays + 1) {
+      const currentDay = dayEntries[dayEntries.length - 1];
+      const previousDay = dayEntries[dayEntries.length - (selectedDays + 1)];
+      
+      if (currentDay.avgPower != null && previousDay.avgPower != null) {
+        u.currentPower = currentDay.avgPower;
+        u.previousPower = previousDay.avgPower;
+        u.dayGap = Number((currentDay.avgPower - previousDay.avgPower).toFixed(2));
+        u.dayAnalysis = `${selectedDays} day comparison`;
+      } else {
+        u.currentPower = null;
+        u.previousPower = null;
+        u.dayGap = null;
+        u.dayAnalysis = "Insufficient data";
+      }
+    } else if (dayEntries.length >= 2) {
+      const currentDay = dayEntries[dayEntries.length - 1];
+      const previousDay = dayEntries[dayEntries.length - 2];
+      
+      if (currentDay.avgPower != null && previousDay.avgPower != null) {
+        u.currentPower = currentDay.avgPower;
+        u.previousPower = previousDay.avgPower;
+        u.dayGap = Number((currentDay.avgPower - previousDay.avgPower).toFixed(2));
+        u.dayAnalysis = "Last 2 days comparison";
+      } else {
+        u.currentPower = null;
+        u.previousPower = null;
+        u.dayGap = null;
+        u.dayAnalysis = "Insufficient data";
+      }
+    } else {
+      u.currentPower = null;
+      u.previousPower = null;
+      u.dayGap = null;
+      u.dayAnalysis = "Insufficient data";
+    }
+    
+    u.last_ts = u.logs.length ? u.logs[u.logs.length - 1].inserted_at : "";
+  });
+
+  // Sort by absolute day gap
+  out.sort((a, b) => {
+    const av = a.dayGap == null ? -999 : Math.abs(a.dayGap);
+    const bv = b.dayGap == null ? -999 : Math.abs(b.dayGap);
+    if (bv !== av) return bv - av;
+    return safeParseDate(b.last_ts) - safeParseDate(a.last_ts);
+  });
+
+  dayWiseUsers = out;
+}
+
+// ---------------- Event Wise Processing ----------------
+function processEventWiseData() {
+  const eventWiseMap = {};
+  
+  // Group data by user
+  powerRows.forEach(r => {
+    const key = norm(r.user_id || r.mac_address || "");
+    if (!key) return;
+
+    if (!eventWiseMap[key]) {
+      eventWiseMap[key] = {
+        key,
+        _window: r._window,
+        user_id: r.user_id || "",
+        name: r.name || "",
+        address: r.address || "",
+        primary_phone: r.primary_phone || "",
+        mac_address: r.mac_address || "",
+        window_name: r.window_name || "",
+        pon_number: r.pon_number || "",
+        status: r.status || "",
+        logs: []
+      };
+    }
+    
+    eventWiseMap[key].logs.push({
+      rxPower: (r.rxPower != null ? Number(r.rxPower) : null),
+      inserted_at: r.inserted_at || "",
+      date: new Date(r.inserted_at || "")
+    });
+  });
+
+  const out = Object.values(eventWiseMap);
+
+  out.forEach(u => {
+    // Sort logs by date
+    u.logs.sort((a, b) => a.date - b.date);
+    
+    // Filter valid power readings
+    const validLogs = u.logs.filter(log => log.rxPower != null);
+    
+    if (validLogs.length >= selectedEvents + 1) {
+      const currentEvent = validLogs[validLogs.length - 1];
+      const previousEvent = validLogs[validLogs.length - (selectedEvents + 1)];
+      
+      u.currentPower = currentEvent.rxPower;
+      u.previousPower = previousEvent.rxPower;
+      u.eventGap = Number((currentEvent.rxPower - previousEvent.rxPower).toFixed(2));
+      u.eventAnalysis = `${selectedEvents} event comparison`;
+    } else if (validLogs.length >= 2) {
+      const currentEvent = validLogs[validLogs.length - 1];
+      const previousEvent = validLogs[validLogs.length - 2];
+      
+      u.currentPower = currentEvent.rxPower;
+      u.previousPower = previousEvent.rxPower;
+      u.eventGap = Number((currentEvent.rxPower - previousEvent.rxPower).toFixed(2));
+      u.eventAnalysis = "Last 2 events comparison";
+    } else {
+      u.currentPower = null;
+      u.previousPower = null;
+      u.eventGap = null;
+      u.eventAnalysis = "Insufficient data";
+    }
+    
+    u.last_ts = u.logs.length ? u.logs[u.logs.length - 1].inserted_at : "";
+  });
+
+  // Sort by absolute event gap
+  out.sort((a, b) => {
+    const av = a.eventGap == null ? -999 : Math.abs(a.eventGap);
+    const bv = b.eventGap == null ? -999 : Math.abs(b.eventGap);
+    if (bv !== av) return bv - av;
+    return safeParseDate(b.last_ts) - safeParseDate(a.last_ts);
+  });
+
+  eventWiseUsers = out;
+}
+
 // ---------------- Render (Cards/Table) ----------------
 function render() {
   cardContainer.innerHTML = "";
@@ -280,7 +497,12 @@ function render() {
   setHeadingCount(filtered.length);
 
   // update table column heading
-  thMode.textContent = (mode === "power") ? "Recent Gap" : "Last Event";
+  let columnTitle = "Recent Gap";
+  if (mode === "event") columnTitle = "Last Event";
+  if (mode === "daywise") columnTitle = `${selectedDays} Day Gap`;
+  if (mode === "eventwise") columnTitle = `${selectedEvents} Event Gap`;
+  
+  thMode.textContent = columnTitle;
 
   if (!filtered.length) {
     cardContainer.style.display = (viewMode === "cards") ? "grid" : "none";
@@ -308,11 +530,14 @@ function renderCards() {
     const card = document.createElement("div");
     card.className = "complaint-card";
 
-// ✅ Blink if recent gap <= -2 (means power down by 2 dBm or more)
-if (mode === "power" && u.varGap != null && u.varGap <= -2) {
-  card.classList.add("alertBlink");
-}
-
+    // ✅ Blink if gap <= -2 for all modes
+    if (mode === "power" && u.varGap != null && u.varGap <= -2) {
+      card.classList.add("alertBlink");
+    } else if (mode === "daywise" && u.dayGap != null && u.dayGap <= -2) {
+      card.classList.add("alertBlink");
+    } else if (mode === "eventwise" && u.eventGap != null && u.eventGap <= -2) {
+      card.classList.add("alertBlink");
+    }
 
     const statusEmoji = String(u.status || "").toUpperCase() === "DOWN" ? "📵" : "📶";
 
@@ -334,9 +559,41 @@ if (mode === "power" && u.varGap != null && u.varGap <= -2) {
     if (mode === "power") {
       const v = (u.varGap == null) ? "N/A" : (u.varGap > 0 ? `+${u.varGap}` : `${u.varGap}`);
       mid += `<div style="margin-top:8px;"><span class="badgeVar">Recent gap: ${v} dBm</span></div>`;
-
-      // ✅ chart uses ALL power points
       mid += buildSpark(u.logs);
+    } else if (mode === "daywise" && u.dayGap != null) {
+      mid += `<div class="power-comparison">
+                <div class="comparison-row">
+                  <span class="comparison-label">Previous (${selectedDays} days ago):</span>
+                  <span class="comparison-value">${u.previousPower.toFixed(2)} dBm</span>
+                </div>
+                <div class="comparison-row">
+                  <span class="comparison-label">Current Power:</span>
+                  <span class="comparison-value">${u.currentPower.toFixed(2)} dBm</span>
+                </div>
+                <div class="comparison-row">
+                  <span class="comparison-label">Power Gap:</span>
+                  <span class="comparison-value ${u.dayGap >= 0 ? 'gap-positive' : 'gap-negative'}">
+                    ${u.dayGap > 0 ? '+' : ''}${u.dayGap} dBm
+                  </span>
+                </div>
+              </div>`;
+    } else if (mode === "eventwise" && u.eventGap != null) {
+      mid += `<div class="power-comparison">
+                <div class="comparison-row">
+                  <span class="comparison-label">Previous Event (${selectedEvents} events ago):</span>
+                  <span class="comparison-value">${u.previousPower.toFixed(2)} dBm</span>
+                </div>
+                <div class="comparison-row">
+                  <span class="comparison-label">Current Power:</span>
+                  <span class="comparison-value">${u.currentPower.toFixed(2)} dBm</span>
+                </div>
+                <div class="comparison-row">
+                  <span class="comparison-label">Power Gap:</span>
+                  <span class="comparison-value ${u.eventGap >= 0 ? 'gap-positive' : 'gap-negative'}">
+                    ${u.eventGap > 0 ? '+' : ''}${u.eventGap} dBm
+                  </span>
+                </div>
+              </div>`;
     } else {
       // keep last 8 in card, full in popup
       mid += buildEvents(u.logs);
@@ -373,8 +630,16 @@ function renderTable() {
         const last = u.logs.length ? u.logs[u.logs.length - 1] : null;
         return last ? last.downEvent : "";
       }
-      if (u.varGap == null) return "";
-      return (u.varGap > 0 ? `+${u.varGap}` : `${u.varGap}`) + " dBm";
+      if (mode === "power" && u.varGap != null) {
+        return (u.varGap > 0 ? `+${u.varGap}` : `${u.varGap}`) + " dBm";
+      }
+      if (mode === "daywise" && u.dayGap != null) {
+        return (u.dayGap > 0 ? `+${u.dayGap}` : `${u.dayGap}`) + " dBm";
+      }
+      if (mode === "eventwise" && u.eventGap != null) {
+        return (u.eventGap > 0 ? `+${u.eventGap}` : `${u.eventGap}`) + " dBm";
+      }
+      return "";
     })();
 
     tr.innerHTML = `
@@ -489,7 +754,6 @@ function drawSpark(canvas, logs) {
   ctx.fillText(`${minV.toFixed(2)} dBm`, 10, H - 10);
 }
 
-
 function buildEvents(logs) {
   if (!logs.length) return `<div class="eventList">No events</div>`;
   const lastN = logs.slice(-8).reverse();
@@ -522,7 +786,7 @@ function openUserPopup(u) {
     </div>
   `;
 
-  if (mode === "power") {
+  if (mode === "power" || mode === "daywise" || mode === "eventwise") {
     html += `<div style="font-weight:1000;margin-top:10px;">Power History (All)</div>`;
     const list = [...u.logs].reverse(); // newest first
     list.forEach((r, idx) => {
@@ -554,10 +818,12 @@ function openUserPopup(u) {
 
 // ---------------- Filters ----------------
 function applyFilters() {
+  let data = [];
+  const gapText = String(powerGapSearch.value || "").trim();
+  
   if (mode === "power") {
-    const gapText = String(powerGapSearch.value || "").trim();
+    data = [...powerUsers];
     const kw = norm(powerKeywordSearch.value || "");
-    let data = [...powerUsers];
 
     // keyword filter 3 letters
     if (kw.length >= 3) {
@@ -569,39 +835,12 @@ function applyFilters() {
 
     // gap filter: sign + digit typed
     if (/^[+-]\d/.test(gapText)) {
-      const sign = gapText[0];
-      const num = parseFloat(gapText.slice(1));
-      if (!isNaN(num)) {
-        if (sign === "+") {
-          // decrease >= num -> latest - prev <= -num
-          data = data.filter(u => {
-            if (u.logs.length < 2) return false;
-            const n = u.logs.length;
-            const latest = u.logs[n - 1].rxPower;
-            const prev = u.logs[n - 2].rxPower;
-            if (latest == null || prev == null) return false;
-            const diff = latest - prev;
-            return diff <= (-num);
-          });
-        } else {
-          // increase >= num -> latest - prev >= num
-          data = data.filter(u => {
-            if (u.logs.length < 2) return false;
-            const n = u.logs.length;
-            const latest = u.logs[n - 1].rxPower;
-            const prev = u.logs[n - 2].rxPower;
-            if (latest == null || prev == null) return false;
-            const diff = latest - prev;
-            return diff >= num;
-          });
-        }
-      }
+      data = applyGapFilter(data, gapText, "power");
     }
-
-    filtered = data;
-  } else {
+  } 
+  else if (mode === "event") {
+    data = [...eventUsers];
     const kw = norm(eventKeywordSearch.value || "");
-    let data = [...eventUsers];
 
     if (kw.length >= 3) {
       data = data.filter(u => {
@@ -609,10 +848,84 @@ function applyFilters() {
         return blob.includes(kw);
       });
     }
-    filtered = data;
+  }
+  else if (mode === "daywise") {
+    data = [...dayWiseUsers];
+    const kw = norm(dayKeywordSearch.value || "");
+
+    if (kw.length >= 3) {
+      data = data.filter(u => {
+        const blob = [u.user_id, u.name, u.address, u.mac_address].map(norm).join(" | ");
+        return blob.includes(kw);
+      });
+    }
+
+    // gap filter for daywise mode
+    if (/^[+-]\d/.test(gapText)) {
+      data = applyGapFilter(data, gapText, "daywise");
+    }
+  }
+  else if (mode === "eventwise") {
+    data = [...eventWiseUsers];
+    const kw = norm(eventWiseKeywordSearch.value || "");
+
+    if (kw.length >= 3) {
+      data = data.filter(u => {
+        const blob = [u.user_id, u.name, u.address, u.mac_address].map(norm).join(" | ");
+        return blob.includes(kw);
+      });
+    }
+
+    // gap filter for eventwise mode
+    if (/^[+-]\d/.test(gapText)) {
+      data = applyGapFilter(data, gapText, "eventwise");
+    }
   }
 
+  filtered = data;
   render();
+}
+
+// ---------------- Gap Filter Function ----------------
+function applyGapFilter(data, gapText, modeType) {
+  const sign = gapText[0];
+  const num = parseFloat(gapText.slice(1));
+  
+  if (isNaN(num)) return data;
+  
+  if (sign === "+") {
+    // decrease >= num -> gap <= -num (power down)
+    return data.filter(u => {
+      let gap = null;
+      
+      if (modeType === "power") {
+        gap = u.varGap;
+      } else if (modeType === "daywise") {
+        gap = u.dayGap;
+      } else if (modeType === "eventwise") {
+        gap = u.eventGap;
+      }
+      
+      return gap != null && gap <= (-num);
+    });
+  } else if (sign === "-") {
+    // increase >= num -> gap >= num (power up)
+    return data.filter(u => {
+      let gap = null;
+      
+      if (modeType === "power") {
+        gap = u.varGap;
+      } else if (modeType === "daywise") {
+        gap = u.dayGap;
+      } else if (modeType === "eventwise") {
+        gap = u.eventGap;
+      }
+      
+      return gap != null && gap >= num;
+    });
+  }
+  
+  return data;
 }
 
 // ---------------- Buttons / events ----------------
@@ -628,9 +941,18 @@ btnPowerHistory.onclick = () => {
   mode = "power";
   filtersPower.style.display = "";
   filtersEvent.style.display = "none";
+  filtersDay.style.display = "none";
+  filtersEventWise.style.display = "none";
+  
+  // Show power gap filter for power mode
+  powerGapSearch.style.display = "";
+  powerKeywordSearch.style.display = "";
+  
   powerGapSearch.value = "";
   powerKeywordSearch.value = "";
   eventKeywordSearch.value = "";
+  dayKeywordSearch.value = "";
+  eventWiseKeywordSearch.value = "";
   applyFilters();
 };
 
@@ -638,10 +960,71 @@ btnEventHistory.onclick = () => {
   mode = "event";
   filtersPower.style.display = "none";
   filtersEvent.style.display = "";
+  filtersDay.style.display = "none";
+  filtersEventWise.style.display = "none";
+  
+  // Hide power gap filter for event mode
+  powerGapSearch.style.display = "none";
+  powerKeywordSearch.style.display = "none";
+  
   powerGapSearch.value = "";
   powerKeywordSearch.value = "";
   eventKeywordSearch.value = "";
+  dayKeywordSearch.value = "";
+  eventWiseKeywordSearch.value = "";
   applyFilters();
+};
+
+btnDayWise.onclick = () => {
+  mode = "daywise";
+  filtersPower.style.display = "none";
+  filtersEvent.style.display = "none";
+  filtersDay.style.display = "";
+  filtersEventWise.style.display = "none";
+  
+  // Show power gap filter for daywise mode
+  powerGapSearch.style.display = "";
+  dayKeywordSearch.style.display = "";
+  
+  // Clear other search inputs
+  powerKeywordSearch.value = "";
+  eventKeywordSearch.value = "";
+  eventWiseKeywordSearch.value = "";
+  
+  // Show day selection modal
+  daySelectionModal.style.display = "flex";
+  
+  // If data already loaded, process it
+  if (powerRows.length > 0) {
+    processDayWiseData();
+    applyFilters();
+  }
+};
+
+btnEventWise.onclick = () => {
+  mode = "eventwise";
+  filtersPower.style.display = "none";
+  filtersEvent.style.display = "none";
+  filtersDay.style.display = "none";
+  filtersEventWise.style.display = "";
+  
+  // Show power gap filter for eventwise mode
+  powerGapSearch.style.display = "";
+  eventWiseKeywordSearch.style.display = "";
+  
+  // Clear other search inputs
+  powerKeywordSearch.value = "";
+  eventKeywordSearch.value = "";
+  dayKeywordSearch.value = "";
+  
+  // Show event selection modal
+  eventSelectionModal.style.display = "flex";
+  
+  // If data already loaded, process it
+  if (powerRows.length > 0) {
+    processEventWiseData();
+    applyFilters();
+  }
 };
 
 btnRefresh.onclick = () => loadAll();
@@ -665,6 +1048,14 @@ eventKeywordSearch.oninput = () => {
   const kw = norm(eventKeywordSearch.value || "");
   if (kw.length === 0 || kw.length >= 3) applyFilters();
 };
+dayKeywordSearch.oninput = () => {
+  const kw = norm(dayKeywordSearch.value || "");
+  if (kw.length === 0 || kw.length >= 3) applyFilters();
+};
+eventWiseKeywordSearch.oninput = () => {
+  const kw = norm(eventWiseKeywordSearch.value || "");
+  if (kw.length === 0 || kw.length >= 3) applyFilters();
+};
 
 // screenshot
 document.getElementById("btnScreenshot").onclick = () => {
@@ -674,8 +1065,13 @@ document.getElementById("btnScreenshot").onclick = () => {
     logging: false,
     backgroundColor: null
   }).then(canvas => {
+    let modeText = "power-history";
+    if (mode === "event") modeText = "event-history";
+    if (mode === "daywise") modeText = `day-wise-${selectedDays}days`;
+    if (mode === "eventwise") modeText = `event-wise-${selectedEvents}events`;
+    
     const link = document.createElement("a");
-    link.download = (mode === "power" ? "power-history" : "event-history") + "-screenshot.png";
+    link.download = `${modeText}-screenshot.png`;
     link.href = canvas.toDataURL("image/png");
     link.click();
     showToast("Screenshot downloaded");
@@ -699,6 +1095,34 @@ document.getElementById("btnCsv").onclick = () => {
       u.pon_number || "",
       u.status || "",
       (u.varGap == null ? "" : u.varGap),
+      u.last_ts || ""
+    ]);
+  } else if (mode === "daywise") {
+    headers = ["Window", "User ID", "Name", "MAC", "PON", "Status", "PreviousPower", "CurrentPower", `${selectedDays}DayGap(dBm)`, "LastUpdated"];
+    lines = filtered.map(u => [
+      u._window || "",
+      u.user_id || "",
+      u.name || "",
+      u.mac_address || "",
+      u.pon_number || "",
+      u.status || "",
+      (u.previousPower == null ? "" : u.previousPower.toFixed(2)),
+      (u.currentPower == null ? "" : u.currentPower.toFixed(2)),
+      (u.dayGap == null ? "" : u.dayGap),
+      u.last_ts || ""
+    ]);
+  } else if (mode === "eventwise") {
+    headers = ["Window", "User ID", "Name", "MAC", "PON", "Status", "PreviousPower", "CurrentPower", `${selectedEvents}EventGap(dBm)`, "LastUpdated"];
+    lines = filtered.map(u => [
+      u._window || "",
+      u.user_id || "",
+      u.name || "",
+      u.mac_address || "",
+      u.pon_number || "",
+      u.status || "",
+      (u.previousPower == null ? "" : u.previousPower.toFixed(2)),
+      (u.currentPower == null ? "" : u.currentPower.toFixed(2)),
+      (u.eventGap == null ? "" : u.eventGap),
       u.last_ts || ""
     ]);
   } else {
@@ -725,7 +1149,13 @@ document.getElementById("btnCsv").onclick = () => {
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
-  link.download = (mode === "power" ? "power-history" : "event-history") + ".csv";
+  
+  let filename = "power-history";
+  if (mode === "event") filename = "event-history";
+  if (mode === "daywise") filename = `day-wise-${selectedDays}days-analysis`;
+  if (mode === "eventwise") filename = `event-wise-${selectedEvents}events-analysis`;
+  
+  link.download = `${filename}.csv`;
   link.href = url;
   link.click();
   URL.revokeObjectURL(url);
@@ -737,25 +1167,33 @@ async function loadAll() {
   showSpinner();
   try {
     if (currentWindow === "ALL") {
-      const [pM, pS, eM, eS] = await Promise.all([
-        fetchWindowPower("MEROTRA"),
-        fetchWindowPower("SUNNY"),
-        fetchWindowEvent("MEROTRA"),
-        fetchWindowEvent("SUNNY")
-      ]);
-      powerRows = [...pM, ...pS];
-      eventRows = [...eM, ...eS];
+      // Fetch data from all three windows in parallel
+      const powerPromises = WINDOWS.map(window => fetchWindowPower(window));
+      const eventPromises = WINDOWS.map(window => fetchWindowEvent(window));
+      
+      const allPowerResults = await Promise.all(powerPromises);
+      const allEventResults = await Promise.all(eventPromises);
+      
+      // Flatten the arrays
+      powerRows = allPowerResults.flat();
+      eventRows = allEventResults.flat();
     } else {
+      // Single window
       powerRows = await fetchWindowPower(currentWindow);
       eventRows = await fetchWindowEvent(currentWindow);
     }
 
     powerUsers = groupPowerUsers(powerRows);
     eventUsers = groupEventUsers(eventRows);
+    
+    // Process day wise and event wise data
+    processDayWiseData();
+    processEventWiseData();
 
     applyFilters();
     showToast("Loaded");
-  } catch {
+  } catch (error) {
+    console.error("Load error:", error);
     showToast("Load failed");
   } finally {
     hideSpinner();
