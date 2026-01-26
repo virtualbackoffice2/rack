@@ -1,5 +1,5 @@
 // ===============================
-// Power Variance Analysis Page
+// Power Variance Analysis Page - Fixed PON Filter
 // ===============================
 
 const baseUrl = "https://app.vbo.co.in";
@@ -17,6 +17,19 @@ let dayWiseUsers = [];
 let eventWiseUsers = [];
 
 let filtered = [];
+
+// ✅ Fixed PON Filter Variables
+const ponMultiWrap = document.getElementById("ponMultiWrap");
+const ponMultiBtn = document.getElementById("ponMultiBtn");
+const ponMultiDropdown = document.getElementById("ponMultiDropdown");
+const ponMultiList = document.getElementById("ponMultiList");
+const ponMultiSearchInput = document.getElementById("ponMultiSearchInput");
+const ponClearBtn = document.getElementById("ponClearBtn");
+const ponOkBtn = document.getElementById("ponOkBtn");
+
+let selectedPonsSet = new Set();
+let allAvailablePons = [];
+let isPonFilterActive = false;
 
 const cardContainer = document.getElementById("cardView");
 const tbody = document.querySelector("#dataTable tbody");
@@ -45,6 +58,7 @@ const filtersPower = document.getElementById("filtersPower");
 const filtersEvent = document.getElementById("filtersEvent");
 const filtersDay = document.getElementById("filtersDay");
 const filtersEventWise = document.getElementById("filtersEventWise");
+const filtersPon = document.getElementById("filtersPon");
 
 const thMode = document.getElementById("thMode");
 
@@ -84,9 +98,52 @@ function safeParseDate(s) {
 function norm(s) { return String(s || "").trim().toLowerCase(); }
 function setHeadingCount(count) { userCount.textContent = `(${count})`; }
 
+// ---------------- PON Filter Functions ----------------
+function extractAllPons(data) {
+  const ponSet = new Set();
+  data.forEach(u => {
+    if (u.pon_number) {
+      u.pon_number.split(',').forEach(pon => {
+        const cleanPon = pon.trim().toUpperCase();
+        if (cleanPon) ponSet.add(cleanPon);
+      });
+    }
+  });
+  return Array.from(ponSet).sort();
+}
+
+function updatePonButtonText() {
+  const count = selectedPonsSet.size;
+  if (!ponMultiBtn) return;
+  
+  if (count === 0) {
+    ponMultiBtn.innerHTML = '<i class="fa-solid fa-filter"></i> All PON';
+    ponMultiBtn.classList.remove("active");
+  } else {
+    ponMultiBtn.innerHTML = `<i class="fa-solid fa-filter"></i> PON (${count})`;
+    ponMultiBtn.classList.add("active");
+  }
+}
+
+function populatePonCheckboxes() {
+  if (!ponMultiList) return;
+  
+  ponMultiList.innerHTML = "";
+  
+  allAvailablePons.forEach(pon => {
+    const item = document.createElement("div");
+    item.className = "ponItem";
+    item.setAttribute("data-pon", pon);
+    item.innerHTML = `
+      <input type="checkbox" id="pon_${pon}" ${selectedPonsSet.has(pon) ? 'checked' : ''}>
+      <span>${pon}</span>
+    `;
+    ponMultiList.appendChild(item);
+  });
+}
+
 // ---------------- Mobile friendly menu ----------------
 function setupMenu() {
-  // hide menu by default on mobile
   if (window.innerWidth <= 720) {
     topMenu.classList.add("mobileHidden");
   }
@@ -139,6 +196,82 @@ if (eventSelectionModal) {
   };
 }
 
+// ---------------- PON Filter Event Listeners ----------------
+if (ponMultiBtn && ponMultiDropdown) {
+  ponMultiBtn.onclick = (e) => {
+    e.stopPropagation();
+    ponMultiDropdown.classList.toggle("show");
+    if (ponMultiSearchInput) {
+      ponMultiSearchInput.value = "";
+      setTimeout(() => ponMultiSearchInput.focus(), 100);
+    }
+  };
+}
+
+// Close dropdown when clicking outside
+document.addEventListener("click", (e) => {
+  if (ponMultiWrap && !ponMultiWrap.contains(e.target)) {
+    ponMultiDropdown.classList.remove("show");
+  }
+});
+
+if (ponMultiList) {
+  ponMultiList.onclick = (e) => {
+    const item = e.target.closest(".ponItem");
+    if (!item) return;
+
+    const pon = item.getAttribute("data-pon");
+    const cb = item.querySelector("input[type='checkbox']");
+    
+    if (cb) {
+      cb.checked = !cb.checked;
+      if (cb.checked) {
+        selectedPonsSet.add(pon);
+      } else {
+        selectedPonsSet.delete(pon);
+      }
+      updatePonButtonText();
+    }
+  };
+}
+
+if (ponMultiSearchInput) {
+  ponMultiSearchInput.oninput = () => {
+    const query = ponMultiSearchInput.value.trim().toLowerCase();
+    const items = ponMultiList.querySelectorAll(".ponItem");
+    
+    items.forEach(item => {
+      const pon = (item.getAttribute("data-pon") || "").toLowerCase();
+      item.style.display = pon.includes(query) ? "flex" : "none";
+    });
+  };
+}
+
+if (ponClearBtn) {
+  ponClearBtn.onclick = () => {
+    selectedPonsSet.clear();
+    isPonFilterActive = false;
+    if (ponMultiList) {
+      ponMultiList.querySelectorAll("input[type='checkbox']").forEach(cb => {
+        cb.checked = false;
+      });
+    }
+    updatePonButtonText();
+    applyFilters();
+    ponMultiDropdown.classList.remove("show");
+    showToast("PON filter cleared");
+  };
+}
+
+if (ponOkBtn) {
+  ponOkBtn.onclick = () => {
+    isPonFilterActive = selectedPonsSet.size > 0;
+    ponMultiDropdown.classList.remove("show");
+    applyFilters();
+    showToast(`${selectedPonsSet.size} PON${selectedPonsSet.size !== 1 ? 's' : ''} selected`);
+  };
+}
+
 // Day selection buttons
 document.querySelectorAll('.day-option').forEach(btn => {
   btn.onclick = (e) => {
@@ -149,7 +282,7 @@ document.querySelectorAll('.day-option').forEach(btn => {
     // Load day-wise data
     if (powerRows.length > 0) {
       processDayWiseData();
-      applyFilters(); // ✅ Apply filters after processing
+      applyFilters();
     }
   };
 });
@@ -164,7 +297,7 @@ document.querySelectorAll('.event-option').forEach(btn => {
     // Load event-wise data
     if (powerRows.length > 0) {
       processEventWiseData();
-      applyFilters(); // ✅ Apply filters after processing
+      applyFilters();
     }
   };
 });
@@ -692,12 +825,7 @@ function drawSpark(canvas, logs) {
     return;
   }
 
-  // -------------------------------
-  // ✅ Line color logic (recent two)
-  // power down => red
-  // power up => green
-  // otherwise => blue
-  // -------------------------------
+  // Line color logic (recent two)
   let lineColor = "#2563eb"; // default BLUE
 
   if (logs.length >= 2) {
@@ -882,6 +1010,21 @@ function applyFilters() {
     }
   }
 
+  // ✅ Apply PON filter if active
+  if (isPonFilterActive && selectedPonsSet.size > 0) {
+    data = data.filter(u => {
+      const userPons = (u.pon_number || "")
+        .toUpperCase()
+        .split(',')
+        .map(p => p.trim())
+        .filter(p => p);
+      
+      return Array.from(selectedPonsSet).some(selectedPon => 
+        userPons.includes(selectedPon)
+      );
+    });
+  }
+
   filtered = data;
   render();
 }
@@ -943,6 +1086,7 @@ btnPowerHistory.onclick = () => {
   filtersEvent.style.display = "none";
   filtersDay.style.display = "none";
   filtersEventWise.style.display = "none";
+  filtersPon.style.display = "";
   
   // Show power gap filter for power mode
   powerGapSearch.style.display = "";
@@ -962,6 +1106,7 @@ btnEventHistory.onclick = () => {
   filtersEvent.style.display = "";
   filtersDay.style.display = "none";
   filtersEventWise.style.display = "none";
+  filtersPon.style.display = "";
   
   // Hide power gap filter for event mode
   powerGapSearch.style.display = "none";
@@ -981,6 +1126,7 @@ btnDayWise.onclick = () => {
   filtersEvent.style.display = "none";
   filtersDay.style.display = "";
   filtersEventWise.style.display = "none";
+  filtersPon.style.display = "";
   
   // Show power gap filter for daywise mode
   powerGapSearch.style.display = "";
@@ -1007,6 +1153,7 @@ btnEventWise.onclick = () => {
   filtersEvent.style.display = "none";
   filtersDay.style.display = "none";
   filtersEventWise.style.display = "";
+  filtersPon.style.display = "";
   
   // Show power gap filter for eventwise mode
   powerGapSearch.style.display = "";
@@ -1035,6 +1182,10 @@ btnToggleView.onclick = () => {
   btnToggleView.innerHTML = (viewMode === "cards")
     ? '<i class="fa-solid fa-table"></i> Table'
     : '<i class="fa-solid fa-grip"></i> Cards';
+  
+  // ✅ Always show PON filter in both views
+  filtersPon.style.display = "";
+  
   render();
 };
 
@@ -1185,6 +1336,13 @@ async function loadAll() {
 
     powerUsers = groupPowerUsers(powerRows);
     eventUsers = groupEventUsers(eventRows);
+    
+    // ✅ Extract all PONs for dropdown
+    allAvailablePons = extractAllPons([...powerUsers, ...eventUsers]);
+    
+    // ✅ Populate PON checkboxes and update button text
+    populatePonCheckboxes();
+    updatePonButtonText();
     
     // Process day wise and event wise data
     processDayWiseData();

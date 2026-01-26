@@ -13,19 +13,19 @@
 
 <body>
 
-    <!-- ✅ Modal -->
+    <!-- Modal - User Details -->
     <div id="complaintModal" class="modalOverlay">
         <div class="modalBox">
             <div class="modalHead">
                 <div class="modalTitle" id="modalTitle">Details</div>
                 <button class="modalClose" id="btnPopupScreenshot">Screenshot</button>
-                <button class="modalClose" id="modalCloseBtn">Close</button>
+                <button class="modalClose" id="modalCloseBtn">X</button>
             </div>
             <div id="modalBody"></div>
         </div>
     </div>
 
-    <!-- ✅ Day Selection Modal -->
+    <!-- Day Selection Modal -->
     <div id="daySelectionModal" class="modalOverlay">
         <div class="modalBox">
             <div class="modalHead">
@@ -48,7 +48,7 @@
         </div>
     </div>
 
-    <!-- ✅ Event Selection Modal -->
+    <!-- Event Selection Modal -->
     <div id="eventSelectionModal" class="modalOverlay">
         <div class="modalBox">
             <div class="modalHead">
@@ -85,19 +85,17 @@
         <nav class="top-menu" id="topMenu">
             <div class="menuRow">
                 <select id="windowSelect">
-                    <option value="ALL" selected>ALL</option>
+                    <option value="ALL" selected>ALL WINDOWS</option>
                     <option value="MEROTRA">MEROTRA</option>
                     <option value="SUNNY">SUNNY</option>
+
                 </select>
 
                 <button class="nav-btn" id="btnPowerHistory"><i class="fa-solid fa-chart-line"></i> Power</button>
                 <button class="nav-btn" id="btnEventHistory"><i class="fa-solid fa-bolt"></i> Event</button>
-                
-                <!-- ✅ NEW BUTTONS -->
                 <button class="nav-btn" id="btnDayWise"><i class="fa-solid fa-calendar-day"></i> Day wise</button>
                 <button class="nav-btn" id="btnEventWise"><i class="fa-solid fa-calendar-week"></i> Event wise</button>
 
-                <!-- ✅ Toggle card/table -->
                 <button class="nav-btn" id="btnToggleView">
                     <i class="fa-solid fa-table"></i> Table
                 </button>
@@ -113,35 +111,59 @@
 
     <main id="contentWrap">
 
-        <!-- ✅ Power Filters -->
+        <!-- Power Filters -->
         <section class="filters" id="filtersPower">
             <input type="text" id="powerGapSearch" placeholder="Search power gap in dBm, use + - power gap" />
             <input type="text" id="powerKeywordSearch" placeholder="Search power history by any keyword" />
         </section>
 
-        <!-- ✅ Event Filters -->
+        <!-- Event Filters -->
         <section class="filters" id="filtersEvent" style="display:none;">
             <input type="text" id="eventKeywordSearch" placeholder="Search event history by any keyword" />
         </section>
 
-        <!-- ✅ Day Wise Filters -->
+        <!-- Day Wise Filters -->
         <section class="filters" id="filtersDay" style="display:none;">
             <input type="text" id="dayKeywordSearch" placeholder="Search users for day-wise analysis" />
         </section>
 
-        <!-- ✅ Event Wise Filters -->
+        <!-- Event Wise Filters -->
         <section class="filters" id="filtersEventWise" style="display:none;">
             <input type="text" id="eventWiseKeywordSearch" placeholder="Search users for event-wise analysis" />
+        </section>
+
+        <!-- ✅ Complain Manager Style PON Filter -->
+        <section class="filters" id="filtersPon">
+            <div class="ponMultiWrap" id="ponMultiWrap">
+                <button type="button" class="ponMultiBtn" id="ponMultiBtn">
+                    <i class="fa-solid fa-filter"></i> All PON
+                </button>
+
+                <div class="ponMultiDropdown" id="ponMultiDropdown">
+                    <div class="ponMultiSearch">
+                        <input type="text" id="ponMultiSearchInput" placeholder="Search PONs..." />
+                    </div>
+
+                    <div class="ponMultiList" id="ponMultiList">
+                        <!-- PON checkboxes will be inserted here -->
+                    </div>
+
+                    <div class="ponMultiFooter">
+                        <button type="button" class="ponClearBtn" id="ponClearBtn">Clear</button>
+                        <button type="button" class="ponOkBtn" id="ponOkBtn">OK</button>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <div id="spinnerOverlay">
             <div class="spinner"></div>
         </div>
 
-        <!-- ✅ Cards View -->
+        <!-- Cards View -->
         <section id="cardView" class="card-view"></section>
 
-        <!-- ✅ Table View -->
+        <!-- Table View -->
         <section id="tableWrap" class="table-wrap" style="display:none;">
             <table id="dataTable">
                 <thead>
