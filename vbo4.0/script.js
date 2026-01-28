@@ -442,9 +442,9 @@ const uiRenderer = {
                     <thead>
                         <tr>
                             <th>PON No</th>
-                            <th>Users</th>
-                            <th>Offline</th>
-                            <th>Tickets</th>
+                            <th>Live</th>
+                            <th>Off</th>
+                            <th>Comp</th>
                             <th>Status</th>
                         </tr>
                     </thead>

@@ -1463,3 +1463,84 @@ body {
 @media (max-width: 768px) {
     .loading-overlay { padding-top: 4rem; }
 }
+/* Status column ko OLT card se hide kar diya (sirf card ke table mein) */
+.olt-table th:nth-child(5),
+.olt-table td:nth-child(5) {
+    display: none !important;
+}
+/* ===== MOBILE VIEW ONLY - OLT CARD HEADINGS CHHOTA AUR TABLE TIGHT ===== */
+@media (max-width: 768px) {
+
+    /* OLT card ke heading (name + stats) ka text chhota */
+    .olt-card-header {
+        padding: 0.7rem 1rem !important;  /* top-bottom padding kam */
+    }
+
+    .olt-name {
+        font-size: 1rem !important;       /* OLT name chhota */
+    }
+
+    .olt-name .subtitle {
+        font-size: 0.65rem !important;    /* subtitle (active PONs, users) aur chhota */
+    }
+
+    .olt-stats {
+        gap: 0.6rem !important;           /* stats ke beech space kam */
+    }
+
+    .olt-stat-label {
+        font-size: 0.58rem !important;    /* Total / Offline / Tickets label chhota */
+    }
+
+    .olt-stat-value {
+        font-size: 1.1rem !important;     /* numbers thoda chhote lekin padhne layak */
+    }
+
+    /* Table ke andar white space (padding) kam karo */
+    .olt-table th,
+    .olt-table td {
+        padding: 0.35rem 0.4rem !important;  /* bahut tight padding */
+        font-size: 0.74rem !important;       /* text size bhi thoda kam */
+    }
+
+    .olt-table th {
+        padding: 0.4rem 0.45rem !important;
+        font-size: 0.66rem !important;
+    }
+
+    .pon-number-cell {
+        padding-left: 0.7rem !important;
+        padding-right: 0.3rem !important;
+    }
+
+    .clickable-cell {
+        min-width: 35px !important;   /* numbers ke cells aur chhote */
+    }
+
+    /* Table ke andar line-height aur margin kam */
+    .pon-details {
+        font-size: 0.65rem !important;
+        margin-top: 1px !important;
+    }
+
+    /* Card body ka padding bhi kam */
+    .olt-card-body {
+        padding: 0.3rem !important;
+    }
+}
+/* ===== MOBILE VIEW ONLY - OLT CARD HEADING SE STATS HIDE ===== */
+@media (max-width: 768px) {
+    .olt-stats {
+        display: none !important;   /* Total, Offline, Tickets counts hide */
+    }
+
+    /* Heading ko center ya better spacing de sakte ho (optional) */
+    .olt-card-header {
+        justify-content: center !important;
+        padding: 0.8rem 1rem !important;
+    }
+
+    .olt-name {
+        text-align: center !important;
+    }
+}
