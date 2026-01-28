@@ -1544,3 +1544,96 @@ body {
         text-align: center !important;
     }
 }
+/* 1. Footer text (version + copyright) sab jagah se hata diya */
+.mobile-sidebar-footer,
+.mobile-version,
+.mobile-copyright {
+    display: none !important;
+}
+
+/* 2. Mobile view mein User popup (modal) ko tight + compact banaya */
+@media (max-width: 768px) {
+    /* Modal ka size aur padding kam */
+    .modal-content {
+        margin: 0.4rem !important;
+        width: 96% !important;
+        max-height: 94vh !important;
+        border-radius: 10px !important;
+    }
+
+    /* Header chhota */
+    .modal-header {
+        padding: 0.9rem 1rem !important;
+        gap: 0.4rem !important;
+    }
+
+    .modal-header h2 {
+        font-size: 1.1rem !important;
+    }
+
+    /* Subtitle tight */
+    .modal-subtitle {
+        padding: 0.5rem 1rem !important;
+        font-size: 0.75rem !important;
+    }
+
+    /* Buttons chhote */
+    .modal-actions {
+        padding: 0.5rem 1rem !important;
+        gap: 0.4rem !important;
+    }
+
+    .btn-small {
+        padding: 0.35rem 0.7rem !important;
+        font-size: 0.78rem !important;
+    }
+
+    .btn-close {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 0.95rem !important;
+    }
+
+    /* Table ko bahut tight + kam white space */
+    .user-table {
+        font-size: 0.72rem !important;
+    }
+
+    .user-table th,
+    .user-table td {
+        padding: 0.4rem 0.35rem !important;   /* padding bahut kam */
+        font-size: 0.72rem !important;
+        line-height: 1.2 !important;
+    }
+
+    .user-table th {
+        padding: 0.45rem 0.4rem !important;
+        font-size: 0.66rem !important;
+    }
+
+    /* Location column ko bhi adjust (zyada lambi na ho) */
+    .user-table td:nth-child(6) {  /* Location wala column */
+        max-width: 130px !important;
+        padding: 0.4rem 0.35rem !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+    }
+
+    /* No data message compact */
+    .no-data {
+        padding: 1.2rem 0.8rem !important;
+    }
+
+    .no-data h3 {
+        font-size: 1.05rem !important;
+    }
+
+    .no-data p {
+        font-size: 0.78rem !important;
+    }
+
+    /* Modal body mein scroll smooth + kam space */
+    .modal-body {
+        padding: 0.3rem !important;
+    }
+}
