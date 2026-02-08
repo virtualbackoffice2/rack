@@ -1012,9 +1012,13 @@ document.getElementById("btnCsv").onclick = () => {
     return;
   }
 
-  const headers = ["Window", "PON", "User ID", "Mobile", "Name", "Mac / Serial", "Down", "Remark", "Team", "Mode", "Power", "Location", "Status"];
-  const csvContent = [headers.join(","), ...filtered.map(r => {
-    // Calculate down count for CSV export
+  const headers = [
+    "Window", "PON", "User ID", "Mobile", "Name",
+    "Mac / Serial", "Down", "Remark",
+    "Team", "Mode", "Power", "Location", "Status"
+  ];
+
+  const rows = filtered.map(r => {
     let downCount = 0;
     if (r.down_list) {
       downCount = String(r.down_list)
@@ -1023,7 +1027,7 @@ document.getElementById("btnCsv").onclick = () => {
         .filter(Boolean)
         .length;
     }
-    
+
     return [
       r._window || "",
       r.PON || "",
@@ -1031,86 +1035,44 @@ document.getElementById("btnCsv").onclick = () => {
       r["Last called no"] || "",
       r.Name || "",
       `${r.MAC || ""} / ${r.Serial || ""}`,
-      downCount, // Use actual down users count
+      downCount,
       r.Remarks || "",
       r.Team || getDefaultTeam(r._window),
       r.Mode || "Manual",
-      r.Power?.toFixed(2) || "",
+      r.Power != null ? Number(r.Power).toFixed(2) : "",
       r.Location || "",
       r["User status"] || ""
     ];
-  }).map(v => `"${v}"`).join(",")].join("\n");
+  });
 
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  // ✅ Proper CSV creation (Excel safe)
+  const csvContent =
+    headers.join(",") + "\n" +
+    rows.map(row =>
+      row
+        .map(val => `"${String(val).replace(/"/g, '""')}"`)
+        .join(",")
+    ).join("\n");
+
+  const blob = new Blob([csvContent], {
+    type: "text/csv;charset=utf-8;"
+  });
+
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
-  link.download = "complain-manager.csv";
   link.href = url;
+  link.download = "complain-manager.csv";
+
+  // ✅ DOM attach is IMPORTANT
+  document.body.appendChild(link);
   link.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(link);
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+
   showToast("CSV downloaded");
 };
 
-document.getElementById("windowSelect").onchange = (e) => {
-  currentWindow = e.target.value;
-  isComplainsView = false;
-  fetchData();
-};
-
-document.getElementById("btnComplains").onclick = async () => {
-  showSpinner();
-  try {
-    isComplainsView = true;
-
-    let openComplaints = [];
-    if (currentWindow === "ALL") {
-      const [m, s] = await Promise.all([
-        fetchOpenComplaintUsers("MEROTRA"),
-        fetchOpenComplaintUsers("SUNNY"),
-      ]);
-      openComplaints = [...m, ...s];
-    } else {
-      openComplaints = await fetchOpenComplaintUsers(currentWindow);
-    }
-
-    await fetchData();
-
-    const openMap = {};
-    openComplaints.forEach(c => {
-      const id = String(c.user_id || "").trim().toLowerCase();
-      if (id) openMap[id] = c;
-    });
-
-    rawRows = rawRows
-      .filter(r => openMap[String(r.Users || "").trim().toLowerCase()])
-      .map(r => {
-        const c = openMap[String(r.Users || "").trim().toLowerCase()];
-        return {
-          ...r,
-          _complain_open: true,
-          _page_id: c.page_id || "Others",
-          _created_at: c.created_at || "",
-          _complaint_id: c.id || null,
-          down_list: c.down_list || r.down_list || "" // Make sure down_list is available
-        };
-      });
-
-    rawRows.sort((a, b) => {
-      const po = pageOrder(a._page_id) - pageOrder(b._page_id);
-      if (po !== 0) return po;
-      return safeParseDate(b._created_at) - safeParseDate(a._created_at);
-    });
-
-    showToast(rawRows.length ? `${rawRows.length} open complains users loaded` : "No open complains found");
-    populateFilters();
-    applyAllFilters();
-
-  } catch (e) {
-    showToast("Failed to load complains");
-  } finally {
-    hideSpinner();
-  }
-};
 
 document.getElementById("btnRefresh").onclick = () => {
   isComplainsView = false;
