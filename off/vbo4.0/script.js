@@ -1012,18 +1012,12 @@ document.getElementById("btnCsv").onclick = () => {
     return;
   }
 
-  const headers = ["Window", "PON", "User ID", "Mobile", "Name", "Mac / Serial", "Down", "Remark", "Team", "Mode", "Power", "Location", "Status"];
-  const csvContent = [headers.join(","), ...filtered.map(r => {
-    // Calculate down count for CSV export
-    let downCount = 0;
-    if (r.down_list) {
-      downCount = String(r.down_list)
-        .split(",")
-        .map(x => x.trim())
-        .filter(Boolean)
-        .length;
-    }
-    
+  const headers = [
+    "Window", "PON", "User ID", "Mobile", "Name",
+    "Mac / Serial", "Power", "Location"
+  ];
+
+  const rows = filtered.map(r => {
     return [
       r._window || "",
       r.PON || "",
@@ -1031,15 +1025,18 @@ document.getElementById("btnCsv").onclick = () => {
       r["Last called no"] || "",
       r.Name || "",
       `${r.MAC || ""} / ${r.Serial || ""}`,
-      downCount, // Use actual down users count
-      r.Remarks || "",
-      r.Team || getDefaultTeam(r._window),
-      r.Mode || "Manual",
-      r.Power?.toFixed(2) || "",
-      r.Location || "",
-      r["User status"] || ""
+      r.Power != null ? Number(r.Power).toFixed(2) : "",
+      r.Location || ""
     ];
-  }).map(v => `"${v}"`).join(",")].join("\n");
+  });
+
+  // ✅ FIXED: Proper CSV formatting with quotes and escaping
+  const csvContent = [
+    headers.map(h => `"${h}"`).join(","),
+    ...rows.map(row =>
+      row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")
+    )
+  ].join("\n");
 
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
