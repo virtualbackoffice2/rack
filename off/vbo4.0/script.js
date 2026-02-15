@@ -88,8 +88,8 @@ async function fetchWindowData(windowName) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     return (data.rows || []).map(row => ({ 
-      ...row,
-      down_list: row.down_list || "",   // 🔧 ADD THIS - MANDATORY FIX
+      ...row, 
+      down_list: row.down_list || "",
       _window: windowName, 
       _runtime_timestamp: data.runtime_timestamp || "" 
     }));
@@ -166,10 +166,8 @@ function getDefaultTeam(windowName) {
 }
 
 /* ===============================
-   ✅ Down Users Helper Functions - UPDATED WITH FIXES 🔧
+   ✅ Down Users Helper Functions
 ================================= */
-
-// 🔧 FIX 2️⃣: MAC matching ko FULLY FLEXIBLE banao
 function normalizeMac(m) {
   return String(m || "")
     .toLowerCase()
@@ -204,7 +202,7 @@ function showDownUsersInModal() {
       <div class="modalRow"><b>🧷 MAC:</b> ${u.MAC || ""}</div>
       <div class="modalRow"><b>Window:</b> ${u._window || ""}</div>
       <div class="modalRow"><b>Power:</b> ${u.Power?.toFixed(2) || ""}</div>
-      <div class="modalRow"><b>Down Count:</b> ${u.Drops || ""}</div>
+      <div class="modalRow"><b>Down Count:</b> ${u.downusers || 0}</div>
       <hr style="margin:10px 0;border-color:#ddd;">
     </div>
   `).join("");
@@ -287,7 +285,7 @@ if (modalCloseBtn && complaintModal) {
     if (modalActions) modalActions.style.display = "flex";
     if (btnDownUsers) {
       btnDownUsers.textContent = "Down users list";
-      btnDownUsers.style.display = "inline-flex"; // Reset display on close
+      btnDownUsers.style.display = "inline-flex";
     }
   };
 }
@@ -298,7 +296,7 @@ if (modalCloseButton && complaintModal) {
     if (modalActions) modalActions.style.display = "flex";
     if (btnDownUsers) {
       btnDownUsers.textContent = "Down users list";
-      btnDownUsers.style.display = "inline-flex"; // Reset display on close
+      btnDownUsers.style.display = "inline-flex";
     }
   };
 }
@@ -310,7 +308,7 @@ if (complaintModal) {
       if (modalActions) modalActions.style.display = "flex";
       if (btnDownUsers) {
         btnDownUsers.textContent = "Down users list";
-        btnDownUsers.style.display = "inline-flex"; // Reset display on close
+        btnDownUsers.style.display = "inline-flex";
       }
     }
   };
@@ -322,11 +320,9 @@ if (complaintModal) {
 if (btnDownUsers) {
   btnDownUsers.onclick = () => {
     if (btnDownUsers.textContent === "Down users list") {
-      // Show down users
       showDownUsersInModal();
       btnDownUsers.textContent = "← Back to complaint";
     } else {
-      // Restore original complaint details
       if (modalBody && modalBody._originalHtml) {
         modalBody.innerHTML = modalBody._originalHtml;
       }
@@ -335,36 +331,31 @@ if (btnDownUsers) {
   };
 }
 
+/* ===============================
+   ✅ UPDATED: Complaint Popup with fixed grouping and edge cases
+================================= */
 async function openComplaintPopup(windowName, userId, userName) {
   try {
     showSpinner();
-    const url = `${baseUrl}/${windowName}/heroesocr_user_complaints/${encodeURIComponent(userId)}`;
+    const url = `${baseUrl}/${windowName}/complaint_history/${userId}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error("Failed");
     const data = await res.json();
-    const rows = data.rows || [];
     
-    // ✅ Store complaint ID for delete operation
-    let latestComplaintId = null;
-    if (rows.length > 0 && rows[0].id) {
-      latestComplaintId = rows[0].id;
-    }
+    const current = data.current_complaints || [];
+    const logs = data.complaint_logs || [];
+    const latest = current[0] || null;
 
     if (modalTitle) modalTitle.textContent = `${userName || "User"} (${userId}) - Complaints`;
 
     let html = "";
-    if (!rows.length) {
+    if (!latest && logs.length === 0) {
       html = `<div class="modalRow">No complaint history found.</div>`;
     } else {
-      const latest = rows[0];
-
-      // ✅ Store down list for this complaint
-      currentDownList = (latest.down_list || "")
-        .split(",")
-        .map(x => x.trim())
-        .filter(Boolean);
-
-      // 🔧 FIX 2️⃣: Hide button if down_list is empty
+      currentDownList = latest?.down_list
+        ? latest.down_list.split(",").map(x => x.trim()).filter(Boolean)
+        : [];
+      
       if (btnDownUsers) {
         if (currentDownList.length === 0) {
           btnDownUsers.style.display = "none";
@@ -373,61 +364,114 @@ async function openComplaintPopup(windowName, userId, userName) {
         }
       }
 
-      html += `
-        <div class="modalEntry">
-          <div class="modalRow"><b>Complaint ID:</b> ${latest.id || "N/A"}</div>
-          <div class="modalRow"><b>Status:</b> ${latest.status || ""}</div>
-          <div class="modalRow"><b>Page:</b> ${latest.page_id || ""}</div>
-          <div class="modalRow"><b>Reason:</b> ${latest.reason || ""}</div>
-          <div class="modalRow"><b>Created:</b> ${latest.created_at || ""}</div>
-          <div class="modalRow"><b>Team:</b> ${latest.Team || ""}</div>
-          <div class="modalRow"><b>Mode:</b> ${latest.Mode || ""}</div>
-          <div class="modalRow"><b>Power:</b> ${latest.Power ?? ""}</div>
-          <div class="modalRow"><b>Phone:</b> ${latest.Phone || ""}</div>
-          <div class="modalRow"><b>PON:</b> ${latest.pon || ""}</div>
-          <div class="modalRow"><b>Drops:</b> ${latest.drops || ""}</div>
-          <div class="modalRow"><b>Down Time:</b> ${latest.down_time || ""}</div>
-          <div class="modalRow"><b>Down List:</b> ${latest.down_list || "None"}</div>
-          <div class="modalRow"><b>StatusUpDown:</b> ${latest.statusUpDown || ""}</div>
-        </div>
-      `;
-
-      html += `<div style="font-weight:800;margin-top:10px;">History</div>`;
-
-      rows.forEach((r, idx) => {
+      if (latest) {
         html += `
           <div class="modalEntry">
-            <div class="modalRow"><b>#</b> ${idx + 1} <b>Complaint ID:</b> ${r.id || "N/A"}</div>
-            <div class="modalRow"><b>Status:</b> ${r.status || ""}</div>
-            <div class="modalRow"><b>Page:</b> ${r.page_id || ""}</div>
-            <div class="modalRow"><b>Reason:</b> ${r.reason || ""}</div>
-            <div class="modalRow"><b>Created:</b> ${r.created_at || ""}</div>
-            <div class="modalRow"><b>Team:</b> ${r.Team || ""}</div>
-            <div class="modalRow"><b>Mode:</b> ${r.Mode || ""}</div>
+            <div class="modalRow"><b>Complaint ID:</b> ${latest.id || "N/A"}</div>
+            <div class="modalRow"><b>Status:</b> ${latest.status || ""}</div>
+            <div class="modalRow"><b>Page:</b> ${latest.page_id || ""}</div>
+            <div class="modalRow"><b>Reason:</b> ${latest.reason || ""}</div>
+            <div class="modalRow"><b>Created:</b> ${latest.created_at || ""}</div>
+            <div class="modalRow"><b>Team:</b> ${latest.Team || ""}</div>
+            <div class="modalRow"><b>Mode:</b> ${latest.Mode || ""}</div>
+            <div class="modalRow"><b>Power:</b> ${latest.Power ?? ""}</div>
+            <div class="modalRow"><b>Phone:</b> ${latest.Phone || ""}</div>
+            <div class="modalRow"><b>PON:</b> ${latest.pon || ""}</div>
+            <div class="modalRow"><b>Drops:</b> ${latest.drops || ""}</div>
+            <div class="modalRow"><b>Down Time:</b> ${latest.down_time || ""}</div>
+            <div class="modalRow"><b>Down List:</b> ${latest.down_list || "None"}</div>
+            <div class="modalRow"><b>StatusUpDown:</b> ${latest.statusUpDown || ""}</div>
           </div>
         `;
-      });
+      }
+
+      if (logs.length > 0) {
+        // ✅ FIX 1: Group by user_id + reason (same user + same reason = same ticket)
+        const ticketMap = {};
+        logs.forEach(l => {
+          const key = (l.user_id || "") + "|" + (l.reason || "");
+          if (!ticketMap[key]) ticketMap[key] = [];
+          ticketMap[key].push(l);
+        });
+
+        html += `<div style="font-weight:800;margin-top:10px;">History</div>`;
+        
+        // ✅ Track if we actually show any history
+        let hasHistory = false;
+
+        // ✅ FIX 2: Only show valid OPEN + CLOSE pairs with proper handling
+        Object.values(ticketMap).forEach(group => {
+          // ✅ Match exact database values: "Open" and "Close" (case insensitive)
+          const opens = group.filter(x => String(x.status).toLowerCase() === "open");
+          const closes = group.filter(x => String(x.status).toLowerCase() === "close");
+          
+          // ✅ Skip if no opens or no closes
+          if (!opens.length || !closes.length) return;
+          
+          // ✅ Get latest open and latest close (using copy to avoid modifying original)
+          const open = [...opens].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+          const close = [...closes].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+          
+          // ✅ RULE 1: Skip if no close (redundant check but safe)
+          if (!open || !close) return;
+          
+          // ✅ RULE 2: Skip if latest entry is OPEN (already shown in current complaints)
+          const sorted = [...group].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+          if (String(sorted[0].status).toLowerCase() === "open") return;
+
+          // ✅ We have a valid history entry
+          hasHistory = true;
+
+          const openTime = open?.created_at || "";
+          const closeTime = close?.created_at || "";
+
+          let duration = "-";
+          if (openTime && closeTime) {
+            const diff = new Date(closeTime) - new Date(openTime);
+            const mins = Math.floor(diff / 60000);
+            const hrs = Math.floor(mins / 60);
+            const remMin = mins % 60;
+            duration = `${hrs}h ${remMin}m`;
+          }
+
+          html += `
+            <div class="modalEntry" style="margin-bottom: 12px; border-left: 3px solid #4caf50; padding-left: 10px;">
+              <div class="modalRow"><b>Ticket Status:</b> Closed</div>
+              <div class="modalRow"><b>Opened:</b> ${openTime}</div>
+              <div class="modalRow"><b>Closed:</b> ${closeTime}</div>
+              <div class="modalRow"><b>Duration:</b> ${duration}</div>
+              <div class="modalRow"><b>Reason:</b> ${open?.reason || ""}</div>
+              <div class="modalRow"><b>Page:</b> ${open?.page_id || ""}</div>
+            </div>
+          `;
+        });
+        
+        // ✅ FIX 3: Show message if no history found
+        if (!hasHistory) {
+          html += `<div class="modalRow" style="color: var(--text-secondary); padding: 10px;">No closed complaint history found</div>`;
+        }
+      } else {
+        // ✅ No logs at all
+        html += `<div class="modalRow" style="color: var(--text-secondary); padding: 10px;">No complaint history found</div>`;
+      }
     }
 
     if (modalBody) {
       modalBody.innerHTML = html;
-      modalBody._originalHtml = html; // Store original HTML for back button
+      modalBody._originalHtml = html;
     }
     
-    // Reset button text
     if (btnDownUsers) {
       btnDownUsers.textContent = "Down users list";
     }
     
-    // Show modal actions
     if (modalActions) {
       modalActions.style.display = "flex";
     }
     
     if (complaintModal) complaintModal.style.display = "flex";
 
-    // Return the complaint ID for delete operation
-    return latestComplaintId;
+    return latest?.id || null;
 
   } catch (e) {
     showToast("Popup load failed");
@@ -436,7 +480,6 @@ async function openComplaintPopup(windowName, userId, userName) {
     hideSpinner();
   }
 }
-
 /* ===============================
    ✅ Main Load
 ================================= */
@@ -530,7 +573,7 @@ function applyAllFilters() {
 }
 
 /* ===============================
-   ✅ Cards Render
+   ✅ Cards Render (with remark fallback)
 ================================= */
 function renderCards() {
   cardContainer.innerHTML = "";
@@ -581,17 +624,7 @@ function renderCards() {
 }
 
 function renderSingleCard(r, index, container) {
-  // 🔧 FIX 1️⃣: Card par Down Users Count dikhao
-  // Calculate down users count from down_list
-  let downCount = 0;
-  
-  if (r.down_list) {
-    downCount = String(r.down_list)
-      .split(",")
-      .map(x => x.trim())
-      .filter(Boolean)
-      .length;
-  }
+  let downCount = r.downusers || 0;
 
   const card = document.createElement("div");
   card.className = "complaint-card";
@@ -607,6 +640,9 @@ function renderSingleCard(r, index, container) {
 
   const statusEmoji = r["User status"] === "UP" ? '📶' : r["User status"] === "DOWN" ? '📵' : '💀';
 
+  // ✅ FIX 3: Remark with fallback to reason
+  const remarkValue = r.Remarks || r.reason || "";
+
   card.innerHTML = `
       <div class="card-header">
         ${r.Name || "Unknown"} <span>${statusEmoji}</span>
@@ -617,10 +653,9 @@ function renderSingleCard(r, index, container) {
       <div class="card-row"><span class="card-label">PON:</span><span class="card-value">${r.PON || ""}</span></div>
       <div class="card-row"><span class="card-label">Location:</span><span class="card-value">${r.Location || ""}</span></div>
       <div class="card-row"><span class="card-label">Power:</span><span class="card-value">${r.Power?.toFixed(2) || ""}</span></div>
-      <!-- 🔧 FIX 1️⃣: Down row updated to show actual down users count -->
       <div class="card-row"><span class="card-label">Down users:</span><span class="card-value">${downCount}</span></div>
       <div class="card-row"><span class="card-label">MAC / Serial:</span><span class="card-value">${r.MAC || ""} / ${r.Serial || ""}</span></div>
-      <div class="card-row"><span class="card-label">Remark:</span><input class="remarkInput" value="${r.Remarks || ""}"></div>
+      <div class="card-row"><span class="card-label">Remark:</span><input class="remarkInput" value="${remarkValue}"></div>
       <div class="card-row">
         <span class="card-label">Team:</span>
         <select class="teamSel">
@@ -655,7 +690,7 @@ function renderSingleCard(r, index, container) {
   const modeSel = card.querySelector(".modeSel");
   modeSel.value = r.Mode || "Manual";
 
-  // ✅ MARK BUTTON
+  // MARK BUTTON
   card.querySelector(".mark-btn").onclick = async (e) => {
     e.stopPropagation();
     const payload = {
@@ -688,13 +723,12 @@ function renderSingleCard(r, index, container) {
     }
   };
 
-  // ✅ UPDATED REMOVE BUTTON - WITH COMPLAINT ID FETCH (FIXED)
+  // REMOVE BUTTON
   card.querySelector(".remove-btn").onclick = async (e) => {
     e.stopPropagation();
     
     let complaintId = r._complaint_id;
     
-    // If complaint ID is not already stored, fetch it
     if (!complaintId && r.Users) {
       showToast("Fetching complaint details...");
       try {
@@ -706,7 +740,7 @@ function renderSingleCard(r, index, container) {
           const openComplaints = (data.rows || []).filter(c => c.status?.toLowerCase() === "open");
           if (openComplaints.length > 0) {
             complaintId = openComplaints[0].id;
-            r._complaint_id = complaintId; // Store for future use
+            r._complaint_id = complaintId;
           }
         }
       } catch (error) {
@@ -761,7 +795,7 @@ function renderSingleCard(r, index, container) {
 }
 
 /* ===============================
-   ✅ Table Render
+   ✅ Table Render (with remark fallback)
 ================================= */
 function renderTable() {
   tbody.innerHTML = "";
@@ -796,15 +830,7 @@ function renderTable() {
       }
     }
 
-    // 🔧 FIX 1️⃣: Calculate down users count for table row
-    let downCount = 0;
-    if (r.down_list) {
-      downCount = String(r.down_list)
-        .split(",")
-        .map(x => x.trim())
-        .filter(Boolean)
-        .length;
-    }
+    let downCount = r.downusers || 0;
 
     const tr = document.createElement("tr");
     const statusEmoji = r["User status"] === "UP" ? '📶' : r["User status"] === "DOWN" ? '📵' : '💀';
@@ -818,6 +844,9 @@ function renderTable() {
       tr.classList.add("offline");
     }
 
+    // ✅ FIX 3: Remark with fallback to reason
+    const remarkValue = r.Remarks || r.reason || "";
+
     tr.innerHTML = `
       <td>${r._window || ""}</td>
       <td>${r.PON || ""}</td>
@@ -825,9 +854,8 @@ function renderTable() {
       <td>${r["Last called no"] || ""}</td>
       <td>${r.Name || ""}</td>
       <td>${r.MAC || ""}<br><small>${r.Serial || ""}</small></td>
-      <!-- 🔧 FIX 1️⃣: Down column updated to show actual down users count -->
       <td>${downCount}</td>
-      <td><input class="remarkInput remarkCol" value="${r.Remarks || ""}"></td>
+      <td><input class="remarkInput remarkCol" value="${remarkValue}"></td>
       <td class="teamCol resizableCol">
         <select class="teamSel">
           <option>Sushil</option>
@@ -865,7 +893,7 @@ function renderTable() {
     const modeSelect = tr.querySelector(".modeSel");
     modeSelect.value = r.Mode || "Manual";
 
-    // ✅ MARK BUTTON
+    // MARK BUTTON
     tr.querySelector(".mark-btn").onclick = async (e) => {
       e.stopPropagation();
       const payload = {
@@ -898,7 +926,7 @@ function renderTable() {
       }
     };
 
-    // ✅ FIXED REMOVE BUTTON - WITH COMPLAINT ID FETCH
+    // REMOVE BUTTON
     tr.querySelector(".remove-btn").onclick = async (e) => {
       e.stopPropagation();
 
@@ -1030,7 +1058,6 @@ document.getElementById("btnCsv").onclick = () => {
     ];
   });
 
-  // ✅ FIXED: Proper CSV formatting with quotes and escaping
   const csvContent = [
     headers.map(h => `"${h}"`).join(","),
     ...rows.map(row =>
@@ -1059,51 +1086,45 @@ document.getElementById("btnComplains").onclick = async () => {
   try {
     isComplainsView = true;
 
-    let openComplaints = [];
+    let allData = [];
+
     if (currentWindow === "ALL") {
       const [m, s] = await Promise.all([
-        fetchOpenComplaintUsers("MEROTRA"),
-        fetchOpenComplaintUsers("SUNNY"),
+        fetch(`${baseUrl}/MEROTRA/heroesocr_latest`).then(r => r.json()),
+        fetch(`${baseUrl}/SUNNY/heroesocr_latest`).then(r => r.json())
       ]);
-      openComplaints = [...m, ...s];
+
+      allData = [
+        ...(m.rows || []).map(r => ({ ...r, _window: "MEROTRA" })),
+        ...(s.rows || []).map(r => ({ ...r, _window: "SUNNY" }))
+      ];
     } else {
-      openComplaints = await fetchOpenComplaintUsers(currentWindow);
+      const res = await fetch(`${baseUrl}/${currentWindow}/heroesocr_latest`);
+      const data = await res.json();
+      allData = (data.rows || []).map(r => ({ ...r, _window: currentWindow }));
     }
 
-    await fetchData();
+    rawRows = allData.map(r => ({
+      ...r,
+      Users: r.user_id,
+      Name: r.name,
+      Location: r.address,
+      "Last called no": r.Phone || "",
+      PON: r.pon || "",
+      "User status": r.statusUpDown || "DOWN",
+      down_list: r.down_list || "",
+      downusers: r.downusers || 0,
+      _complaint_id: r.id,
+      _complain_open: true
+    }));
 
-    const openMap = {};
-    openComplaints.forEach(c => {
-      const id = String(c.user_id || "").trim().toLowerCase();
-      if (id) openMap[id] = c;
-    });
+    showToast(rawRows.length ? `${rawRows.length} complaints loaded` : "No complaints found");
 
-    rawRows = rawRows
-      .filter(r => openMap[String(r.Users || "").trim().toLowerCase()])
-      .map(r => {
-        const c = openMap[String(r.Users || "").trim().toLowerCase()];
-        return {
-          ...r,
-          _complain_open: true,
-          _page_id: c.page_id || "Others",
-          _created_at: c.created_at || "",
-          _complaint_id: c.id || null,
-          down_list: c.down_list || r.down_list || "" // Make sure down_list is available
-        };
-      });
-
-    rawRows.sort((a, b) => {
-      const po = pageOrder(a._page_id) - pageOrder(b._page_id);
-      if (po !== 0) return po;
-      return safeParseDate(b._created_at) - safeParseDate(a._created_at);
-    });
-
-    showToast(rawRows.length ? `${rawRows.length} open complains users loaded` : "No open complains found");
     populateFilters();
     applyAllFilters();
 
   } catch (e) {
-    showToast("Failed to load complains");
+    showToast("Failed to load complaints");
   } finally {
     hideSpinner();
   }
