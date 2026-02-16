@@ -721,3 +721,95 @@ tbody tr.onlineRow td {
 .ponOkBtn:hover {
   opacity: 0.95;
 }
+/* ===============================
+   🔥 New styles for enhanced features
+================================= */
+
+/* Loading spinner for buttons */
+.loading-spinner-small {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin-small 0.8s linear infinite;
+  margin-right: 4px;
+}
+
+@keyframes spin-small {
+  to { transform: rotate(360deg); }
+}
+
+/* Warning badge for cards */
+.warning-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: help;
+  animation: pulse-warning 2s infinite;
+}
+
+@keyframes pulse-warning {
+  0% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0.7; transform: scale(1); }
+}
+
+/* Improved fade remove with scale */
+.fade-remove {
+  opacity: 0;
+  transform: scale(0.9);
+  transition: all 0.3s ease;
+}
+
+/* Highlight pulse for next item */
+.highlight-pulse {
+  animation: highlight-pulse 1s ease;
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+@keyframes highlight-pulse {
+  0% { box-shadow: 0 0 0 0px var(--accent); }
+  50% { box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.4); }
+  100% { box-shadow: 0 0 0 0px var(--accent); }
+}
+
+/* Disabled button state */
+.mark-btn:disabled,
+.remove-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Enhanced modal warning box */
+.modalBox .warning-box {
+  background: #fff2f0;
+  border: 1px solid #ffccc7;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 10px 0;
+}
+
+/* Latest complaint highlight */
+.latest-complaint {
+  background: #fff1f0;
+  border-left: 3px solid #ff4d4f;
+  padding: 8px;
+  border-radius: 4px;
+  margin: 4px 0;
+}
+
+/* Success toast variation */
+#toast.success {
+  background: #52c41a;
+  color: white;
+}
+
+/* Table warning emoji */
+td .warning-emoji {
+  margin-left: 4px;
+  font-size: 12px;
+}
