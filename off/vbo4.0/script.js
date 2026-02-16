@@ -51,22 +51,120 @@ const btnDownUsers = document.getElementById("btnDownUsers");
 const modalCloseButton = document.getElementById("modalCloseButton");
 
 /* ===============================
+   ✅ Confirmation Modal for Existing Complaints
+================================= */
+// Create confirmation modal if it doesn't exist
+let confirmModal = document.getElementById("confirmModal");
+if (!confirmModal) {
+  confirmModal = document.createElement("div");
+  confirmModal.id = "confirmModal";
+  confirmModal.className = "modalOverlay";
+  confirmModal.innerHTML = `
+    <div class="modalBox" style="max-width: 400px;">
+      <div class="modalHead">
+        <div class="modalTitle" id="confirmModalTitle">⚠️ Already Complaints Exist</div>
+        <button class="modalClose" id="confirmModalCloseBtn">Close</button>
+      </div>
+      <div id="confirmModalBody" style="padding: 16px 0;"></div>
+      <div class="modalActions" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px;">
+        <button id="confirmCancelBtn" class="modalCloseBtn" style="padding: 8px 16px; background: #f0f0f0; border: none; border-radius: 6px; cursor: pointer;">Cancel</button>
+        <button id="confirmContinueBtn" class="modalActionBtn" style="padding: 8px 16px; background: var(--success); color: white; border: none; border-radius: 6px; cursor: pointer;">Continue</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(confirmModal);
+}
+
+const confirmModalEl = document.getElementById("confirmModal");
+const confirmModalTitle = document.getElementById("confirmModalTitle");
+const confirmModalBody = document.getElementById("confirmModalBody");
+const confirmModalCloseBtn = document.getElementById("confirmModalCloseBtn");
+const confirmCancelBtn = document.getElementById("confirmCancelBtn");
+const confirmContinueBtn = document.getElementById("confirmContinueBtn");
+
+// Variables to store pending mark action
+let pendingMarkAction = null;
+
+// Close confirmation modal handlers
+function closeConfirmModal() {
+  confirmModalEl.style.display = "none";
+  pendingMarkAction = null;
+}
+
+if (confirmModalCloseBtn) {
+  confirmModalCloseBtn.onclick = closeConfirmModal;
+}
+
+if (confirmCancelBtn) {
+  confirmCancelBtn.onclick = closeConfirmModal;
+}
+
+if (confirmContinueBtn) {
+  confirmContinueBtn.onclick = async () => {
+    if (!pendingMarkAction) return;
+
+    const action = pendingMarkAction;
+    closeConfirmModal();
+
+    await action(); // yaha markButton already pass hai
+  };
+}
+
+
+
+if (confirmModalEl) {
+  confirmModalEl.onclick = (e) => {
+    if (e.target === confirmModalEl) {
+      closeConfirmModal();
+    }
+  };
+}
+
+/* ===============================
    ✅ Toast + Spinner
 ================================= */
-function showToast(msg) {
+function showToast(msg, isSuccess = false) {
   toastEl.textContent = msg;
   toastEl.classList.add("show");
-  setTimeout(() => toastEl.classList.remove("show"), 3000);
+  if (isSuccess) {
+    toastEl.style.background = "#52c41a";
+    toastEl.style.color = "white";
+  } else {
+    toastEl.style.background = "rgba(0,0,0,0.85)";
+    toastEl.style.color = "white";
+  }
+  setTimeout(() => {
+    toastEl.classList.remove("show");
+    // Reset color after hide
+    setTimeout(() => {
+      toastEl.style.background = "rgba(0,0,0,0.85)";
+    }, 300);
+  }, 3000);
 }
+
 function showSpinner() { spinner.style.display = "flex"; }
 function hideSpinner() { spinner.style.display = "none"; }
 
-/* ✅ Smooth fadeout removal */
+/* ✅ Smooth fadeout removal with scale */
 function fadeOutAndRemove(el) {
   if (!el) return;
   el.classList.add("fade-remove");
+  
+  // Get next element to focus (for auto-scroll)
+  const nextEl = el.nextElementSibling;
+  
   setTimeout(() => {
     el.remove();
+    
+    // Auto-scroll to next item if exists
+    if (nextEl && nextEl.scrollIntoView) {
+      setTimeout(() => {
+        nextEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Add highlight effect to next item
+        nextEl.classList.add('highlight-pulse');
+        setTimeout(() => nextEl.classList.remove('highlight-pulse'), 1000);
+      }, 100);
+    }
 
     const cardCount = document.querySelectorAll(".complaint-card").length;
     const rowCount = document.querySelectorAll("#dataTable tbody tr").length;
@@ -134,6 +232,168 @@ async function fetchOpenComplaintUsers(windowName) {
 }
 
 /* ===============================
+   ✅ Check for Existing Open Complaints
+================================= */
+async function checkExistingOpenComplaints(windowName, userId) {
+  try {
+    const url = `${baseUrl}/${windowName}/heroesocr_user_complaints/${encodeURIComponent(userId)}`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    
+    const data = await res.json();
+    const openComplaints = (data.rows || []).filter(c => 
+      String(c.status || "").toLowerCase() === "open"
+    );
+    
+    return openComplaints;
+  } catch (error) {
+    console.error("Error checking open complaints:", error);
+    return [];
+  }
+}
+
+/* ===============================
+   ✅ Show Existing Complaints Popup (Improved)
+================================= */
+function showExistingComplaintsPopup(openComplaints, onContinue, markButton) {
+  // 🔥 Prevent multiple popups and handle button state
+  if (confirmModalEl.style.display === "flex") {
+    if (markButton) {
+      markButton.disabled = false;
+      markButton.innerHTML = '<i class="fa-solid fa-thumbtack"></i>';
+    }
+    return;
+  }
+  
+  // Store the continue action
+  pendingMarkAction = onContinue;
+  
+  // Build popup content with better highlighting
+  const count = openComplaints.length;
+  let reasonsHtml = '';
+  
+  // Sort by created_at (latest first)
+  const sortedComplaints = [...openComplaints].sort((a, b) => 
+    new Date(b.created_at || 0) - new Date(a.created_at || 0)
+  );
+  
+  // Get top 3 reasons (or all if less than 3)
+  const topReasons = sortedComplaints.slice(0, 3);
+  topReasons.forEach((complaint, index) => {
+    const reason = complaint.reason || "No reason provided";
+    const isLatest = index === 0;
+    const created = complaint.created_at ? new Date(complaint.created_at).toLocaleString() : "";
+    
+    reasonsHtml += `
+      <div style="padding: 8px; margin: 4px 0; background: ${isLatest ? '#fff1f0' : 'transparent'}; border-left: ${isLatest ? '3px solid #ff4d4f' : 'none'}; border-radius: 4px;">
+        <div style="display: flex; justify-content: space-between;">
+          <span style="font-weight: ${isLatest ? '600' : 'normal'}; color: ${isLatest ? '#cf1322' : 'var(--text-primary)'};">${index + 1}. ${reason}</span>
+          ${isLatest ? '<span style="color: #ff4d4f; font-size: 0.8rem;">⬅️ Latest</span>' : ''}
+        </div>
+        ${created ? `<div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">${created}</div>` : ''}
+      </div>
+    `;
+  });
+  
+  if (openComplaints.length > 3) {
+    reasonsHtml += `<div style="padding: 8px; color: var(--text-secondary); font-style: italic;">... and ${openComplaints.length - 3} more</div>`;
+  }
+  
+  confirmModalBody.innerHTML = `
+    <div style="margin-bottom: 16px;">
+      <div style="font-weight: 700; color: #d40000; font-size: 1.2rem; margin-bottom: 8px;">
+        ⚠️ ${count} complaint${count > 1 ? 's' : ''} already open
+      </div>
+      <div style="background: #fff2f0; padding: 12px; border-radius: 8px; border: 1px solid #ffccc7;">
+        ${reasonsHtml}
+      </div>
+    </div>
+    <div style="font-size: 0.85rem; color: var(--text-secondary); padding: 10px; background: #e6f7ff; border-radius: 6px; border-left: 3px solid #1890ff;">
+      <i class="fa-solid fa-info-circle"></i> 
+      <strong>Note:</strong> Notification may take a few minutes after marking a new complain. Avoid re-marking if it's already marked.
+    </div>
+  `;
+  
+  // Show the modal
+  confirmModalEl.style.display = "flex";
+}
+
+/* ===============================
+   ✅ Mark Complaint Handler with Open Check (No spinner)
+================================= */
+async function handleMarkComplaint(r, cardElement, remarkInput, modeSelect, teamSelect, markButton) {
+  // First check for existing open complaints - NO SPINNER
+  try {
+    const openComplaints = await checkExistingOpenComplaints(r._window, r.Users || "");
+    
+    if (openComplaints.length > 0) {
+      // Show confirmation popup
+      showExistingComplaintsPopup(openComplaints, async () => {
+        // This is the continue action
+        await executeMarkComplaint(r, cardElement, remarkInput, modeSelect, teamSelect, markButton);
+      }, markButton);
+      
+      // Re-enable button if we're showing popup (user might cancel)
+      if (markButton) {
+        markButton.disabled = false;
+        markButton.innerHTML = '<i class="fa-solid fa-thumbtack"></i>';
+      }
+    } else {
+      // No open complaints, proceed directly
+      await executeMarkComplaint(r, cardElement, remarkInput, modeSelect, teamSelect, markButton);
+    }
+  } catch (error) {
+    console.error("Error in mark complaint check:", error);
+    // If check fails, proceed anyway (fail open)
+    await executeMarkComplaint(r, cardElement, remarkInput, modeSelect, teamSelect, markButton);
+  }
+}
+
+/* ===============================
+   ✅ Execute Mark Complaint (Actual API call)
+================================= */
+async function executeMarkComplaint(r, cardElement, remarkInput, modeSelect, teamSelect, markButton) {
+  const payload = {
+    user_id: r.Users || "",
+    name: r.Name || "",
+    address: r.Location || "",
+    reason: remarkInput.value || "",
+    Mode: modeSelect.value,
+    Power: r.Power,
+    Phone: r["Last called no"] || "",
+    Team: teamSelect.value,
+    pon: r.PON || "",
+    window: r._window
+  };
+  
+  try {
+    const response = await fetch(`${baseUrl}/${r._window}/mark_complain`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json();
+    if (result.status === "ok") {
+      showToast("✅ Complaint marked successfully", true);
+      fadeOutAndRemove(cardElement);
+    } else {
+      showToast(result.message || "❌ Mark failed");
+      // Re-enable button if not removed
+      if (markButton && document.body.contains(cardElement)) {
+        markButton.disabled = false;
+        markButton.innerHTML = '<i class="fa-solid fa-thumbtack"></i>';
+      }
+    }
+  } catch {
+    showToast("❌ Mark failed");
+    if (markButton && document.body.contains(cardElement)) {
+      markButton.disabled = false;
+      markButton.innerHTML = '<i class="fa-solid fa-thumbtack"></i>';
+    }
+  }
+}
+
+/* ===============================
    ✅ Helpers
 ================================= */
 function setHeadingCountAndTimestamp(count, runtimeTs) {
@@ -163,6 +423,77 @@ function getDefaultTeam(windowName) {
   if (windowName === "MEROTRA") return "Sushil";
   if (windowName === "SUNNY") return "Shaan";
   return "";
+}
+
+/* ===============================
+   ✅ LAZY Badge Check (only for visible cards)
+   Using Intersection Observer to check only when needed
+================================= */
+const badgeCheckQueue = new Map();
+let observer = null;
+
+function setupLazyBadgeCheck() {
+  if (observer) return;
+  
+  observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const card = entry.target;
+        const userId = card.dataset.userId;
+        const windowName = card.dataset.window;
+        
+        if (userId && windowName && !card.dataset.badgeChecked) {
+          card.dataset.badgeChecked = "true";
+          
+          // Small delay to batch requests
+          setTimeout(() => {
+            checkAndShowBadge(card, windowName, userId);
+          }, 100);
+        }
+      }
+    });
+  }, {
+    rootMargin: "50px", // Start loading when within 50px of viewport
+    threshold: 0.1
+  });
+  
+  return observer;
+}
+
+async function checkAndShowBadge(card, windowName, userId) {
+  try {
+    // Use a simple cache to avoid duplicate checks
+    const cacheKey = `${windowName}_${userId}`;
+    if (badgeCheckQueue.has(cacheKey)) {
+      const hasOpen = badgeCheckQueue.get(cacheKey);
+      if (hasOpen) addWarningBadge(card);
+      return;
+    }
+    
+    const openComplaints = await checkExistingOpenComplaints(windowName, userId);
+    const hasOpen = openComplaints.length > 0;
+    
+    // Cache for 30 seconds
+    badgeCheckQueue.set(cacheKey, hasOpen);
+    setTimeout(() => badgeCheckQueue.delete(cacheKey), 30000);
+    
+    if (hasOpen) {
+      addWarningBadge(card);
+    }
+  } catch (error) {
+    console.error("Badge check failed:", error);
+  }
+}
+
+function addWarningBadge(card) {
+  const header = card.querySelector(".card-header div");
+  if (header && !header.querySelector(".warning-badge")) {
+    const badge = document.createElement("span");
+    badge.className = "warning-badge";
+    badge.title = "Already has open complaints";
+    badge.innerHTML = "⚠️";
+    header.appendChild(badge);
+  }
 }
 
 /* ===============================
@@ -386,7 +717,7 @@ async function openComplaintPopup(windowName, userId, userName) {
       }
 
       if (logs.length > 0) {
-        // ✅ FIX 1: Group by user_id + reason (same user + same reason = same ticket)
+        // ✅ Group by user_id + reason (same user + same reason = same ticket)
         const ticketMap = {};
         logs.forEach(l => {
           const key = (l.user_id || "") + "|" + (l.reason || "");
@@ -399,7 +730,7 @@ async function openComplaintPopup(windowName, userId, userName) {
         // ✅ Track if we actually show any history
         let hasHistory = false;
 
-        // ✅ FIX 2: Only show valid OPEN + CLOSE pairs with proper handling
+        // ✅ Only show valid OPEN + CLOSE pairs with proper handling
         Object.values(ticketMap).forEach(group => {
           // ✅ Match exact database values: "Open" and "Close" (case insensitive)
           const opens = group.filter(x => String(x.status).toLowerCase() === "open");
@@ -446,7 +777,7 @@ async function openComplaintPopup(windowName, userId, userName) {
           `;
         });
         
-        // ✅ FIX 3: Show message if no history found
+        // ✅ Show message if no history found
         if (!hasHistory) {
           html += `<div class="modalRow" style="color: var(--text-secondary); padding: 10px;">No closed complaint history found</div>`;
         }
@@ -573,9 +904,9 @@ function applyAllFilters() {
 }
 
 /* ===============================
-   ✅ Cards Render (with remark fallback)
+   ✅ Cards Render (with LAZY warning badge)
 ================================= */
-function renderCards() {
+async function renderCards() {
   cardContainer.innerHTML = "";
   tableWrap.style.display = "none";
 
@@ -588,7 +919,11 @@ function renderCards() {
   const hasSections = filtered.some(r => r._page_id);
   if (!hasSections) {
     cardContainer.style.display = "grid";
-    filtered.forEach((r, index) => renderSingleCard(r, index, cardContainer));
+    
+    // Render cards without blocking on badge checks
+    filtered.forEach((r, index) => {
+      renderSingleCard(r, index, cardContainer);
+    });
     return;
   }
 
@@ -602,6 +937,9 @@ function renderCards() {
   });
 
   const groupKeys = Object.keys(groups).sort((a, b) => pageOrder(a) - pageOrder(b));
+
+  // Setup lazy badge checker
+  const badgeObserver = setupLazyBadgeCheck();
 
   groupKeys.forEach(gk => {
     groups[gk].sort((a, b) => safeParseDate(b._created_at) - safeParseDate(a._created_at));
@@ -618,7 +956,13 @@ function renderCards() {
     grid.className = "sectionGrid";
     section.appendChild(grid);
 
-    groups[gk].forEach((r, idx) => renderSingleCard(r, idx, grid));
+    groups[gk].forEach((r, idx) => {
+      const card = renderSingleCard(r, idx, grid);
+      if (badgeObserver && r.Users && !r._complain_open) {
+        badgeObserver.observe(card);
+      }
+    });
+    
     cardContainer.appendChild(section);
   });
 }
@@ -640,12 +984,22 @@ function renderSingleCard(r, index, container) {
 
   const statusEmoji = r["User status"] === "UP" ? '📶' : r["User status"] === "DOWN" ? '📵' : '💀';
 
-  // ✅ FIX 3: Remark with fallback to reason
+  // ✅ Store user data for lazy badge check
+  if (r.Users) {
+    card.dataset.userId = r.Users;
+    card.dataset.window = r._window;
+  }
+
+  // ✅ Remark with fallback to reason
   const remarkValue = r.Remarks || r.reason || "";
 
   card.innerHTML = `
       <div class="card-header">
-        ${r.Name || "Unknown"} <span>${statusEmoji}</span>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          ${r.Name || "Unknown"}
+          <!-- Badge will be added dynamically by observer -->
+        </div>
+        <span>${statusEmoji}</span>
       </div>
       <div class="card-row"><span class="card-label">Window:</span><span class="card-value">${r._window || ""}</span></div>
       <div class="card-row"><span class="card-label">User ID:</span><span class="card-value">${r.Users || ""}</span></div>
@@ -690,114 +1044,128 @@ function renderSingleCard(r, index, container) {
   const modeSel = card.querySelector(".modeSel");
   modeSel.value = r.Mode || "Manual";
 
-  // MARK BUTTON
-  card.querySelector(".mark-btn").onclick = async (e) => {
+  // MARK BUTTON - With loading state and button disable
+  const markBtn = card.querySelector(".mark-btn");
+  markBtn.onclick = async (e) => {
     e.stopPropagation();
-    const payload = {
-      user_id: r.Users || "",
-      name: r.Name || "",
-      address: r.Location || "",
-      reason: card.querySelector(".remarkInput").value || "",
-      Mode: modeSel.value,
-      Power: r.Power,
-      Phone: r["Last called no"] || "",
-      Team: teamSel.value,
-      pon: r.PON || "",
-      window: r._window
-    };
+    
+    // 🔥 Prevent double click
+    if (markBtn.disabled) return;
+    
+    // 🔥 Loading state
+    markBtn.disabled = true;
+    const originalHTML = markBtn.innerHTML;
+    markBtn.innerHTML = '<span class="loading-spinner-small"></span>⏳';
+    
     try {
-      const response = await fetch(`${baseUrl}/${r._window}/mark_complain`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const result = await response.json();
-      if (result.status === "ok") {
-        showToast("Marked !");
-        fadeOutAndRemove(card);
-      } else {
-        showToast(result.message || "Mark failed");
+      await handleMarkComplaint(r, card, card.querySelector(".remarkInput"), modeSel, teamSel, markBtn);
+    } catch (error) {
+      console.error(error);
+      // If error and card not removed, restore button
+      if (document.body.contains(card)) {
+        markBtn.disabled = false;
+        markBtn.innerHTML = originalHTML;
       }
-    } catch {
-      showToast("Mark failed");
     }
+    // Note: If successful, card gets removed so button state doesn't matter
   };
 
-  // REMOVE BUTTON
-  card.querySelector(".remove-btn").onclick = async (e) => {
+  // REMOVE BUTTON - Add loading state too for consistency
+  const removeBtn = card.querySelector(".remove-btn");
+  removeBtn.onclick = async (e) => {
     e.stopPropagation();
     
-    let complaintId = r._complaint_id;
+    if (removeBtn.disabled) return;
     
-    if (!complaintId && r.Users) {
-      showToast("Fetching complaint details...");
-      try {
-        showSpinner();
-        const url = `${baseUrl}/${r._window}/heroesocr_user_complaints/${encodeURIComponent(r.Users)}`;
-        const res = await fetch(url);
-        if (res.ok) {
-          const data = await res.json();
-          const openComplaints = (data.rows || []).filter(c => c.status?.toLowerCase() === "open");
-          if (openComplaints.length > 0) {
-            complaintId = openComplaints[0].id;
-            r._complaint_id = complaintId;
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching complaint ID:", error);
-      } finally {
-        hideSpinner();
-      }
-    }
-    
-    if (!complaintId || complaintId === "" || isNaN(Number(complaintId))) {
-      showToast("No open complaint found for this user!");
-      return;
-    }
+    removeBtn.disabled = true;
+    const originalHTML = removeBtn.innerHTML;
+    removeBtn.innerHTML = '<span class="loading-spinner-small"></span>⏳';
     
     try {
-      const payload = {
-        complaint_id: complaintId,
-        user_id: r.Users || "",
-        name: r.Name || "",
-        address: r.Location || "",
-        reason: card.querySelector(".remarkInput").value || "",
-        Mode: modeSel.value,
-        Power: r.Power,
-        Phone: r["Last called no"] || "",
-        Team: teamSel.value,
-        pon: r.PON || "",
-        window: r._window
-      };
+      let complaintId = r._complaint_id;
       
-      const response = await fetch(`${baseUrl}/${r._window}/remove_complain`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+      if (!complaintId && r.Users) {
+        showToast("Fetching complaint details...");
+        try {
+          showSpinner();
+          const url = `${baseUrl}/${r._window}/heroesocr_user_complaints/${encodeURIComponent(r.Users)}`;
+          const res = await fetch(url);
+          if (res.ok) {
+            const data = await res.json();
+            const openComplaints = (data.rows || []).filter(c => c.status?.toLowerCase() === "open");
+            if (openComplaints.length > 0) {
+              complaintId = openComplaints[0].id;
+              r._complaint_id = complaintId;
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching complaint ID:", error);
+        } finally {
+          hideSpinner();
+        }
+      }
       
-      const result = await response.json();
+      if (!complaintId || complaintId === "" || isNaN(Number(complaintId))) {
+        showToast("No open complaint found for this user!");
+        removeBtn.disabled = false;
+        removeBtn.innerHTML = originalHTML;
+        return;
+      }
       
-      if (result.status === "ok") {
-        showToast("Removed !");
-        fadeOutAndRemove(card);
-      } else {
-        showToast(result.message || "Remove failed");
+      try {
+        const payload = {
+          complaint_id: complaintId,
+          user_id: r.Users || "",
+          name: r.Name || "",
+          address: r.Location || "",
+          reason: card.querySelector(".remarkInput").value || "",
+          Mode: modeSel.value,
+          Power: r.Power,
+          Phone: r["Last called no"] || "",
+          Team: teamSel.value,
+          pon: r.PON || "",
+          window: r._window
+        };
+        
+        const response = await fetch(`${baseUrl}/${r._window}/remove_complain`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === "ok") {
+          showToast("✅ Complaint removed successfully", true);
+          fadeOutAndRemove(card);
+        } else {
+          showToast(result.message || "❌ Remove failed");
+          removeBtn.disabled = false;
+          removeBtn.innerHTML = originalHTML;
+        }
+      } catch (error) {
+        console.error("Delete error:", error);
+        showToast("❌ Remove failed");
+        removeBtn.disabled = false;
+        removeBtn.innerHTML = originalHTML;
       }
     } catch (error) {
-      console.error("Delete error:", error);
-      showToast("Remove failed");
+      console.error("Error in remove handler:", error);
+      removeBtn.disabled = false;
+      removeBtn.innerHTML = originalHTML;
     }
   };
 
   container.appendChild(card);
   setTimeout(() => card.classList.add("visible"), index * 60);
+  
+  return card; // Return card for observer
 }
 
 /* ===============================
-   ✅ Table Render (with remark fallback)
+   ✅ Table Render (no badge for table to avoid performance issues)
 ================================= */
-function renderTable() {
+async function renderTable() {
   tbody.innerHTML = "";
   cardContainer.style.display = "none";
   tableWrap.style.display = "block";
@@ -819,7 +1187,8 @@ function renderTable() {
 
   let lastGroup = "";
 
-  tableData.forEach(r => {
+  // Table view: No badge checks (performance)
+  for (const r of tableData) {
     if (r._page_id) {
       const grp = r._page_id || "";
       if (grp !== lastGroup) {
@@ -844,7 +1213,7 @@ function renderTable() {
       tr.classList.add("offline");
     }
 
-    // ✅ FIX 3: Remark with fallback to reason
+    // ✅ Remark with fallback to reason
     const remarkValue = r.Remarks || r.reason || "";
 
     tr.innerHTML = `
@@ -870,7 +1239,7 @@ function renderTable() {
       </td>
       <td>${r.Power != null ? Number(r.Power).toFixed(2) : ""}</td>
       <td>
-<button class="mark-btn"><i class="fa-solid fa-thumbtack"></i></button>
+        <button class="mark-btn"><i class="fa-solid fa-thumbtack"></i></button>
         <button class="remove-btn"><i class="fas fa-trash"></i></button>
       </td>
       <td>${r.Location || ""}</td>
@@ -893,106 +1262,114 @@ function renderTable() {
     const modeSelect = tr.querySelector(".modeSel");
     modeSelect.value = r.Mode || "Manual";
 
-    // MARK BUTTON
-    tr.querySelector(".mark-btn").onclick = async (e) => {
+    // MARK BUTTON - With loading state
+    const markBtn = tr.querySelector(".mark-btn");
+    markBtn.onclick = async (e) => {
       e.stopPropagation();
-      const payload = {
-        user_id: r.Users || "",
-        name: r.Name || "",
-        address: r.Location || "",
-        reason: tr.querySelector(".remarkInput").value || "",
-        Mode: modeSelect.value,
-        Power: r.Power,
-        Phone: r["Last called no"] || "",
-        Team: teamSelect.value,
-        pon: r.PON || "",
-        window: r._window
-      };
+      
+      if (markBtn.disabled) return;
+      
+      markBtn.disabled = true;
+      const originalHTML = markBtn.innerHTML;
+      markBtn.innerHTML = '<span class="loading-spinner-small"></span>⏳';
+      
       try {
-        const response = await fetch(`${baseUrl}/${r._window}/mark_complain`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-        const result = await response.json();
-        if (result.status === "ok") {
-          showToast("Marked !");
-          fadeOutAndRemove(tr);
-        } else {
-          showToast(result.message || "Mark failed");
+        await handleMarkComplaint(r, tr, tr.querySelector(".remarkInput"), modeSelect, teamSelect, markBtn);
+      } catch (error) {
+        console.error(error);
+        if (document.body.contains(tr)) {
+          markBtn.disabled = false;
+          markBtn.innerHTML = originalHTML;
         }
-      } catch {
-        showToast("Mark failed");
       }
     };
 
-    // REMOVE BUTTON
-    tr.querySelector(".remove-btn").onclick = async (e) => {
+    // REMOVE BUTTON - With loading state
+    const removeBtn = tr.querySelector(".remove-btn");
+    removeBtn.onclick = async (e) => {
       e.stopPropagation();
 
-      let complaintId = r._complaint_id;
-
-      if (!complaintId && r.Users) {
-        showToast("Fetching complaint details...");
-        try {
-          showSpinner();
-          const url = `${baseUrl}/${r._window}/heroesocr_user_complaints/${encodeURIComponent(r.Users)}`;
-          const res = await fetch(url);
-          if (res.ok) {
-            const data = await res.json();
-            const openComplaints = (data.rows || []).filter(c => c.status?.toLowerCase() === "open");
-            if (openComplaints.length > 0) {
-              complaintId = openComplaints[0].id;
-              r._complaint_id = complaintId;
-            }
-          }
-        } catch (error) {
-          console.error(error);
-        } finally {
-          hideSpinner();
-        }
-      }
-
-      if (!complaintId || isNaN(Number(complaintId))) {
-        showToast("No open complaint found for this user!");
-        return;
-      }
+      if (removeBtn.disabled) return;
+      
+      removeBtn.disabled = true;
+      const originalHTML = removeBtn.innerHTML;
+      removeBtn.innerHTML = '<span class="loading-spinner-small"></span>⏳';
 
       try {
-        const payload = {
-          complaint_id: complaintId,
-          user_id: r.Users || "",
-          name: r.Name || "",
-          address: r.Location || "",
-          reason: tr.querySelector(".remarkInput").value || "",
-          Mode: modeSelect.value,
-          Power: r.Power,
-          Phone: r["Last called no"] || "",
-          Team: teamSelect.value,
-          pon: r.PON || "",
-          window: r._window
-        };
+        let complaintId = r._complaint_id;
 
-        const response = await fetch(`${baseUrl}/${r._window}/remove_complain`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        const result = await response.json();
-        if (result.status === "ok") {
-          showToast("Removed !");
-          fadeOutAndRemove(tr);
-        } else {
-          showToast(result.message || "Remove failed");
+        if (!complaintId && r.Users) {
+          showToast("Fetching complaint details...");
+          try {
+            showSpinner();
+            const url = `${baseUrl}/${r._window}/heroesocr_user_complaints/${encodeURIComponent(r.Users)}`;
+            const res = await fetch(url);
+            if (res.ok) {
+              const data = await res.json();
+              const openComplaints = (data.rows || []).filter(c => c.status?.toLowerCase() === "open");
+              if (openComplaints.length > 0) {
+                complaintId = openComplaints[0].id;
+                r._complaint_id = complaintId;
+              }
+            }
+          } catch (error) {
+            console.error(error);
+          } finally {
+            hideSpinner();
+          }
         }
-      } catch (err) {
-        showToast("Remove failed");
+
+        if (!complaintId || isNaN(Number(complaintId))) {
+          showToast("No open complaint found for this user!");
+          removeBtn.disabled = false;
+          removeBtn.innerHTML = originalHTML;
+          return;
+        }
+
+        try {
+          const payload = {
+            complaint_id: complaintId,
+            user_id: r.Users || "",
+            name: r.Name || "",
+            address: r.Location || "",
+            reason: tr.querySelector(".remarkInput").value || "",
+            Mode: modeSelect.value,
+            Power: r.Power,
+            Phone: r["Last called no"] || "",
+            Team: teamSelect.value,
+            pon: r.PON || "",
+            window: r._window
+          };
+
+          const response = await fetch(`${baseUrl}/${r._window}/remove_complain`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+
+          const result = await response.json();
+          if (result.status === "ok") {
+            showToast("✅ Complaint removed successfully", true);
+            fadeOutAndRemove(tr);
+          } else {
+            showToast(result.message || "❌ Remove failed");
+            removeBtn.disabled = false;
+            removeBtn.innerHTML = originalHTML;
+          }
+        } catch (err) {
+          showToast("❌ Remove failed");
+          removeBtn.disabled = false;
+          removeBtn.innerHTML = originalHTML;
+        }
+      } catch (error) {
+        console.error("Error in remove handler:", error);
+        removeBtn.disabled = false;
+        removeBtn.innerHTML = originalHTML;
       }
     };
 
     tbody.appendChild(tr);
-  });
+  }
 }
 
 /* ===============================
@@ -1030,8 +1407,8 @@ document.getElementById("btnScreenshot").onclick = () => {
     link.download = "complain-manager-screenshot.png";
     link.href = canvas.toDataURL("image/png");
     link.click();
-    showToast("Screenshot downloaded");
-  }).catch(() => showToast("Screenshot failed"));
+    showToast("✅ Screenshot downloaded", true);
+  }).catch(() => showToast("❌ Screenshot failed"));
 };
 
 document.getElementById("btnCsv").onclick = () => {
@@ -1072,7 +1449,7 @@ document.getElementById("btnCsv").onclick = () => {
   link.href = url;
   link.click();
   URL.revokeObjectURL(url);
-  showToast("CSV downloaded");
+  showToast("✅ CSV downloaded", true);
 };
 
 document.getElementById("windowSelect").onchange = (e) => {
@@ -1111,7 +1488,7 @@ document.getElementById("btnComplains").onclick = async () => {
       Location: r.address,
       "Last called no": r.Phone || "",
       PON: r.pon || "",
-      "User status": r.statusUpDown || "DOWN",
+      "User status": (r.statusUpDown || r["User status"] || "DOWN").toUpperCase(),
       down_list: r.down_list || "",
       downusers: r.downusers || 0,
       _complaint_id: r.id,
