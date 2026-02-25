@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=0.5, user-scalable=yes">
+
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="kwikkwash.css">
+</head>
+
+<body>
+
+  <header class="header">kwikkwash.com</header>
+  <button class="logout-btn" onclick="logout()">Logout</button>
+
+  <div class="container">
+    <div class="tab-bar" id="tab-bar"></div>
+
+    <div id="tab-contents" class="tab-contents" style="position: relative; width: 100%; flex-grow: 1; overflow: hidden;">
+
+      <!-- HOME TAB -->
+      <div id="home-content" class="tab-content active">
+
+        <div class="right-grid">
+
+          <!-- ADMINISTRATION -->
+          <div>
+            <div class="right-button btn-admin clickable" onclick="toggleOptions(this)">
+              Administration
+            </div>
+
+            <div class="dropdown-options">
+
+              <!-- Attendance (ACTIVE) -->
+<a class="right-button btn-admin right-button-small clickable"
+   href="https://quikwash.in/attendancekwikkwash/001surajpal.html">
+  Attendance
+</a>
+
+              <!-- Tasks (DISABLED) -->
+              <div class="right-button btn-admin right-button-small disabled-btn"onclick="showComingSoon()">
+                Tasks
+              </div>
+
+            </div>
+          </div>
+
+          <!-- STOCK -->
+          <div>
+            <div class="right-button btn-stock clickable" onclick="toggleOptions(this)">
+              Stock
+            </div>
+
+            <div class="dropdown-options">
+
+              <div class="right-button btn-stock right-button-small disabled-btn"onclick="showComingSoon()">
+                Inbound
+              </div>
+
+              <div class="right-button btn-stock right-button-small disabled-btn"onclick="showComingSoon()">
+                Outbound
+              </div>
+
+            </div>
+          </div>
+
+          <!-- TASKS -->
+          <div>
+            <div class="right-button btn-tasks clickable" onclick="toggleOptions(this)">
+              Tasks
+            </div>
+
+            <div class="dropdown-options">
+
+              <div class="right-button btn-tasks right-button-small disabled-btn"onclick="showComingSoon()">
+                Allocated
+              </div>
+
+              <div class="right-button btn-tasks right-button-small disabled-btn"onclick="showComingSoon()">
+                Unallocated
+              </div>
+
+            </div>
+          </div>
+
+          <!-- MY SCORE -->
+          <div>
+            <div class="right-button btn-score clickable" onclick="toggleOptions(this)">
+              My Score
+            </div>
+
+            <div class="dropdown-options">
+
+              <div class="right-button btn-score right-button-small disabled-btn"onclick="showComingSoon()">
+                My Score
+              </div>
+
+              <div class="right-button btn-score right-button-small disabled-btn"onclick="showComingSoon()">
+                Team Rank
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <footer>Powered by: Trust In Deal Enterprises</footer>
+
+  <div id="popupMessage">Coming soon</div>
+
+  <style>
+    .disabled-btn {
+      opacity: 0.5;
+      filter: grayscale(1);
+      cursor: not-allowed;
+    }
+  </style>
+
+  <script>
+    function showComingSoon() {
+      const popup = document.getElementById('popupMessage');
+      popup.style.display = 'block';
+      setTimeout(() => { popup.style.display = 'none'; }, 1200);
+    }
+  </script>
+
+  <script src="kwikkwash.js"></script>
+
+</body>
+</html>
