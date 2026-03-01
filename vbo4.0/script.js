@@ -93,6 +93,19 @@ const utils = {
             hour12: false
         });
     },
+    formatLastSeen(date) {
+    if (!date) return 'N/A';
+
+    const d = new Date(date);
+
+    return d.toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    });
+},
     showToast(message, type = 'info', duration = 3000) {
         elements.toast.textContent = message;
         elements.toast.className = `toast ${type}`;
@@ -153,7 +166,8 @@ const utils = {
             pon: user.PON || '',
             address: user.address || '',
             mac: user.MAC || '',
-            window: windowName || CONFIG.CURRENT_WINDOW
+            window: windowName || CONFIG.CURRENT_WINDOW,
+            lastSeen: user['Last Seen'] || ''
         };
     },
     debounce(func, wait) {
@@ -507,6 +521,7 @@ const uiRenderer = {
         let tableHTML = `<table class="user-table"><thead><tr>
             <th>#</th><th>Name</th><th>User ID</th><th>Phone</th><th>Power (dBm)</th><th>Location</th><th>Status</th><th>PON</th>
             ${CONFIG.CURRENT_WINDOW === 'ALL' ? '<th>Window</th>' : ''}
+            <th>Last Seen</th>
         </tr></thead><tbody>`;
         users.forEach((user, index) => {
             const isOffline = user.status === 'DOWN';
@@ -525,6 +540,7 @@ const uiRenderer = {
                 <td>${statusBadge}</td>
                 <td><code>${user.pon || 'N/A'}</code></td>
                 ${CONFIG.CURRENT_WINDOW === 'ALL' ? `<td><span class="window-badge-small">${user.window || 'N/A'}</span></td>` : ''}
+                <td>${user.lastSeen ? utils.formatLastSeen(user.lastSeen) : 'N/A'}</td>
             </tr>`;
         });
         tableHTML += `</tbody></table>`;
@@ -854,4 +870,5 @@ const app = {
 };
 
 document.addEventListener('DOMContentLoaded', () => app.initialize());
+
 window.addEventListener('beforeunload', () => app.cleanup());
