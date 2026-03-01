@@ -519,9 +519,7 @@ const uiRenderer = {
             return;
         }
         let tableHTML = `<table class="user-table"><thead><tr>
-            <th>#</th><th>Name</th><th>User ID</th><th>Phone</th><th>Power (dBm)</th><th>Location</th><th>Status</th><th>PON</th>
-            ${CONFIG.CURRENT_WINDOW === 'ALL' ? '<th>Window</th>' : ''}
-            <th>Last Seen</th>
+            <th>#</th><th>Name</th><th>User ID</th><th>Phone</th><th>Power (dBm)</th><th>Location</th><th>Status</th><th>PON</th>            <th>Last Seen</th>
         </tr></thead><tbody>`;
         users.forEach((user, index) => {
             const isOffline = user.status === 'DOWN';
@@ -538,8 +536,7 @@ const uiRenderer = {
                 <td>${user.power !== null ? user.power.toFixed(2) : 'N/A'}</td>
                 <td title="${location}">${truncated}</td>
                 <td>${statusBadge}</td>
-                <td><code>${user.pon || 'N/A'}</code></td>
-                ${CONFIG.CURRENT_WINDOW === 'ALL' ? `<td><span class="window-badge-small">${user.window || 'N/A'}</span></td>` : ''}
+                <td><code>${user.pon || 'N/A'}</code></td>               
                 <td>${user.lastSeen ? utils.formatLastSeen(user.lastSeen) : 'N/A'}</td>
             </tr>`;
         });
@@ -872,3 +869,4 @@ const app = {
 document.addEventListener('DOMContentLoaded', () => app.initialize());
 
 window.addEventListener('beforeunload', () => app.cleanup());
+
