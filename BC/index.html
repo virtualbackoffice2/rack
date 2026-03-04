@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes"/>
+  <title>Achal Merotra BC | Professional Management System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div>
+      <h1>Achal Merotra BC</h1>
+      <p class="subtitle">Professional Committee Management System</p>
+    </div>
+    <!-- Theme toggle will be added by JavaScript -->
+  </header>
+
+  <!-- Dashboard Cards -->
+  <div class="dashboard-cards">
+    <div class="stat-card">
+      <i class="fas fa-users"></i>
+      <div>
+        <h3 id="totalMembers">0</h3>
+        <p>Total Members</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <i class="fas fa-layer-group"></i>
+      <div>
+        <h3 id="totalGroups">0</h3>
+        <p>Active Groups</p>
+        <!-- Progress bar will be added by JS -->
+      </div>
+    </div>
+    <div class="stat-card">
+      <i class="fas fa-rupee-sign"></i>
+      <div>
+        <h3 id="totalCollection">₹0</h3>
+        <p>Total Collection</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <i class="fas fa-exclamation-triangle"></i>
+      <div>
+        <h3 id="pendingDues">₹0</h3>
+        <p>Pending Dues</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <i class="fas fa-gavel"></i>
+      <div>
+        <h3 id="totalBids">0</h3>
+        <p>Total Bids</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Monthly Snapshot -->
+  <div class="summary-panel" id="monthlySnapshot">
+    <div class="summary-item">
+      <label>This Month</label>
+      <span id="monthlyCollected">₹0</span>
+    </div>
+    <div class="summary-item">
+      <label>Pending</label>
+      <span id="monthlyPending" class="pending">₹0</span>
+    </div>
+    <div class="summary-item">
+      <label>Bids</label>
+      <span id="monthlyBids">0</span>
+    </div>
+    <div class="summary-item">
+      <label>Collection %</label>
+      <span id="monthlyPercent">0%</span>
+    </div>
+  </div>
+
+  <!-- Tabs Navigation -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('groups', event)">1. Groups</button>
+    <button class="tab-btn" onclick="switchTab('members', event)">2. Members</button>
+    <button class="tab-btn" onclick="switchTab('payments', event)">3. Payments</button>
+    <button class="tab-btn" onclick="switchTab('bids', event)">4. Bids</button>
+    <button class="tab-btn hidden" onclick="switchTab('reports', event)">5. Reports</button>
+  </div>
+
+  <!-- ========== GROUPS TAB ========== -->
+  <div id="groupsTab" class="tab-content active">
+    <div class="card">
+      <div class="card-header">
+        <h2>Group Management</h2>
+        <button class="btn-primary" onclick="showForm('addGroupForm')">
+          <i class="fas fa-plus"></i> Create
+        </button>
+      </div>
+
+      <!-- Search -->
+      <input type="text" id="searchGroups" class="search-bar" placeholder="🔍 Search groups by name or ID..." oninput="searchTerms.groups = this.value.toLowerCase(); renderGroupsTable();">
+
+      <!-- Add/Edit Group Form -->
+      <div id="addGroupForm" class="form-container hidden">
+        <h3 id="groupFormTitle">Create New Group</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Group Name *</label>
+            <input id="groupName" placeholder="e.g., Gold Committee" required>
+          </div>
+          <div class="form-group">
+            <label>Monthly Amount (₹) *</label>
+            <input id="groupMonthlyAmount" type="number" min="1" required>
+          </div>
+          <div class="form-group">
+            <label>Total Members *</label>
+            <input id="groupTotalMembers" type="number" min="1" required>
+          </div>
+          <div class="form-group">
+            <label>Duration (months) *</label>
+            <input id="groupDuration" type="number" min="1" required>
+          </div>
+          <div class="form-group">
+            <label>Start Date *</label>
+            <input id="groupStartDate" type="date" required>
+          </div>
+          <div class="form-group full-width">
+            <label>Select Members</label>
+            <select id="groupMembers" multiple size="4"></select>
+            <small>Hold Ctrl to select multiple</small>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" onclick="addGroup()">Create Group</button>
+          <button class="btn-outline" onclick="hideForm('addGroupForm')">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Groups Table -->
+      <div class="table-responsive">
+        <table id="groupsTable">
+          <thead>
+            <tr>
+              <th onclick="sortTable('groups', 'id')">ID <i class="fas fa-sort"></i></th>
+              <th onclick="sortTable('groups', 'name')">Name <i class="fas fa-sort"></i></th>
+              <th onclick="sortTable('groups', 'monthly_amount')">Monthly <i class="fas fa-sort"></i></th>
+              <th>Members</th>
+              <th onclick="sortTable('groups', 'duration')">Duration <i class="fas fa-sort"></i></th>
+              <th onclick="sortTable('groups', 'start_date')">Start Date <i class="fas fa-sort"></i></th>
+              <th>End Date</th>
+              <th>Collection</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div id="groupsMessage" class="message hidden"></div>
+    </div>
+  </div>
+
+  <!-- ========== MEMBERS TAB ========== -->
+  <div id="membersTab" class="tab-content">
+    <div class="card">
+      <div class="card-header">
+        <h2>Member Management</h2>
+        <button class="btn-primary" onclick="showForm('addMemberForm')">
+          <i class="fas fa-plus"></i> Add
+        </button>
+      </div>
+
+      <!-- Search -->
+      <input type="text" id="searchMembers" class="search-bar" placeholder="🔍 Search members by name, phone or ID..." oninput="searchTerms.members = this.value.toLowerCase(); renderMembersTable();">
+
+      <!-- Add/Edit Member Form -->
+      <div id="addMemberForm" class="form-container hidden">
+        <h3 id="memberFormTitle">Add New Member</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Full Name *</label>
+            <input id="memberName" placeholder="Enter full name" required>
+          </div>
+          <div class="form-group">
+            <label>Phone Number *</label>
+            <input id="memberPhone" type="tel" placeholder="10 digit number" required>
+          </div>
+          <div class="form-group full-width">
+            <label>Address / Notes</label>
+            <textarea id="memberNotes" rows="2" placeholder="Full address, remarks..."></textarea>
+          </div>
+          <div class="form-group full-width">
+            <label>Assign to Groups</label>
+            <select id="memberGroups" multiple size="4"></select>
+            <small>Hold Ctrl to select multiple</small>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" onclick="addMember()">Save Member</button>
+          <button class="btn-outline" onclick="hideForm('addMemberForm')">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Members Table -->
+      <div class="table-responsive">
+        <table id="membersTable">
+          <thead>
+            <tr>
+              <th onclick="sortTable('members', 'id')">ID <i class="fas fa-sort"></i></th>
+              <th onclick="sortTable('members', 'name')">Name <i class="fas fa-sort"></i></th>
+              <th onclick="sortTable('members', 'phone')">Phone <i class="fas fa-sort"></i></th>
+              <th>Address</th>
+              <th>Groups</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div id="membersMessage" class="message hidden"></div>
+    </div>
+  </div>
+
+  <!-- ========== PAYMENTS TAB ========== -->
+  <div id="paymentsTab" class="tab-content">
+    <div class="card">
+      <div class="card-header">
+        <h2>Payment Recording</h2>
+        <button class="btn-primary" onclick="showForm('addPaymentForm')">
+          <i class="fas fa-plus"></i> Record
+        </button>
+      </div>
+
+      <!-- Payment Filters -->
+      <div class="filters">
+        <select id="filterGroup" onchange="renderPaymentsTable()">
+          <option value="">All Groups</option>
+        </select>
+        <select id="filterMember" onchange="renderPaymentsTable()">
+          <option value="">All Members</option>
+        </select>
+        <select id="filterMonth" onchange="renderPaymentsTable()">
+          <option value="">All Months</option>
+        </select>
+        <select id="filterYear" onchange="renderPaymentsTable()">
+          <option value="">All Years</option>
+        </select>
+        <button class="btn-outline" onclick="clearFilters()">Clear</button>
+      </div>
+
+      <!-- Search -->
+      <input type="text" id="searchPayments" class="search-bar" placeholder="🔍 Search payments by group, member..." oninput="searchTerms.payments = this.value.toLowerCase(); renderPaymentsTable();">
+
+      <!-- Add/Edit Payment Form -->
+      <div id="addPaymentForm" class="form-container hidden">
+        <h3 id="paymentFormTitle">Record New Payment</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Select Group *</label>
+            <select id="paymentGroupId" required onchange="onPaymentGroupChange()"></select>
+          </div>
+          <div class="form-group">
+            <label>Select Member *</label>
+            <select id="paymentMemberId" required></select>
+          </div>
+          <div class="form-group">
+            <label>Amount (₹) *</label>
+            <input id="paymentAmount" type="number" step="0.01" min="1" required>
+          </div>
+          <div class="form-group">
+            <label>Month *</label>
+            <select id="paymentMonth" required onchange="validatePaymentMonth()"></select>
+          </div>
+          <div class="form-group">
+            <label>Year *</label>
+            <select id="paymentYear" required onchange="validatePaymentMonth()"></select>
+          </div>
+          <div class="form-group full-width">
+            <label>Note</label>
+            <textarea id="paymentNote" rows="2" placeholder="Any remarks..."></textarea>
+          </div>
+        </div>
+        <div id="monthWarning" class="message warning hidden">
+          ⚠️ Selected date is outside group duration
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" onclick="addPayment()">Save Payment</button>
+          <button class="btn-outline" onclick="hideForm('addPaymentForm')">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Payments Table -->
+      <div class="table-responsive">
+        <table id="paymentsTable">
+          <thead>
+            <tr>
+              <th onclick="sortTable('payments', 'id')">ID <i class="fas fa-sort"></i></th>
+              <th onclick="sortTable('payments', 'group_id')">Group <i class="fas fa-sort"></i></th>
+              <th onclick="sortTable('payments', 'member_id')">Member <i class="fas fa-sort"></i></th>
+              <th onclick="sortTable('payments', 'amount')">Amount <i class="fas fa-sort"></i></th>
+              <th onclick="sortTable('payments', 'month')">Month <i class="fas fa-sort"></i></th>
+              <th onclick="sortTable('payments', 'year')">Year <i class="fas fa-sort"></i></th>
+              <th>Status</th>
+              <th>Note</th>
+              <th onclick="sortTable('payments', 'created_at')">Date <i class="fas fa-sort"></i></th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div id="paymentsMessage" class="message hidden"></div>
+    </div>
+  </div>
+
+  <!-- ========== BIDS TAB ========== -->
+  <div id="bidsTab" class="tab-content">
+    <div class="card">
+      <div class="card-header">
+        <h2>Bid Management</h2>
+        <button class="btn-primary" onclick="showForm('addBidForm')">
+          <i class="fas fa-plus"></i> Add Bid
+        </button>
+      </div>
+
+      <!-- Search -->
+      <input type="text" id="searchBids" class="search-bar" placeholder="🔍 Search bids by group, member..." oninput="searchTerms.bids = this.value.toLowerCase(); renderBidsTable();">
+
+      <!-- Add/Edit Bid Form -->
+      <div id="addBidForm" class="form-container hidden">
+        <h3 id="bidFormTitle">Record New Bid</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Select Group *</label>
+            <select id="bidGroupId" required></select>
+          </div>
+          <div class="form-group">
+            <label>Select Member *</label>
+            <select id="bidMemberId" required></select>
+          </div>
+          <div class="form-group">
+            <label>Bid Amount (₹) *</label>
+            <input id="bidAmount" type="number" min="1" required>
+          </div>
+          <div class="form-group">
+            <label>Bid Month *</label>
+            <select id="bidMonth" required></select>
+          </div>
+          <div class="form-group">
+            <label>Bid Year *</label>
+            <select id="bidYear" required></select>
+          </div>
+          <div class="form-group">
+            <label>Bid Number / Round</label>
+            <input id="bidNumber" type="number" min="1" value="1">
+          </div>
+          <div class="form-group full-width">
+            <label>Notes</label>
+            <textarea id="bidNotes" rows="2" placeholder="Any remarks..."></textarea>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" onclick="addBid()">Save Bid</button>
+          <button class="btn-outline" onclick="hideForm('addBidForm')">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Bids Summary -->
+      <div class="report-summary">
+        <div class="summary-item">
+          <label>Total Bids</label>
+          <span id="totalBidsCount">0</span>
+        </div>
+        <div class="summary-item">
+          <label>Total Bid Amount</label>
+          <span id="totalBidAmount">₹0</span>
+        </div>
+        <div class="summary-item">
+          <label>Average Bid</label>
+          <span id="averageBid">₹0</span>
+        </div>
+        <div class="summary-item">
+          <label>This Month</label>
+          <span id="monthlyBidsCount">0</span>
+        </div>
+      </div>
+
+      <!-- Bids Table -->
+      <div class="table-responsive">
+        <table id="bidsTable">
+          <thead>
+            <tr>
+              <th onclick="sortTable('bids', 'id')">ID <i class="fas fa-sort"></i></th>
+              <th onclick="sortTable('bids', 'group_id')">Group <i class="fas fa-sort"></i></th>
+              <th onclick="sortTable('bids', 'member_id')">Member <i class="fas fa-sort"></i></th>
+              <th onclick="sortTable('bids', 'amount')">Bid Amount <i class="fas fa-sort"></i></th>
+              <th onclick="sortTable('bids', 'month')">Month <i class="fas fa-sort"></i></th>
+              <th onclick="sortTable('bids', 'year')">Year <i class="fas fa-sort"></i></th>
+              <th>Round</th>
+              <th>Notes</th>
+              <th onclick="sortTable('bids', 'created_at')">Date <i class="fas fa-sort"></i></th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div id="bidsMessage" class="message hidden"></div>
+    </div>
+  </div>
+
+  <!-- ========== REPORTS TAB ========== -->
+  <div id="reportsTab" class="tab-content">
+    <div class="card">
+      <div class="card-header">
+        <h2>Dues & Reports</h2>
+      </div>
+
+      <!-- Report Filters -->
+      <div class="filters">
+        <select id="reportGroup" onchange="loadDuesReport()">
+          <option value="">All Groups</option>
+        </select>
+        <select id="reportMember" onchange="loadDuesReport()">
+          <option value="">All Members</option>
+        </select>
+        <select id="reportMonth" onchange="loadDuesReport()">
+          <option value="">Select Month</option>
+        </select>
+        <select id="reportYear" onchange="loadDuesReport()">
+          <option value="">Select Year</option>
+        </select>
+        <button class="btn-primary" onclick="loadDuesReport()">
+          <i class="fas fa-search"></i> Generate
+        </button>
+        <button class="btn-outline" onclick="exportReport()">
+          <i class="fas fa-download"></i> CSV
+        </button>
+        <button class="btn-outline" onclick="printReport()">
+          <i class="fas fa-print"></i> Print
+        </button>
+      </div>
+
+      <!-- Summary Cards -->
+      <div class="report-summary">
+        <div class="summary-item">
+          <label>Total Expected</label>
+          <span id="totalExpected">₹0</span>
+        </div>
+        <div class="summary-item">
+          <label>Total Collected</label>
+          <span id="totalCollected">₹0</span>
+        </div>
+        <div class="summary-item">
+          <label>Total Pending</label>
+          <span id="totalPending" class="pending">₹0</span>
+        </div>
+        <div class="summary-item">
+          <label>Collection %</label>
+          <span id="collectionPercent">0%</span>
+        </div>
+        <div class="summary-item">
+          <label>Total Bids</label>
+          <span id="reportTotalBids">₹0</span>
+        </div>
+      </div>
+
+      <!-- Detailed Dues Table -->
+      <div class="table-responsive">
+        <table id="duesTable">
+          <thead>
+            <tr>
+              <th>Member</th>
+              <th>Group</th>
+              <th>Phone</th>
+              <th>Month</th>
+              <th>Year</th>
+              <th>Due Amount</th>
+              <th>Paid Amount</th>
+              <th>Balance</th>
+              <th>Status</th>
+              <th>Bid Amount</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div id="reportsMessage" class="message hidden"></div>
+    </div>
+  </div>
+</div> <!-- container close -->
+
+<!-- Modal -->
+<div id="modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="modalTitle"></h3>
+      <span class="modal-close" onclick="hideModal()">×</span>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
