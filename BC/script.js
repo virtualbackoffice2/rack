@@ -37,6 +37,157 @@ let searchTerms = {
 let editId = null;
 let editType = null;
 
+// ==================== MODULAR ALERT SYSTEM ====================
+const Alert = {
+  show: function(message, type = 'success', duration = 3000) {
+    // Remove existing alert if any
+    const existingAlert = document.querySelector('.custom-alert');
+    if (existingAlert) existingAlert.remove();
+    
+    // Create alert element
+    const alert = document.createElement('div');
+    alert.className = `custom-alert ${type}`;
+    alert.innerHTML = `
+      <div class="alert-content">
+        <i class="fas ${this.getIcon(type)}"></i>
+        <span>${message}</span>
+      </div>
+      <div class="alert-progress"></div>
+    `;
+    
+    // Add to body
+    document.body.appendChild(alert);
+    
+    // Trigger animation
+    setTimeout(() => alert.classList.add('show'), 10);
+    
+    // Auto remove after duration
+    setTimeout(() => {
+      alert.classList.remove('show');
+      setTimeout(() => alert.remove(), 300);
+    }, duration);
+  },
+  
+  confirm: function(message, title = 'Confirm Action', callback) {
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+    
+    modalTitle.textContent = title;
+    modalBody.innerHTML = `
+      <div class="confirm-dialog">
+        <p><i class="fas fa-exclamation-triangle" style="color: var(--warning); font-size: 2rem; margin-bottom: 1rem;"></i></p>
+        <p>${message}</p>
+        <div class="form-actions" style="justify-content: center; margin-top: 2rem;">
+          <button class="btn-danger" onclick="Alert.handleConfirm(true)"><i class="fas fa-check"></i> Yes, Delete</button>
+          <button class="btn-outline" onclick="Alert.handleConfirm(false)"><i class="fas fa-times"></i> Cancel</button>
+        </div>
+      </div>
+    `;
+    
+    // Store callback
+    this.confirmCallback = callback;
+    modal.classList.add('active');
+  },
+  
+  handleConfirm: function(confirmed) {
+    hideModal();
+    if (confirmed && this.confirmCallback) {
+      this.confirmCallback();
+    }
+    this.confirmCallback = null;
+  },
+  
+  getIcon: function(type) {
+    const icons = {
+      success: 'fa-check-circle',
+      error: 'fa-exclamation-circle',
+      warning: 'fa-exclamation-triangle',
+      info: 'fa-info-circle'
+    };
+    return icons[type] || icons.info;
+  }
+};
+
+// Add CSS for custom alerts
+const style = document.createElement('style');
+style.textContent = `
+  .custom-alert {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    min-width: 300px;
+    max-width: 400px;
+    background: var(--white);
+    border-radius: 10px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    z-index: 9999;
+    transform: translateX(120%);
+    transition: transform 0.3s ease;
+    overflow: hidden;
+  }
+  
+  .custom-alert.show {
+    transform: translateX(0);
+  }
+  
+  .custom-alert.success { border-left: 4px solid var(--success); }
+  .custom-alert.error { border-left: 4px solid var(--danger); }
+  .custom-alert.warning { border-left: 4px solid var(--warning); }
+  .custom-alert.info { border-left: 4px solid var(--info); }
+  
+  .alert-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+  }
+  
+  .alert-content i {
+    font-size: 1.3rem;
+  }
+  
+  .custom-alert.success i { color: var(--success); }
+  .custom-alert.error i { color: var(--danger); }
+  .custom-alert.warning i { color: var(--warning); }
+  .custom-alert.info i { color: var(--info); }
+  
+  .alert-progress {
+    height: 3px;
+    background: var(--gray-200);
+    width: 100%;
+    position: relative;
+  }
+  
+  .alert-progress::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background: var(--primary);
+    animation: alertProgress 3s linear forwards;
+  }
+  
+  @keyframes alertProgress {
+    from { width: 100%; }
+    to { width: 0%; }
+  }
+  
+  .confirm-dialog {
+    text-align: center;
+    padding: 1rem;
+  }
+  
+  .confirm-dialog p {
+    font-size: 1rem;
+    margin: 1rem 0;
+    color: var(--gray-800);
+  }
+`;
+document.head.appendChild(style);
+
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
   loadDashboard();
@@ -101,7 +252,7 @@ function initializeDateDropdowns() {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
   
-  const monthSelects = ['paymentMonth', 'bidMonth', 'filterMonth'];
+  const monthSelects = ['paymentMonth', 'bidMonth', 'filterMonth', 'reportMonth'];
   monthSelects.forEach(id => {
     const select = document.getElementById(id);
     if (select) {
@@ -115,7 +266,7 @@ function initializeDateDropdowns() {
     }
   });
   
-  const yearSelects = ['paymentYear', 'bidYear', 'filterYear'];
+  const yearSelects = ['paymentYear', 'bidYear', 'filterYear', 'reportYear'];
   yearSelects.forEach(id => {
     const select = document.getElementById(id);
     if (select) {
@@ -339,15 +490,31 @@ function showForm(id, editData = null) {
   const balanceInfo = document.getElementById('balanceInfo');
   if (balanceInfo) balanceInfo.remove();
   
+  // Update form title based on edit mode
+  const formTitle = document.getElementById(id.replace('Form', 'Title'));
+  if (formTitle) {
+    if (editData) {
+      formTitle.textContent = id.includes('Group') ? 'Update Group' :
+                             id.includes('Member') ? 'Update Member' :
+                             id.includes('Payment') ? 'Update Payment' :
+                             id.includes('Bid') ? 'Update Bid' : 'Update Entry';
+    } else {
+      formTitle.textContent = id.includes('Group') ? 'Create New Group' :
+                             id.includes('Member') ? 'Add New Member' :
+                             id.includes('Payment') ? 'Record New Payment' :
+                             id.includes('Bid') ? 'Add New Bid' : 'Add New Entry';
+    }
+  }
+  
   if (editData) {
     editId = editData.id;
     editType = id.replace('add', '').replace('Form', '').toLowerCase();
-    document.querySelector(`#${id} button`).textContent = 'Update';
+    document.querySelector(`#${id} .btn-primary`).textContent = 'Update';
   } else {
     document.getElementById(id).querySelectorAll('input, textarea, select').forEach(field => {
       if (field.type !== 'button' && field.type !== 'submit') field.value = '';
     });
-    document.querySelector(`#${id} button`).textContent = 'Save';
+    document.querySelector(`#${id} .btn-primary`).textContent = 'Save';
     editId = null;
     editType = null;
   }
@@ -365,15 +532,6 @@ function hideForm(id) {
   hide(id);
   editId = null;
   editType = null;
-  loadDashboard(); // Safety: Dashboard stats update
-}
-
-function message(id, text, type = 'success') {
-  const el = document.getElementById(id);
-  el.textContent = text;
-  el.className = `message ${type === 'error' ? 'error' : 'success'}`;
-  show(id);
-  setTimeout(() => hide(id), 5000);
 }
 
 async function fetchJson(url, options = {}) {
@@ -404,6 +562,7 @@ function sendWhatsAppReminder(phone, name, amount, group) {
     `Dear ${name},\nYour BC payment of ₹${amount} for group "${group}" is pending. Please make the payment at the earliest.\n\nThank you,\nAchal Merotra BC`
   );
   window.open(`https://wa.me/91${phone}?text=${message}`, '_blank');
+  Alert.show(`WhatsApp message opened for ${name}`, 'info');
 }
 
 // ==================== GROUPS ====================
@@ -417,7 +576,7 @@ async function loadGroups() {
     updateGroupDropdowns();
     
   } catch (err) {
-    message('groupsMessage', err.message, 'error');
+    Alert.show(err.message, 'error');
   }
 }
 
@@ -476,7 +635,7 @@ function addGroup() {
   const selectedMembers = Array.from(memberSelect.selectedOptions).map(opt => opt.value);
 
   if (!name || isNaN(monthly) || isNaN(totalMembers) || isNaN(duration) || !startDate) {
-    message('groupsMessage', 'Please fill all required fields', 'error');
+    Alert.show('Please fill all required fields', 'error');
     return;
   }
 
@@ -491,15 +650,15 @@ function addGroup() {
   fetchJson(url, { method, body: JSON.stringify(payload) })
     .then(res => {
       if (res.status === 'success') {
-        message('groupsMessage', editId ? 'Group updated!' : 'Group created!');
+        Alert.show(editId ? 'Group updated successfully!' : 'Group created successfully!');
         loadGroups();
         loadDashboard();
         hideForm('addGroupForm');
       } else {
-        message('groupsMessage', res.message || 'Error occurred', 'error');
+        Alert.show(res.message || 'Error occurred', 'error');
       }
     })
-    .catch(err => message('groupsMessage', err.message, 'error'));
+    .catch(err => Alert.show(err.message, 'error'));
 }
 
 function editGroup(id) {
@@ -531,7 +690,7 @@ async function loadMembers() {
     updateMemberDropdowns();
     
   } catch (err) {
-    message('membersMessage', err.message, 'error');
+    Alert.show(err.message, 'error');
   }
 }
 
@@ -580,7 +739,7 @@ function addMember() {
   const selectedGroups = Array.from(memberSelect.selectedOptions).map(opt => opt.value);
 
   if (!name || !phone) {
-    message('membersMessage', 'Name and Phone are required', 'error');
+    Alert.show('Name and Phone are required', 'error');
     return;
   }
 
@@ -592,15 +751,15 @@ function addMember() {
   fetchJson(url, { method, body: JSON.stringify(payload) })
     .then(res => {
       if (res.status === 'success') {
-        message('membersMessage', editId ? 'Member updated!' : 'Member added!');
+        Alert.show(editId ? 'Member updated successfully!' : 'Member added successfully!');
         loadMembers();
         loadDashboard();
         hideForm('addMemberForm');
       } else {
-        message('membersMessage', res.message || 'Error occurred', 'error');
+        Alert.show(res.message || 'Error occurred', 'error');
       }
     })
-    .catch(err => message('membersMessage', err.message, 'error'));
+    .catch(err => Alert.show(err.message, 'error'));
 }
 
 function editMember(id) {
@@ -627,7 +786,7 @@ async function loadPayments() {
     payments = json.data;
     renderPaymentsTable();
   } catch (err) {
-    message('paymentsMessage', err.message, 'error');
+    Alert.show(err.message, 'error');
   }
 }
 
@@ -778,7 +937,7 @@ async function addPayment() {
   const note = document.getElementById('paymentNote').value.trim();
 
   if (!groupId || !memberId || isNaN(amount) || !month || !year) {
-    message('paymentsMessage', 'Please fill all required fields', 'error');
+    Alert.show('Please fill all required fields', 'error');
     return;
   }
 
@@ -790,15 +949,15 @@ async function addPayment() {
   try {
     const res = await fetchJson(url, { method, body: JSON.stringify(payload) });
     if (res.status === 'success') {
-      message('paymentsMessage', editId ? 'Payment updated!' : 'Payment recorded!');
+      Alert.show(editId ? 'Payment updated successfully!' : 'Payment recorded successfully!');
       loadPayments();
       loadDashboard();
       hideForm('addPaymentForm');
     } else {
-      message('paymentsMessage', res.message || 'Error occurred', 'error');
+      Alert.show(res.message || 'Error occurred', 'error');
     }
   } catch (err) {
-    message('paymentsMessage', err.message, 'error');
+    Alert.show(err.message, 'error');
   }
 }
 
@@ -827,7 +986,7 @@ async function loadBids() {
     renderBidsTable();
     
   } catch (err) {
-    message('bidsMessage', err.message, 'error');
+    Alert.show(err.message, 'error');
   }
 }
 
@@ -880,6 +1039,12 @@ function renderBidsTable() {
   document.getElementById('totalBidsCount').textContent = bids.length;
   document.getElementById('totalBidAmount').textContent = '₹' + totalAmount.toLocaleString();
   document.getElementById('averageBid').textContent = '₹' + avg;
+  
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth() + 1;
+  const currentYear = currentDate.getFullYear();
+  const monthlyBids = bids.filter(b => b.month === currentMonth && b.year === currentYear);
+  document.getElementById('monthlyBidsCount').textContent = monthlyBids.length;
 }
 
 function loadBidDropdowns() {
@@ -934,7 +1099,7 @@ async function addBid() {
   const notes = document.getElementById('bidNotes').value.trim();
 
   if (!groupId || !memberId || isNaN(amount) || !month || !year) {
-    message('bidsMessage', 'Please fill all required fields', 'error');
+    Alert.show('Please fill all required fields', 'error');
     return;
   }
 
@@ -946,15 +1111,15 @@ async function addBid() {
   try {
     const res = await fetchJson(url, { method, body: JSON.stringify(payload) });
     if (res.status === 'success') {
-      message('bidsMessage', editId ? 'Bid updated!' : 'Bid recorded!');
+      Alert.show(editId ? 'Bid updated successfully!' : 'Bid recorded successfully!');
       loadBids();
       loadDashboard();
       hideForm('addBidForm');
     } else {
-      message('bidsMessage', res.message || 'Error occurred', 'error');
+      Alert.show(res.message || 'Error occurred', 'error');
     }
   } catch (err) {
-    message('bidsMessage', err.message, 'error');
+    Alert.show(err.message, 'error');
   }
 }
 
@@ -980,7 +1145,6 @@ function loadDuesReport() {
   const memberId = document.getElementById('reportMember').value;
   
   const group = groups.find(g => g.id == groupId) || null;
-  generateMonthYearOptions(group, "reportMonth", "reportYear");
   
   const month = document.getElementById('reportMonth').value;
   const year = document.getElementById('reportYear').value;
@@ -1004,7 +1168,7 @@ function loadDuesReport() {
       (currentDate.getMonth() - startDate.getMonth()) + 1
     );
     
-    const expectedTotal = (group.monthly_amount || 0) * memberCount * monthsPassed;
+    const expectedTotal = (group.monthly_amount || 0) * memberCount * Math.max(0, monthsPassed);
     const groupPayments = payments.filter(p => p.group_id === group.id);
     const collectedTotal = groupPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
     const pendingTotal = Math.max(0, expectedTotal - collectedTotal);
@@ -1227,6 +1391,7 @@ function exportReport() {
   link.download = 'dues_report.csv';
   link.click();
   URL.revokeObjectURL(url);
+  Alert.show('Report exported successfully!', 'success');
 }
 
 function printReport() {
@@ -1297,21 +1462,32 @@ function calculateMemberDues(memberId) {
 }
 
 function confirmDelete(type, id) {
-  if (!confirm(`Are you sure you want to delete this ${type}?`)) return;
+  const typeNames = {
+    group: 'Group',
+    member: 'Member',
+    payment: 'Payment',
+    bid: 'Bid'
+  };
   
-  const url = `${API[type + 's']}/${id}`;
-  fetchJson(url, { method: 'DELETE' })
-    .then(res => {
-      if (res.status === 'success') {
-        message(`${type}Message`, `${type.charAt(0).toUpperCase() + type.slice(1)} deleted!`);
-        if (type === 'group') loadGroups();
-        if (type === 'member') loadMembers();
-        if (type === 'payment') loadPayments();
-        if (type === 'bid') loadBids();
-        loadDashboard();
-      } else {
-        message(`${type}Message`, res.message || 'Delete failed', 'error');
-      }
-    })
-    .catch(err => message(`${type}Message`, err.message, 'error'));
+  Alert.confirm(
+    `Are you sure you want to delete this ${type}? This action cannot be undone.`,
+    `Delete ${typeNames[type]}`,
+    () => {
+      const url = `${API[type + 's']}/${id}`;
+      fetchJson(url, { method: 'DELETE' })
+        .then(res => {
+          if (res.status === 'success') {
+            Alert.show(`${typeNames[type]} deleted successfully!`, 'success');
+            if (type === 'group') loadGroups();
+            if (type === 'member') loadMembers();
+            if (type === 'payment') loadPayments();
+            if (type === 'bid') loadBids();
+            loadDashboard();
+          } else {
+            Alert.show(res.message || 'Delete failed', 'error');
+          }
+        })
+        .catch(err => Alert.show(err.message, 'error'));
+    }
+  );
 }
