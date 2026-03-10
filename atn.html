@@ -469,6 +469,25 @@
     let verificationMessage = '';
     let attendanceData = [];
     let todayAttendanceCount = 0;
+    
+    // ===== NAYA FUNCTION 1: App Start Trigger =====
+    function triggerAppStart(email) {
+      try {
+        window.location.href = `myapp://tracking?email=${encodeURIComponent(email)}&action=start`;
+      } catch (e) {
+        console.log('App start trigger failed (safe):', e);
+      }
+    }
+    
+    // ===== NAYA FUNCTION 2: App Stop Trigger =====
+    function triggerAppStop(email) {
+      try {
+        window.location.href = `myapp://tracking?email=${encodeURIComponent(email)}&action=stop`;
+      } catch (e) {
+        console.log('App stop trigger failed (safe):', e);
+      }
+    }
+    
     function showModal(message) {
       elements.modalMessage.textContent = message;
       elements.locationModal.style.display = 'flex';
@@ -785,6 +804,15 @@
         elements.markAttendanceBtn.textContent = 'Click to mark attendance';
         todayAttendanceCount++;
         updateAttendanceOptions();
+        
+        // ===== NAYA CODE: App Trigger on Success =====
+        if (statusVal === "Duty start") {
+          triggerAppStart(userEmailValue);
+        } else if (statusVal === "Duty off") {
+          triggerAppStop(userEmailValue);
+        }
+        // ===== NAYA CODE END =====
+        
       } catch (err) {
         console.error('Upload error:', err);
         elements.statusMsg.style.display = 'block';
