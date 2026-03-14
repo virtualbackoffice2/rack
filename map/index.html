@@ -1,1 +1,182 @@
-abc
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VBOAttendance Live Tracking Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-block">
+        <p class="eyebrow">VBOAttendance</p>
+        <div>
+          <h1>Employee Live Tracking Dashboard</h1>
+          <p class="subtle">Real-time status, routes, and map activity from <code>/api/v1/location</code>.</p>
+        </div>
+      </div>
+
+      <div class="control-strip" aria-label="Dashboard controls">
+        <label class="control">
+          <span>Date</span>
+          <input id="date-selector" type="date" disabled>
+        </label>
+
+        <label class="control">
+          <span>Refresh</span>
+          <select id="refresh-selector">
+            <option value="5">5s</option>
+            <option value="10" selected>10s</option>
+            <option value="30">30s</option>
+            <option value="0">Off</option>
+          </select>
+        </label>
+
+        <label class="control toggle-control">
+          <span>Routes</span>
+          <button id="route-toggle" type="button" class="toggle-button" aria-pressed="true">
+            <span class="toggle-knob"></span>
+            <span class="toggle-label">Shown</span>
+          </button>
+        </label>
+
+        <div class="control control-actions">
+          <span>Map Actions</span>
+          <div class="button-row">
+            <button id="center-selected" type="button" class="secondary-button">Center Selected</button>
+            <button id="clear-map" type="button" class="ghost-button">Clear All</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="dashboard-grid">
+      <aside class="panel employee-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-kicker">Employees</p>
+            <h2>Live Status</h2>
+          </div>
+          <div class="summary-pill">
+            <span id="employee-count">0</span>
+            <small>tracked</small>
+          </div>
+        </div>
+
+        <div class="panel-meta">
+          <span id="last-sync-label">Waiting for first sync...</span>
+          <span id="status-summary">No employees loaded</span>
+        </div>
+
+        <div id="employee-list" class="employee-list" aria-live="polite"></div>
+      </aside>
+
+      <section class="panel map-panel">
+        <div class="map-toolbar">
+          <div>
+            <p class="section-kicker">Map</p>
+            <h2>Field Movement</h2>
+          </div>
+          <div class="map-legend">
+            <span><i class="legend-dot online"></i> Online</span>
+            <span><i class="legend-dot offline"></i> Offline</span>
+            <span><i class="legend-dot selected"></i> Selected</span>
+          </div>
+        </div>
+
+        <div class="map-stage">
+          <div id="map" aria-label="OpenFreeMap showing employee positions"></div>
+          <div id="map-overlay" class="map-overlay">
+            <div class="overlay-card">
+              <p class="section-kicker">Map Status</p>
+              <h3>Loading map...</h3>
+              <p id="map-status-text">Connecting to OpenFreeMap and preparing employee layers.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <section class="panel info-panel is-expanded">
+      <button id="info-toggle" class="info-toggle" type="button" aria-expanded="true">
+        <span>Selected Employee Details</span>
+        <span id="info-toggle-text">Collapse</span>
+      </button>
+
+      <div id="info-content" class="info-content">
+        <div class="info-summary-card">
+          <p class="section-kicker">Selection</p>
+          <h2 id="info-employee-name">No employee selected</h2>
+          <p id="info-employee-subtitle" class="subtle">Choose an employee from the left panel to load route and activity details.</p>
+        </div>
+
+        <div class="stats-grid">
+          <article class="stat-card">
+            <span>Total Distance</span>
+            <strong id="stat-distance">--</strong>
+          </article>
+          <article class="stat-card">
+            <span>Total Time</span>
+            <strong id="stat-time">--</strong>
+          </article>
+          <article class="stat-card">
+            <span>Average Speed</span>
+            <strong id="stat-speed">--</strong>
+          </article>
+          <article class="stat-card">
+            <span>Status Changes</span>
+            <strong id="stat-changes">--</strong>
+          </article>
+        </div>
+
+        <div class="info-grid">
+          <article class="detail-card">
+            <div class="card-heading">
+              <h3>Route Snapshot</h3>
+              <span id="route-points-count" class="chip">0 points</span>
+            </div>
+            <p id="route-empty-note" class="detail-note subtle"></p>
+            <dl class="detail-list">
+              <div>
+                <dt>Current Status</dt>
+                <dd id="detail-current-status">--</dd>
+              </div>
+              <div>
+                <dt>Last Seen</dt>
+                <dd id="detail-last-seen">--</dd>
+              </div>
+              <div>
+                <dt>Last Known Position</dt>
+                <dd id="detail-last-position">--</dd>
+              </div>
+              <div>
+                <dt>Battery</dt>
+                <dd id="detail-battery">--</dd>
+              </div>
+            </dl>
+          </article>
+
+          <article class="detail-card">
+            <div class="card-heading">
+              <h3>Status Timeline</h3>
+              <span id="timeline-count" class="chip">0 events</span>
+            </div>
+            <div id="timeline-list" class="timeline-list empty-state">
+              Status change history will appear here once an employee is selected.
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <div id="toast-host" class="toast-host" aria-live="polite" aria-atomic="true"></div>
+  </div>
+  <script src="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js"></script>
+  <script src="./script.js"></script>
+</body>
+</html>
