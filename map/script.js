@@ -10,8 +10,9 @@
   const IST_OFFSET = "+05:30";
   const DEFAULT_MAP_CENTER = [80.9462, 26.8467];
   const DEFAULT_MAP_ZOOM = 12;
-  const ONLINE_MARKER_COLOR = "#1B69FF";
+  const ONLINE_MARKER_COLOR = "#4CAF50";
   const OFFLINE_MARKER_COLOR = "#F44336";
+  const SELECTED_MARKER_COLOR = "#1B69FF";
   const ROUTE_COLORS = [
     "#0F7F78",
     "#EF7A42",
@@ -245,7 +246,9 @@
       const summary = state.routeSummaries.get(employee.id);
       const isSelected = state.selectedEmployeeId === employee.id;
       const isVisible = state.visibleEmployees.has(employee.id);
-      const lastCoords = formatCoordinates(employee.lastLat, employee.lastLon);
+      const lastCoords = formatCoordinatesLink(employee.lastLat, employee.lastLon);
+      const mobileLabel = employee.mobile || "--";
+      const routeColor = getEmployeeColor(employee.id);
       const distance = summary ? formatDistance(summary.totalDistanceMeters) : "Loading...";
       const lastSeen = formatDateTime(employee.updatedAt);
       const statusClass = employee.isOnline ? "online" : "offline";
@@ -255,8 +258,7 @@
         <article class="employee-card ${isSelected ? "is-selected" : ""} ${isVisible ? "is-visible" : ""}" data-employee-id="${escapeHtml(employee.id)}">
           <div class="employee-meta">
             <div class="employee-title">
-              <h3 class="employee-name">${escapeHtml(employee.displayName)}</h3>
-              <p class="employee-email">${escapeHtml(employee.id)}</p>
+              <h3 class="employee-name" style="--route-color: ${routeColor}">${escapeHtml(mobileLabel)}</h3>
             </div>
             <span class="status-chip ${statusClass}">
               <i class="status-dot"></i>
@@ -271,7 +273,7 @@
             </div>
             <div class="label-row">
               <span>Last Position</span>
-              <strong>${escapeHtml(lastCoords)}</strong>
+              <strong>${lastCoords}</strong>
             </div>
             <div class="label-row">
               <span>Today's Distance</span>
@@ -398,6 +400,7 @@
 
   function resetInfoPanel() {
     els.infoEmployeeName.textContent = "No employee selected";
+    els.infoEmployeeName.style.color = "";
     els.infoEmployeeSubtitle.textContent = "Choose an employee from the left panel to load route and activity details.";
     els.statDistance.textContent = "--";
     els.statTime.textContent = "--";
@@ -432,8 +435,11 @@
     const logs = state.statusLogs.get(employeeId) || [];
     const stats = buildRouteStats(route);
 
-    els.infoEmployeeName.textContent = employee.displayName;
-    els.infoEmployeeSubtitle.textContent = `${employee.id} | ${employee.isOnline ? "Currently online" : "Currently offline"}`;
+    const mobileLabel = employee.mobile || "--";
+    const routeColor = getEmployeeColor(employee.id);
+    els.infoEmployeeName.textContent = mobileLabel;
+    els.infoEmployeeName.style.color = routeColor;
+    els.infoEmployeeSubtitle.textContent = employee.isOnline ? "Currently online" : "Currently offline";
     els.statDistance.textContent = stats.distance;
     els.statTime.textContent = stats.duration;
     els.statSpeed.textContent = stats.averageSpeed;
@@ -442,7 +448,7 @@
     els.routeEmptyNote.textContent = route && !stats.pointCount ? "No data for today." : "";
     els.detailCurrentStatus.textContent = employee.isOnline ? "ONLINE" : "OFFLINE";
     els.detailLastSeen.textContent = formatDateTime(employee.updatedAt);
-    els.detailLastPosition.textContent = formatCoordinates(latest?.latitude ?? employee.lastLat, latest?.longitude ?? employee.lastLon);
+    els.detailLastPosition.innerHTML = formatCoordinatesLink(latest?.latitude ?? employee.lastLat, latest?.longitude ?? employee.lastLon);
     els.detailBattery.textContent = formatBattery(latest?.battery);
     renderTimeline(logs);
   }
@@ -694,14 +700,16 @@
     }
 
     const employee = state.employeeMap.get(employeeId);
-    const markerColor = employee?.isOnline ? ONLINE_MARKER_COLOR : OFFLINE_MARKER_COLOR;
+    const isOnline = Boolean(employee?.isOnline);
+    const isSelected = state.selectedEmployeeId === employeeId;
+    const palette = getMarkerPalette(isOnline, isSelected);
     const markerBundle = state.markers.get(employeeId);
 
     if (markerBundle?.marker) {
       updateMarker(markerBundle.marker, lng, lat);
-      syncMarkerElement(markerBundle.marker.getElement(), markerColor, employee?.isOnline, state.selectedEmployeeId === employeeId);
+      syncMarkerElement(markerBundle.marker.getElement(), palette, isOnline, isSelected);
     } else {
-      const marker = createMarker(lng, lat, markerColor, employee?.isOnline, state.selectedEmployeeId === employeeId);
+      const marker = createMarker(lng, lat, palette, isOnline, isSelected);
       const open = createMarkerInfoHandler(employeeId, marker);
       attachMarkerEvents(marker, open);
       state.markers.set(employeeId, {
@@ -715,8 +723,8 @@
     }
   }
 
-  function createMarker(lng, lat, color, isOnline, isSelected) {
-    const element = createMarkerElement(color, isOnline, isSelected);
+  function createMarker(lng, lat, palette, isOnline, isSelected) {
+    const element = createMarkerElement(palette, isOnline, isSelected);
     return new maplibregl.Marker({ element })
       .setLngLat([lng, lat])
       .addTo(state.map);
@@ -775,7 +783,41 @@
     });
   }
 
-  function createMarkerElement(color, isOnline, isSelected) {
+  function getMarkerPalette(isOnline, isSelected) {
+    if (!isOnline) {
+      return {
+        markerColor: OFFLINE_MARKER_COLOR,
+        selectedColor: OFFLINE_MARKER_COLOR,
+        selectedShadow: toRgba(OFFLINE_MARKER_COLOR, 0.28)
+      };
+    }
+    if (isSelected) {
+      return {
+        markerColor: SELECTED_MARKER_COLOR,
+        selectedColor: SELECTED_MARKER_COLOR,
+        selectedShadow: toRgba(SELECTED_MARKER_COLOR, 0.28)
+      };
+    }
+    return {
+      markerColor: ONLINE_MARKER_COLOR,
+      selectedColor: SELECTED_MARKER_COLOR,
+      selectedShadow: toRgba(SELECTED_MARKER_COLOR, 0.28)
+    };
+  }
+
+  function toRgba(hex, alpha) {
+    const normalized = String(hex || "").replace("#", "");
+    if (normalized.length !== 6) {
+      return `rgba(27, 105, 255, ${alpha})`;
+    }
+    const intValue = Number.parseInt(normalized, 16);
+    const red = (intValue >> 16) & 255;
+    const green = (intValue >> 8) & 255;
+    const blue = intValue & 255;
+    return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+  }
+
+  function createMarkerElement(palette, isOnline, isSelected) {
     const root = document.createElement("div");
     const pulse = document.createElement("span");
     pulse.className = "pulse-ring";
@@ -784,13 +826,15 @@
 
     root.appendChild(pulse);
     root.appendChild(core);
-    syncMarkerElement(root, color, isOnline, isSelected);
+    syncMarkerElement(root, palette, isOnline, isSelected);
     return root;
   }
 
-  function syncMarkerElement(element, color, isOnline, isSelected) {
+  function syncMarkerElement(element, palette, isOnline, isSelected) {
     element.className = `employee-marker ${isOnline ? "" : "is-offline"} ${isSelected ? "is-selected" : ""}`.trim();
-    element.style.setProperty("--marker-color", color);
+    element.style.setProperty("--marker-color", palette.markerColor);
+    element.style.setProperty("--selected-color", palette.selectedColor);
+    element.style.setProperty("--selected-shadow", palette.selectedShadow);
     element.setAttribute("role", "button");
     element.setAttribute("tabindex", "0");
     element.setAttribute("aria-label", "Employee location marker");
@@ -807,8 +851,10 @@
         return;
       }
 
-      const markerColor = employee.isOnline ? ONLINE_MARKER_COLOR : OFFLINE_MARKER_COLOR;
-      syncMarkerElement(bundle.marker.getElement(), markerColor, employee.isOnline, state.selectedEmployeeId === employeeId);
+      const isOnline = Boolean(employee.isOnline);
+      const isSelected = state.selectedEmployeeId === employeeId;
+      const palette = getMarkerPalette(isOnline, isSelected);
+      syncMarkerElement(bundle.marker.getElement(), palette, isOnline, isSelected);
     });
   }
 
@@ -974,10 +1020,20 @@
 
   function normalizeEmployeeStatus(item) {
     const employeeId = String(item.employee_id || item.id || item.email || "");
+    const mobile = extractMobileNumber(
+      item.mobile ??
+        item.phone ??
+        item.phone_number ??
+        item.mobile_number ??
+        item.msisdn ??
+        item.contact ??
+        employeeId
+    );
     const updatedAt = parseApiDateTime(item.updated_at || item.ist_datetime || item.timestamp);
     return {
       id: employeeId,
-      displayName: prettifyEmployeeName(employeeId),
+      displayName: mobile || "--",
+      mobile,
       status: String(item.status || "").toLowerCase(),
       isOnline: Boolean(item.is_online) || String(item.status || "").toLowerCase() === "on",
       lastLat: coerceNumber(item.last_lat ?? item.latitude ?? item.lat),
@@ -1089,6 +1145,17 @@
     return avgMetersPerSecond * 3.6;
   }
 
+  function extractMobileNumber(value) {
+    const text = String(value ?? "");
+    const parts = text.split(/\D+/).filter(Boolean);
+    for (const part of parts) {
+      if (part.length >= 10) {
+        return part.slice(-10);
+      }
+    }
+    return "";
+  }
+
   function getEmployeeColor(employeeId) {
     let hash = 0;
     for (let index = 0; index < employeeId.length; index += 1) {
@@ -1118,11 +1185,20 @@
     return a.displayName.localeCompare(b.displayName);
   }
 
-  function formatCoordinates(lat, lon) {
+  function formatCoordinatesLink(lat, lon) {
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
       return "--";
     }
-    return `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+    const latText = lat.toFixed(5);
+    const lonText = lon.toFixed(5);
+    const label = `${latText}, ${lonText}`;
+    const href = buildMapsDirectionLink(latText, lonText);
+    return `<a class="coord-link" href="${href}" target="_blank" rel="noopener">${escapeHtml(label)}</a>`;
+  }
+
+  function buildMapsDirectionLink(latText, lonText) {
+    const destination = encodeURIComponent(`${latText},${lonText}`);
+    return `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
   }
 
   function formatDistance(distanceMeters) {
