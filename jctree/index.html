@@ -1,1 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JC Fiber Tree</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
 
+<div class="jc-page-shell">
+    <div class="jc-page-head">
+        <div>
+            <h1> JC Fiber Tree View</h1>
+            <div class="jc-page-subtitle">Select a window to load JCs</div>
+        </div>
+
+        <div class="jc-page-filter">
+            <button id="jcWindowPickerTrigger" type="button">Select Window</button>
+        </div>
+    </div>
+
+    <div id="jcNotepadMount" class="jc-page-body"></div>
+</div>
+
+<div class="jc-window-modal" id="jcWindowModal">
+    <div class="jc-window-card">
+        <h2>Please Select Window</h2>
+        <p>Only the selected window data will be shown.</p>
+        <div class="jc-window-actions">
+            <button type="button" class="jc-window-option" data-window="MEROTRA">MEROTRA</button>
+            <button type="button" class="jc-window-option" data-window="SUNNY">SUNNY</button>
+        </div>
+    </div>
+</div>
+
+<script src="jc-notepad.js"></script>
+</body>
+</html>
