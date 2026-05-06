@@ -447,19 +447,19 @@ function processDayWiseData() {
     
     const logDate = new Date(r.inserted_at || "");
     if (!isNaN(logDate.getTime())) {
-      const dateKey = logDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+      const dateKey = String(r.inserted_at || "").split(" ")[0];
       
       if (!dayWiseMap[key].dayLogs[dateKey]) {
         dayWiseMap[key].dayLogs[dateKey] = {
-          totalPower: 0,
-          count: 0,
+          maxPower: null,
           date: dateKey
         };
       }
       
       if (r.rxPower != null) {
-        dayWiseMap[key].dayLogs[dateKey].totalPower += Number(r.rxPower);
-        dayWiseMap[key].dayLogs[dateKey].count += 1;
+        const powerValue = Number(r.rxPower);
+        const dayLog = dayWiseMap[key].dayLogs[dateKey];
+        dayLog.maxPower = dayLog.maxPower == null ? powerValue : Math.max(dayLog.maxPower, powerValue);
       }
     }
     
@@ -480,27 +480,21 @@ function processDayWiseData() {
     // Process day logs
     const dayEntries = Object.values(u.dayLogs);
     
-    // Calculate average power for each day
-    dayEntries.forEach(day => {
-      if (day.count > 0) {
-        day.avgPower = day.totalPower / day.count;
-      } else {
-        day.avgPower = null;
-      }
-    });
-    
     // Sort day entries by date
     dayEntries.sort((a, b) => new Date(a.date) - new Date(b.date));
     
+    // Current power should follow the latest available reading, not the day's average
+    const validLogs = u.logs.filter(log => log.rxPower != null);
+    const currentLog = validLogs.length ? validLogs[validLogs.length - 1] : null;
+    
     // Get current and previous day power
-    if (dayEntries.length >= selectedDays + 1) {
-      const currentDay = dayEntries[dayEntries.length - 1];
+    if (currentLog && dayEntries.length >= selectedDays + 1) {
       const previousDay = dayEntries[dayEntries.length - (selectedDays + 1)];
       
-      if (currentDay.avgPower != null && previousDay.avgPower != null) {
-        u.currentPower = currentDay.avgPower;
-        u.previousPower = previousDay.avgPower;
-        u.dayGap = Number((currentDay.avgPower - previousDay.avgPower).toFixed(2));
+      if (previousDay.maxPower != null) {
+        u.currentPower = currentLog.rxPower;
+        u.previousPower = previousDay.maxPower;
+        u.dayGap = Number((currentLog.rxPower - previousDay.maxPower).toFixed(2));
         u.dayAnalysis = `${selectedDays} day comparison`;
       } else {
         u.currentPower = null;
@@ -508,14 +502,13 @@ function processDayWiseData() {
         u.dayGap = null;
         u.dayAnalysis = "Insufficient data";
       }
-    } else if (dayEntries.length >= 2) {
-      const currentDay = dayEntries[dayEntries.length - 1];
+    } else if (currentLog && dayEntries.length >= 2) {
       const previousDay = dayEntries[dayEntries.length - 2];
       
-      if (currentDay.avgPower != null && previousDay.avgPower != null) {
-        u.currentPower = currentDay.avgPower;
-        u.previousPower = previousDay.avgPower;
-        u.dayGap = Number((currentDay.avgPower - previousDay.avgPower).toFixed(2));
+      if (previousDay.maxPower != null) {
+        u.currentPower = currentLog.rxPower;
+        u.previousPower = previousDay.maxPower;
+        u.dayGap = Number((currentLog.rxPower - previousDay.maxPower).toFixed(2));
         u.dayAnalysis = "Last 2 days comparison";
       } else {
         u.currentPower = null;
