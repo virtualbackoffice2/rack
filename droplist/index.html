@@ -9,9 +9,19 @@
 <body>
   <main class="app-shell">
     <section class="topbar">
-      <div>
-        <p class="eyebrow">VBO Engine</p>
+      <div class="topbar-title">
         <h1>Line Down Users</h1>
+      </div>
+
+      <div class="topbar-meta">
+        <div class="mini-stat">
+          <span class="label">Down Users</span>
+          <strong id="dropCount">0</strong>
+        </div>
+        <div class="mini-stat">
+          <span class="label">Last Updated</span>
+          <strong id="lastUpdated">-</strong>
+        </div>
       </div>
 
       <div class="controls" id="windowForm">
@@ -38,21 +48,6 @@
             </div>
           </div>
         </div>
-      </div>
-    </section>
-
-    <section class="status-row" aria-live="polite">
-      <div>
-        <span class="label">Selected Window</span>
-        <strong id="selectedWindow">MEROTRA</strong>
-      </div>
-      <div>
-        <span class="label">Drop Users</span>
-        <strong id="dropCount">0</strong>
-      </div>
-      <div>
-        <span class="label">Last Updated</span>
-        <strong id="lastUpdated">-</strong>
       </div>
     </section>
 
@@ -104,6 +99,22 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <div class="toolbar-actions">
+        <button id="screenshotButton" class="icon-button" type="button" title="Screenshot PNG" aria-label="Screenshot PNG">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7h3l1.5-2h7L17 7h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
+        </button>
+        <button id="csvButton" class="icon-button" type="button" title="Download CSV" aria-label="Download CSV">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3v11"></path>
+            <path d="m7 11 5 5 5-5"></path>
+            <path d="M5 21h14"></path>
+          </svg>
+        </button>
       </div>
     </section>
 

@@ -25,7 +25,6 @@ const state = {
 };
 
 const windowInput = document.getElementById("windowInput");
-const selectedWindow = document.getElementById("selectedWindow");
 const dropCount = document.getElementById("dropCount");
 const lastUpdated = document.getElementById("lastUpdated");
 const searchInput = document.getElementById("searchInput");
@@ -34,6 +33,8 @@ const eventFilter = document.getElementById("eventFilter");
 const message = document.getElementById("message");
 const tableHead = document.getElementById("tableHead");
 const tableBody = document.getElementById("tableBody");
+const screenshotButton = document.getElementById("screenshotButton");
+const csvButton = document.getElementById("csvButton");
 const WINDOW_STORAGE_KEY = "lidownusers.windowSelection";
 const EVENT_STORAGE_KEY = "lidownusers.eventSelection";
 
@@ -155,6 +156,27 @@ function cleanValue(value) {
   return String(value);
 }
 
+function formatDisplayDate(value) {
+  const rawValue = String(value || "").trim();
+  if (!rawValue || rawValue === "-") {
+    return "-";
+  }
+
+  const date = new Date(rawValue.replace(" ", "T"));
+  if (Number.isNaN(date.getTime())) {
+    return rawValue;
+  }
+
+  const day = date.getDate();
+  const month = date.toLocaleString("en-US", { month: "short" });
+  const time = date.toLocaleString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true
+  });
+  return `${day} ${month} ${time}`;
+}
+
 function escapeHtml(value) {
   return cleanValue(value)
     .replaceAll("&", "&amp;")
@@ -190,6 +212,9 @@ function renderCell(row, key) {
   }
   if (key === "source_window") {
     return `<span class="data-pill">${escapeHtml(row[key])}</span>`;
+  }
+  if (key === "down_time") {
+    return escapeHtml(formatDisplayDate(row[key]));
   }
   return escapeHtml(row[key]);
 }
@@ -236,6 +261,218 @@ function getSortedRows(rows) {
     const result = leftValue.localeCompare(rightValue);
     return state.downTimeSortDirection === "asc" ? result : -result;
   });
+}
+
+function getDisplayRows() {
+  return getSortedRows(getFilteredRows()).map((row, index) => ({
+    ...row,
+    serial_no: index + 1
+  }));
+}
+
+function getColumnText(row, key) {
+  if (key === "serial_no") {
+    return String(row.serial_no);
+  }
+  if (key === "phone_pon") {
+    return `PON ${cleanValue(row.pon)}\n${cleanValue(getPhone(row))}`;
+  }
+  if (key === "event_type") {
+    return `${cleanValue(row.downEvent)}\n${cleanValue(row.downEventType)}`;
+  }
+  if (key === "source_window") {
+    return cleanValue(row[key]);
+  }
+  if (key === "down_time") {
+    return formatDisplayDate(row[key]);
+  }
+  return cleanValue(row[key]);
+}
+
+function downloadBlob(filename, blob) {
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function getExportFilename(extension) {
+  const activeWindows = getAppliedValues(windowInput);
+  const windowName = activeWindows.length ? activeWindows.join("-").toLowerCase() : "lidownusers";
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  return `${windowName}-${state.activeTable}-${stamp}.${extension}`;
+}
+
+function downloadCsv() {
+  const config = tableConfig[state.activeTable];
+  const rows = getDisplayRows();
+  const csvRows = [
+    config.columns.map(([, label]) => `"${String(label).replaceAll('"', '""')}"`).join(",")
+  ];
+
+  rows.forEach((row) => {
+    const line = config.columns
+      .map(([key]) => `"${getColumnText(row, key).replaceAll('"', '""')}"`)
+      .join(",");
+    csvRows.push(line);
+  });
+
+  downloadBlob(
+    getExportFilename("csv"),
+    new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8" })
+  );
+}
+
+function wrapCanvasText(context, text, maxWidth) {
+  const lines = [];
+  String(text || "")
+    .split("\n")
+    .forEach((block) => {
+      const words = block.split(/\s+/).filter(Boolean);
+      if (!words.length) {
+        lines.push("");
+        return;
+      }
+      let currentLine = words[0];
+      for (let index = 1; index < words.length; index += 1) {
+        const nextLine = `${currentLine} ${words[index]}`;
+        if (context.measureText(nextLine).width <= maxWidth) {
+          currentLine = nextLine;
+        } else {
+          lines.push(currentLine);
+          currentLine = words[index];
+        }
+      }
+      lines.push(currentLine);
+    });
+  return lines.length ? lines : [""];
+}
+
+function exportTableScreenshot() {
+  const config = tableConfig[state.activeTable];
+  const rows = getDisplayRows();
+  const scale = Math.max(2, Math.ceil(window.devicePixelRatio || 1));
+  const padding = 12;
+  const lineHeight = 18;
+  const headerHeight = 42;
+  const cellPaddingY = 10;
+  const cellPaddingX = 10;
+  const columnWidths = {
+    serial_no: 42,
+    source_window: 98,
+    name: 180,
+    phone_pon: 165,
+    event_type: 170,
+    down_time: 160,
+    address: 300
+  };
+
+  const canvasMeasure = document.createElement("canvas");
+  const measureContext = canvasMeasure.getContext("2d");
+  measureContext.font = "14px Arial";
+
+  const resolvedWidths = config.columns.map(([key]) => columnWidths[key] || 150);
+  const contentWidth = resolvedWidths.reduce((sum, width) => sum + width, 0);
+  const rowHeights = rows.map((row) => {
+    let maxLines = 1;
+    config.columns.forEach(([key], columnIndex) => {
+      const textLines = wrapCanvasText(
+        measureContext,
+        getColumnText(row, key),
+        resolvedWidths[columnIndex] - cellPaddingX * 2
+      );
+      maxLines = Math.max(maxLines, textLines.length);
+    });
+    return Math.max(34, cellPaddingY * 2 + maxLines * lineHeight);
+  });
+
+  const titleHeight = 56;
+  const footerHeight = 0;
+  const contentHeight = rowHeights.reduce((sum, height) => sum + height, 0);
+  const totalWidth = contentWidth + padding * 2;
+  const totalHeight = titleHeight + headerHeight + contentHeight + footerHeight + padding * 2;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = totalWidth * scale;
+  canvas.height = totalHeight * scale;
+  const context = canvas.getContext("2d");
+  context.scale(scale, scale);
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, totalWidth, totalHeight);
+
+  context.fillStyle = "#17202a";
+  context.font = "700 22px Arial";
+  context.fillText("Line Down Users", padding, padding + 24);
+  context.font = "12px Arial";
+  context.fillStyle = "#647181";
+  context.fillText(`${rows.length} users`, padding, padding + 42);
+
+  let currentX = padding;
+  let currentY = padding + titleHeight;
+
+  context.fillStyle = "#e8eef5";
+  context.fillRect(padding, currentY, contentWidth, headerHeight);
+  context.strokeStyle = "#d8e0ea";
+  context.lineWidth = 1;
+  context.strokeRect(padding, currentY, contentWidth, headerHeight);
+
+  context.font = "700 12px Arial";
+  context.fillStyle = "#354052";
+  config.columns.forEach(([, label], columnIndex) => {
+    context.fillText(String(label).toUpperCase(), currentX + cellPaddingX, currentY + 25);
+    context.beginPath();
+    context.moveTo(currentX + resolvedWidths[columnIndex], currentY);
+    context.lineTo(currentX + resolvedWidths[columnIndex], currentY + headerHeight);
+    context.stroke();
+    currentX += resolvedWidths[columnIndex];
+  });
+
+  currentY += headerHeight;
+  context.font = "14px Arial";
+
+  rows.forEach((row, rowIndex) => {
+    const rowHeight = rowHeights[rowIndex];
+    currentX = padding;
+    context.fillStyle = rowIndex % 2 === 0 ? "#ffffff" : "#f9fbfd";
+    context.fillRect(padding, currentY, contentWidth, rowHeight);
+    context.strokeStyle = "#d8e0ea";
+    context.strokeRect(padding, currentY, contentWidth, rowHeight);
+
+    config.columns.forEach(([key], columnIndex) => {
+      const textLines = wrapCanvasText(
+        context,
+        getColumnText(row, key),
+        resolvedWidths[columnIndex] - cellPaddingX * 2
+      );
+      context.fillStyle = "#17202a";
+      textLines.forEach((line, lineIndex) => {
+        context.fillText(
+          line,
+          currentX + cellPaddingX,
+          currentY + cellPaddingY + 14 + lineIndex * lineHeight
+        );
+      });
+      context.beginPath();
+      context.moveTo(currentX + resolvedWidths[columnIndex], currentY);
+      context.lineTo(currentX + resolvedWidths[columnIndex], currentY + rowHeight);
+      context.stroke();
+      currentX += resolvedWidths[columnIndex];
+    });
+
+    currentY += rowHeight;
+  });
+
+  canvas.toBlob((blob) => {
+    if (!blob) {
+      setMessage("Unable to create screenshot.", "error");
+      return;
+    }
+    downloadBlob(getExportFilename("png"), blob);
+  }, "image/png");
 }
 
 function getFilteredRows(excludeFilter = "") {
@@ -416,10 +653,7 @@ function updateEventFilter() {
 
 function renderTable() {
   const config = tableConfig[state.activeTable];
-  const rows = getSortedRows(getFilteredRows()).map((row, index) => ({
-    ...row,
-    serial_no: index + 1
-  }));
+  const rows = getDisplayRows();
 
   tableHead.innerHTML = `
     <tr>
@@ -465,9 +699,8 @@ function latestTimestamp(payloads) {
 }
 
 function updateCounts(payloads, activeWindows) {
-  selectedWindow.textContent = activeWindows.join(", ");
   dropCount.textContent = state.data.drop_users.length;
-  lastUpdated.textContent = latestTimestamp(payloads);
+  lastUpdated.textContent = formatDisplayDate(latestTimestamp(payloads));
 }
 
 async function fetchWindowData(activeWindow) {
@@ -525,6 +758,8 @@ searchInput.addEventListener("input", renderTable);
 setupFilterMenu(windowInput, loadUsers);
 setupFilterMenu(ponFilter, renderTable);
 setupFilterMenu(eventFilter, renderTable);
+screenshotButton.addEventListener("click", exportTableScreenshot);
+csvButton.addEventListener("click", downloadCsv);
 tableHead.addEventListener("click", (event) => {
   const th = event.target.closest('th[data-sort-key="down_time"]');
   if (!th) {
