@@ -1,1 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Line Down Users</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="topbar">
+      <div>
+        <p class="eyebrow">VBO Engine</p>
+        <h1>Line Down Users</h1>
+      </div>
 
+      <div class="controls" id="windowForm">
+        <div class="field">
+          <span>Window</span>
+          <div class="filter-menu" id="windowInput" data-filter="window" data-empty-label="No window" data-all-label="All windows">
+            <button class="filter-trigger" type="button">
+              <span class="filter-value">MEROTRA</span>
+              <span class="filter-caret"></span>
+            </button>
+            <div class="filter-panel">
+              <div class="filter-tools">
+                <input class="filter-search" type="search" placeholder="Search window">
+                <div class="filter-actions">
+                  <button type="button" data-action="all">All</button>
+                  <button type="button" data-action="clear">Clear</button>
+                  <button type="button" data-action="apply">Apply</button>
+                </div>
+              </div>
+              <div class="filter-options">
+                <label><input type="checkbox" value="MEROTRA"><span class="option-text">MEROTRA</span></label>
+                <label><input type="checkbox" value="SUNNY"><span class="option-text">SUNNY</span></label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="status-row" aria-live="polite">
+      <div>
+        <span class="label">Selected Window</span>
+        <strong id="selectedWindow">MEROTRA</strong>
+      </div>
+      <div>
+        <span class="label">Drop Users</span>
+        <strong id="dropCount">0</strong>
+      </div>
+      <div>
+        <span class="label">Last Updated</span>
+        <strong id="lastUpdated">-</strong>
+      </div>
+    </section>
+
+    <section class="toolbar">
+      <div class="search-box">
+        <span>Search</span>
+        <input id="searchInput" type="search" placeholder="Name, phone, address...">
+      </div>
+
+      <div class="search-box">
+        <span>PON</span>
+        <div class="filter-menu" id="ponFilter" data-filter="pon" data-empty-label="All PON" data-all-label="All PON">
+          <button class="filter-trigger" type="button">
+            <span class="filter-value">All PON</span>
+            <span class="filter-caret"></span>
+          </button>
+          <div class="filter-panel">
+            <div class="filter-tools">
+              <input class="filter-search" type="search" placeholder="Search PON">
+              <div class="filter-actions">
+                <button type="button" data-action="all">All</button>
+                <button type="button" data-action="clear">Clear</button>
+                <button type="button" data-action="apply">Apply</button>
+              </div>
+            </div>
+            <div class="filter-options">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="search-box">
+        <span>Event</span>
+        <div class="filter-menu" id="eventFilter" data-filter="event" data-empty-label="All events" data-all-label="All events">
+          <button class="filter-trigger" type="button">
+            <span class="filter-value">All events</span>
+            <span class="filter-caret"></span>
+          </button>
+          <div class="filter-panel">
+            <div class="filter-tools">
+              <input class="filter-search" type="search" placeholder="Search event">
+              <div class="filter-actions">
+                <button type="button" data-action="all">All</button>
+                <button type="button" data-action="clear">Clear</button>
+                <button type="button" data-action="apply">Apply</button>
+              </div>
+            </div>
+            <div class="filter-options">
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="message" id="message">Loading MEROTRA users...</p>
+
+    <section class="table-wrap">
+      <table>
+        <thead id="tableHead"></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="javascript.js"></script>
+</body>
+</html>
