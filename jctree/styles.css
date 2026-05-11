@@ -53,6 +53,7 @@ body {
     display: flex;
     align-items: center;
     gap: 0.65rem;
+    flex-wrap: wrap;
 }
 
 .jc-page-filter button {
@@ -64,6 +65,78 @@ body {
     color: #18303d;
     font-size: 0.92rem;
     font-weight: 700;
+}
+
+#lineTrackerTrigger {
+    min-width: 150px;
+    background: #0f766e;
+    border-color: #0f766e;
+    color: #ffffff;
+}
+
+.line-tracker-panel {
+    position: fixed;
+    inset: 0;
+    display: none;
+    padding: 14px;
+    background: rgba(14, 28, 40, 0.5);
+    z-index: 2600;
+}
+
+.line-tracker-panel.show {
+    display: block;
+}
+
+.line-tracker-card {
+    width: min(1240px, 100%);
+    height: min(900px, calc(100vh - 28px));
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid #cfe0eb;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 30px 70px rgba(11, 36, 52, 0.25);
+}
+
+.line-tracker-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #dbe7ef;
+    background: #ffffff;
+}
+
+.line-tracker-head h2 {
+    margin: 0;
+    color: #0f4c81;
+    font-size: 1.05rem;
+}
+
+.line-tracker-head p {
+    margin: 4px 0 0;
+    color: #6b8392;
+    font-size: 0.82rem;
+}
+
+#lineTrackerClose {
+    min-width: 92px;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid #cfe0eb;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #18303d;
+    font-weight: 700;
+}
+
+#lineTrackerFrame {
+    width: 100%;
+    flex: 1;
+    border: 0;
+    background: #eef4f8;
 }
 
 .jc-window-modal {
@@ -326,6 +399,8 @@ body {
 
     .jc-page-filter {
         width: 100%;
+        display: grid;
+        grid-template-columns: 1fr;
     }
 
     .jc-page-shell {

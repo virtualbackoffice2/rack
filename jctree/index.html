@@ -17,11 +17,29 @@
         </div>
 
         <div class="jc-page-filter">
+            <button id="lineTrackerTrigger" type="button">Line Tracker</button>
             <button id="jcWindowPickerTrigger" type="button">Select Window</button>
         </div>
     </div>
 
     <div id="jcNotepadMount" class="jc-page-body"></div>
+</div>
+
+<div class="line-tracker-panel" id="lineTrackerPanel" aria-hidden="true">
+    <div class="line-tracker-card">
+        <div class="line-tracker-head">
+            <div>
+                <h2>Line Tracker</h2>
+                <p>Audit pending and recovered line incidents.</p>
+            </div>
+            <button id="lineTrackerClose" type="button">Close</button>
+        </div>
+        <iframe
+            id="lineTrackerFrame"
+            title="Line Tracker"
+            data-src="https://virtualbackoffice2.github.io/rack/jctree/linedown/"
+        ></iframe>
+    </div>
 </div>
 
 <div class="jc-window-modal" id="jcWindowModal">
@@ -37,5 +55,37 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="jc-notepad.js"></script>
+<script>
+    (() => {
+        const panel = document.getElementById("lineTrackerPanel");
+        const frame = document.getElementById("lineTrackerFrame");
+        const openBtn = document.getElementById("lineTrackerTrigger");
+        const closeBtn = document.getElementById("lineTrackerClose");
+
+        function openLineTracker() {
+            if (!frame.src) {
+                frame.src = frame.dataset.src;
+            }
+            panel.classList.add("show");
+            panel.setAttribute("aria-hidden", "false");
+        }
+
+        function closeLineTracker() {
+            panel.classList.remove("show");
+            panel.setAttribute("aria-hidden", "true");
+        }
+
+        openBtn.addEventListener("click", openLineTracker);
+        closeBtn.addEventListener("click", closeLineTracker);
+        panel.addEventListener("click", (event) => {
+            if (event.target === panel) closeLineTracker();
+        });
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && panel.classList.contains("show")) {
+                closeLineTracker();
+            }
+        });
+    })();
+</script>
 </body>
 </html>
