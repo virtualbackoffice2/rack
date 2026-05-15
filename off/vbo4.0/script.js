@@ -420,9 +420,7 @@ function groupTitle(pageId) {
 }
 
 function getDefaultTeam(windowName) {
-  if (windowName === "MEROTRA") return "Sushil";
-  if (windowName === "SUNNY") return "Shaan";
-  return "";
+  return "()";
 }
 
 /* ===============================
@@ -1013,7 +1011,7 @@ function renderSingleCard(r, index, container) {
       <div class="card-row">
         <span class="card-label">Team:</span>
         <select class="teamSel">
-          <option>Sushil</option><option>Shaan</option>
+          <option>()</option>
         </select>
       </div>
       <div class="card-row">
@@ -1040,6 +1038,7 @@ function renderSingleCard(r, index, container) {
 
   const teamSel = card.querySelector(".teamSel");
   teamSel.value = r.Team || getDefaultTeam(r._window);
+  if (!teamSel.value) teamSel.value = getDefaultTeam(r._window);
 
   const modeSel = card.querySelector(".modeSel");
   modeSel.value = r.Mode || "Manual";
@@ -1227,8 +1226,7 @@ async function renderTable() {
       <td><input class="remarkInput remarkCol" value="${remarkValue}"></td>
       <td class="teamCol resizableCol">
         <select class="teamSel">
-          <option>Sushil</option>
-          <option>Shaan</option>
+          <option>()</option>
         </select>
       </td>
       <td class="modeCol resizableCol">
@@ -1258,6 +1256,7 @@ async function renderTable() {
 
     const teamSelect = tr.querySelector(".teamSel");
     teamSelect.value = r.Team || getDefaultTeam(r._window);
+    if (!teamSelect.value) teamSelect.value = getDefaultTeam(r._window);
 
     const modeSelect = tr.querySelector(".modeSel");
     modeSelect.value = r.Mode || "Manual";
