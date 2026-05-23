@@ -17,7 +17,6 @@ const powerRange = document.getElementById("powerRange");
 
 const filterPon = document.getElementById("filterPon");
 const filterTeam = document.getElementById("filterTeam");
-const filterMode = document.getElementById("filterMode");
 const filterStatus = document.getElementById("filterStatus");
 
 const menuToggle = document.getElementById("menuToggle");
@@ -38,6 +37,14 @@ const ponMultiSearchInput = document.getElementById("ponMultiSearchInput");
 const ponClearBtn = document.getElementById("ponClearBtn");
 const ponOkBtn = document.getElementById("ponOkBtn");
 let selectedPonsSet = new Set();
+
+const serviceMultiWrap = document.getElementById("serviceMultiWrap");
+const serviceMultiBtn = document.getElementById("serviceMultiBtn");
+const serviceMultiDropdown = document.getElementById("serviceMultiDropdown");
+const serviceMultiList = document.getElementById("serviceMultiList");
+const serviceClearBtn = document.getElementById("serviceClearBtn");
+const serviceOkBtn = document.getElementById("serviceOkBtn");
+let selectedServicesSet = new Set();
 
 /* ===============================
    ✅ Modal (Popup)
@@ -250,6 +257,29 @@ async function checkExistingOpenComplaints(windowName, userId) {
     console.error("Error checking open complaints:", error);
     return [];
   }
+}
+
+async function buildOpenComplaintUserSet(rows) {
+  const windows = [...new Set(rows.map(r => r._window).filter(Boolean))];
+  const openSet = new Set(
+    rows
+      .filter(r => r._complain_open && r._window && r.Users)
+      .map(r => `${r._window}_${String(r.Users).trim().toLowerCase()}`)
+  );
+
+  await Promise.all(windows.map(async windowName => {
+    try {
+      const openRows = await fetchOpenComplaintUsers(windowName);
+      openRows.forEach(r => {
+        const uid = String(r.user_id || r.Users || "").trim().toLowerCase();
+        if (uid) openSet.add(`${windowName}_${uid}`);
+      });
+    } catch (error) {
+      console.error("CSV complaint lookup failed:", windowName, error);
+    }
+  }));
+
+  return openSet;
 }
 
 /* ===============================
@@ -605,6 +635,69 @@ if (ponOkBtn) {
   };
 }
 
+function updateServiceButtonText() {
+  const cnt = selectedServicesSet.size;
+  if (!serviceMultiBtn) return;
+  if (cnt === 0) serviceMultiBtn.textContent = "All Service";
+  else serviceMultiBtn.textContent = `Service (${cnt} selected)`;
+}
+
+if (serviceMultiBtn && serviceMultiDropdown) {
+  serviceMultiBtn.onclick = () => {
+    serviceMultiDropdown.classList.toggle("show");
+  };
+
+  document.addEventListener("click", (e) => {
+    if (serviceMultiWrap && !serviceMultiWrap.contains(e.target)) {
+      serviceMultiDropdown.classList.remove("show");
+    }
+  });
+}
+
+if (serviceMultiList) {
+  serviceMultiList.onclick = (e) => {
+    const item = e.target.closest(".serviceItem");
+    if (!item) return;
+
+    const service = item.getAttribute("data-service");
+    const cb = item.querySelector("input[type='checkbox']");
+    if (e.target !== cb) cb.checked = !cb.checked;
+
+    if (cb.checked) selectedServicesSet.add(service);
+    else selectedServicesSet.delete(service);
+
+    updateServiceButtonText();
+  };
+}
+
+if (serviceClearBtn) {
+  serviceClearBtn.onclick = () => {
+    selectedServicesSet.clear();
+    if (serviceMultiList) {
+      serviceMultiList.querySelectorAll("input[type='checkbox']").forEach(cb => cb.checked = false);
+    }
+    updateServiceButtonText();
+    applyAllFilters();
+  };
+}
+
+if (serviceOkBtn) {
+  serviceOkBtn.onclick = () => {
+    serviceMultiDropdown.classList.remove("show");
+    applyAllFilters();
+  };
+}
+
+function escapeHtml(value) {
+  return String(value || "").replace(/[&<>"']/g, ch => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#39;"
+  }[ch]));
+}
+
 /* ===============================
    ✅ Modal events
 ================================= */
@@ -850,8 +943,22 @@ function populateFilters() {
 
   if (filterTeam) filterTeam.style.display = "none";
 
-  const modes = [...new Set(rawRows.map(r => r.Mode || "").filter(Boolean))].sort();
-  filterMode.innerHTML = '<option value="">All Mode</option>' + modes.map(m => `<option value="${m}">${m}</option>`).join('');
+  const serviceCounts = rawRows.reduce((acc, row) => {
+    const service = row["Service Status"] || "";
+    if (!service) return acc;
+    acc[service] = (acc[service] || 0) + 1;
+    return acc;
+  }, {});
+  const services = Object.keys(serviceCounts).sort();
+  if (serviceMultiList) {
+    serviceMultiList.innerHTML = services.map(service => `
+      <div class="ponItem serviceItem" data-service="${escapeHtml(service)}">
+        <input type="checkbox" ${selectedServicesSet.has(service) ? "checked" : ""}/>
+        <span>${escapeHtml(service)} (${serviceCounts[service]})</span>
+      </div>
+    `).join("");
+  }
+  updateServiceButtonText();
 
   const statuses = [...new Set(rawRows.map(r => r["User status"] || "").filter(Boolean))].sort();
   let html = '<option value="">All Status</option>';
@@ -889,7 +996,9 @@ function applyAllFilters() {
     data = data.filter(r => selectedPonsSet.has(r.PON));
   }
 
-  if (filterMode.value) data = data.filter(r => r.Mode === filterMode.value);
+  if (selectedServicesSet.size > 0) {
+    data = data.filter(r => selectedServicesSet.has(r["Service Status"] || ""));
+  }
   if (filterStatus.value) data = data.filter(r => r["User status"] === filterStatus.value);
 
   filtered = data;
@@ -988,6 +1097,8 @@ function renderSingleCard(r, index, container) {
     card.dataset.window = r._window;
   }
 
+  const statusText = r["User status"] || "";
+
   // ✅ Remark with fallback to reason
   const remarkValue = r.Remarks || r.reason || "";
 
@@ -997,7 +1108,7 @@ function renderSingleCard(r, index, container) {
           ${r.Name || "Unknown"}
           <!-- Badge will be added dynamically by observer -->
         </div>
-        <span>${statusEmoji}</span>
+        <span>${statusText ? `<span class="status-meta">(${statusText})</span> ` : ""}${statusEmoji}</span>
       </div>
       <div class="card-row"><span class="card-label">Window:</span><span class="card-value">${r._window || ""}</span></div>
       <div class="card-row"><span class="card-label">User ID:</span><span class="card-value">${r.Users || ""}</span></div>
@@ -1005,6 +1116,7 @@ function renderSingleCard(r, index, container) {
       <div class="card-row"><span class="card-label">PON:</span><span class="card-value">${r.PON || ""}</span></div>
       <div class="card-row"><span class="card-label">Location:</span><span class="card-value">${r.Location || ""}</span></div>
       <div class="card-row"><span class="card-label">Power:</span><span class="card-value">${r.Power?.toFixed(2) || ""}</span></div>
+      <div class="card-row"><span class="card-label">Service:</span><span class="card-value">${r["Service Status"] || ""}</span></div>
       <div class="card-row"><span class="card-label">Down users:</span><span class="card-value">${downCount}</span></div>
       <div class="card-row"><span class="card-label">MAC / Serial:</span><span class="card-value">${r.MAC || ""} / ${r.Serial || ""}</span></div>
       <div class="card-row"><span class="card-label">Remark:</span><input class="remarkInput" value="${remarkValue}"></div>
@@ -1236,12 +1348,13 @@ async function renderTable() {
         </select>
       </td>
       <td>${r.Power != null ? Number(r.Power).toFixed(2) : ""}</td>
+      <td>${r["Service Status"] || ""}</td>
       <td>
         <button class="mark-btn"><i class="fa-solid fa-thumbtack"></i></button>
         <button class="remove-btn"><i class="fas fa-trash"></i></button>
       </td>
       <td>${r.Location || ""}</td>
-      <td>${statusEmoji}</td>
+      <td>${(r["User status"] || "") ? `<span class="status-meta">(${r["User status"] || ""})</span> ` : ""}${statusEmoji}</td>
     `;
 
     tr.style.cursor = (isComplainsView && r._complain_open) ? "pointer" : "default";
@@ -1410,18 +1523,24 @@ document.getElementById("btnScreenshot").onclick = () => {
   }).catch(() => showToast("❌ Screenshot failed"));
 };
 
-document.getElementById("btnCsv").onclick = () => {
+document.getElementById("btnCsv").onclick = async () => {
   if (!filtered.length) {
     showToast("No data to export");
     return;
   }
 
+  const openComplaintUsers = await buildOpenComplaintUserSet(filtered);
+
   const headers = [
     "Window", "PON", "User ID", "Mobile", "Name",
-    "Mac / Serial", "Power", "Location"
+    "Mac / Serial", "Power", "Service Status", "User Status", "Complaint", "Location"
   ];
 
   const rows = filtered.map(r => {
+    const userKey = r._window && r.Users
+      ? `${r._window}_${String(r.Users).trim().toLowerCase()}`
+      : "";
+
     return [
       r._window || "",
       r.PON || "",
@@ -1430,6 +1549,9 @@ document.getElementById("btnCsv").onclick = () => {
       r.Name || "",
       `${r.MAC || ""} / ${r.Serial || ""}`,
       r.Power != null ? Number(r.Power).toFixed(2) : "",
+      r["Service Status"] || "",
+      r["User status"] || "",
+      userKey && openComplaintUsers.has(userKey) ? "Yes" : "No",
       r.Location || ""
     ];
   });
@@ -1513,7 +1635,6 @@ document.getElementById("btnRefresh").onclick = () => {
 
 globalSearch.oninput = applyAllFilters;
 if (powerRange) powerRange.oninput = applyAllFilters;
-filterMode.onchange = applyAllFilters;
 filterStatus.onchange = applyAllFilters;
 
 // init

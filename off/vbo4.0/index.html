@@ -97,9 +97,18 @@ if (btnGoogle) {
                 <option value="">All Team</option>
             </select>
 
-            <select id="filterMode">
-                <option value="">All Mode</option>
-            </select>
+<div class="ponMultiWrap" id="serviceMultiWrap">
+  <button type="button" class="ponMultiBtn" id="serviceMultiBtn">All Service</button>
+
+  <div class="ponMultiDropdown" id="serviceMultiDropdown">
+    <div class="ponMultiList" id="serviceMultiList"></div>
+
+    <div class="ponMultiFooter">
+      <button type="button" class="ponClearBtn" id="serviceClearBtn">Clear</button>
+      <button type="button" class="ponOkBtn" id="serviceOkBtn">OK</button>
+    </div>
+  </div>
+</div>
 
             <select id="filterStatus">
                 <option value="">All Status</option>
@@ -127,6 +136,7 @@ if (btnGoogle) {
   <th>Team</th>
   <th>Mode</th>
   <th>Power</th>
+  <th>Service</th>
   <th>Actions</th>
   <th>Location</th>
   <th>Status</th>
