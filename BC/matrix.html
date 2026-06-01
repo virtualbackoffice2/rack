@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BC Matrix</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="matrix-page">
+  <main class="matrix-app">
+    <section class="panel matrix-title">
+      <div>
+        <h2 id="matrixName">BC Matrix</h2>
+        <p id="matrixMeta"></p>
+      </div>
+      <div class="mini-totals">
+        <span id="filterBadge" class="hidden">Filtered</span>
+        <span id="perUnitDue">Per unit: Rs. 0</span>
+        <span id="matrixUnits">Units: 0</span>
+        <button class="icon-btn" type="button" title="Download CSV" onclick="downloadCsv()">CSV</button>
+        <button class="icon-btn close-btn" type="button" title="Close matrix" onclick="closeMatrix()">X</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Matrix</h2>
+        <span class="hint">Fill member details directly in unit rows. Name is required; phone and area are optional.</span>
+      </div>
+      <datalist id="memberSuggestions"></datalist>
+      <div class="table-wrap matrix-wrap">
+        <table id="matrixTable">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+  <div id="matrixConfirmModal" class="confirm-modal hidden">
+    <div class="confirm-box">
+      <h2 id="matrixConfirmTitle">Confirm</h2>
+      <p id="matrixConfirmText"></p>
+      <div class="confirm-actions">
+        <button id="matrixConfirmYes" class="danger" type="button">Delete</button>
+        <button class="secondary" type="button" onclick="closeMatrixConfirm()">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <script src="matrix.js"></script>
+</body>
+</html>

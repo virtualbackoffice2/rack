@@ -1,1493 +1,406 @@
-// API Configuration
-const BASE = window.location.hostname === 'localhost' 
-    ? 'http://localhost:8000' 
-    : 'https://app.vbo.co.in';
+const IS_LOCAL = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const BASE = IS_LOCAL ? 'http://localhost:8000' : 'https://app.vbo.co.in';
+const CLIENT = 'achalmerotra';
+const API = `${BASE}/${CLIENT}/bc`;
 
-const API = {
-  members: `${BASE}/achalmerotra/members`,
-  groups: `${BASE}/achalmerotra/groups`,
-  payments: `${BASE}/achalmerotra/payments`,
-  bids: `${BASE}/achalmerotra/bids`,
+const state = {
+  bcs: [],
+  members: [],
+  matrix: null,
+  currentBcId: null,
+  expandedMonth: null,
+  editBcId: null,
 };
 
-// ==================== GLOBAL STATE ====================
-let members = [];
-let groups = [];
-let payments = [];
-let bids = [];
-let dashboardLoaded = false;
-
-// Sort state
-let sortState = {
-  members: { column: 'id', direction: 'desc' },
-  groups: { column: 'id', direction: 'desc' },
-  payments: { column: 'id', direction: 'desc' },
-  bids: { column: 'id', direction: 'desc' }
-};
-
-// Search state
-let searchTerms = {
-  members: '',
-  groups: '',
-  payments: '',
-  bids: ''
-};
-
-// Edit state
-let editId = null;
-let editType = null;
-
-// ==================== MODULAR ALERT SYSTEM ====================
-const Alert = {
-  show: function(message, type = 'success', duration = 3000) {
-    // Remove existing alert if any
-    const existingAlert = document.querySelector('.custom-alert');
-    if (existingAlert) existingAlert.remove();
-    
-    // Create alert element
-    const alert = document.createElement('div');
-    alert.className = `custom-alert ${type}`;
-    alert.innerHTML = `
-      <div class="alert-content">
-        <i class="fas ${this.getIcon(type)}"></i>
-        <span>${message}</span>
-      </div>
-      <div class="alert-progress"></div>
-    `;
-    
-    // Add to body
-    document.body.appendChild(alert);
-    
-    // Trigger animation
-    setTimeout(() => alert.classList.add('show'), 10);
-    
-    // Auto remove after duration
-    setTimeout(() => {
-      alert.classList.remove('show');
-      setTimeout(() => alert.remove(), 300);
-    }, duration);
-  },
-  
-  confirm: function(message, title = 'Confirm Action', callback) {
-    const modal = document.getElementById('modal');
-    const modalTitle = document.getElementById('modalTitle');
-    const modalBody = document.getElementById('modalBody');
-    
-    modalTitle.textContent = title;
-    modalBody.innerHTML = `
-      <div class="confirm-dialog">
-        <p><i class="fas fa-exclamation-triangle" style="color: var(--warning); font-size: 2rem; margin-bottom: 1rem;"></i></p>
-        <p>${message}</p>
-        <div class="form-actions" style="justify-content: center; margin-top: 2rem;">
-          <button class="btn-danger" onclick="Alert.handleConfirm(true)"><i class="fas fa-check"></i> Yes, Delete</button>
-          <button class="btn-outline" onclick="Alert.handleConfirm(false)"><i class="fas fa-times"></i> Cancel</button>
-        </div>
-      </div>
-    `;
-    
-    // Store callback
-    this.confirmCallback = callback;
-    modal.classList.add('active');
-  },
-  
-  handleConfirm: function(confirmed) {
-    hideModal();
-    if (confirmed && this.confirmCallback) {
-      this.confirmCallback();
-    }
-    this.confirmCallback = null;
-  },
-  
-  getIcon: function(type) {
-    const icons = {
-      success: 'fa-check-circle',
-      error: 'fa-exclamation-circle',
-      warning: 'fa-exclamation-triangle',
-      info: 'fa-info-circle'
-    };
-    return icons[type] || icons.info;
-  }
-};
-
-// Add CSS for custom alerts
-const style = document.createElement('style');
-style.textContent = `
-  .custom-alert {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    min-width: 300px;
-    max-width: 400px;
-    background: var(--white);
-    border-radius: 10px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-    z-index: 9999;
-    transform: translateX(120%);
-    transition: transform 0.3s ease;
-    overflow: hidden;
-  }
-  
-  .custom-alert.show {
-    transform: translateX(0);
-  }
-  
-  .custom-alert.success { border-left: 4px solid var(--success); }
-  .custom-alert.error { border-left: 4px solid var(--danger); }
-  .custom-alert.warning { border-left: 4px solid var(--warning); }
-  .custom-alert.info { border-left: 4px solid var(--info); }
-  
-  .alert-content {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 16px 20px;
-  }
-  
-  .alert-content i {
-    font-size: 1.3rem;
-  }
-  
-  .custom-alert.success i { color: var(--success); }
-  .custom-alert.error i { color: var(--danger); }
-  .custom-alert.warning i { color: var(--warning); }
-  .custom-alert.info i { color: var(--info); }
-  
-  .alert-progress {
-    height: 3px;
-    background: var(--gray-200);
-    width: 100%;
-    position: relative;
-  }
-  
-  .alert-progress::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 100%;
-    background: var(--primary);
-    animation: alertProgress 3s linear forwards;
-  }
-  
-  @keyframes alertProgress {
-    from { width: 100%; }
-    to { width: 0%; }
-  }
-  
-  .confirm-dialog {
-    text-align: center;
-    padding: 1rem;
-  }
-  
-  .confirm-dialog p {
-    font-size: 1rem;
-    margin: 1rem 0;
-    color: var(--gray-800);
-  }
-`;
-document.head.appendChild(style);
-
-// ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
-  loadDashboard();
-  loadGroups();
+  document.getElementById('bcForm').addEventListener('submit', createBc);
+  document.getElementById('globalSearch').addEventListener('input', () => loadBcs());
+  window.addEventListener('message', handleMatrixMessage);
   loadMembers();
-  loadPayments();
-  loadBids();
-  initializeDateDropdowns();
-  initializeTheme();
-  initializeFilterPresets();
-  
-  const savedTab = localStorage.getItem('activeTab') || 'groups';
-  switchTab(savedTab);
+  loadBcs().then(restoreMatrixFromHash);
 });
 
-// ==================== TAB SWITCHING ====================
-function switchTab(tabName, e) {
-  localStorage.setItem('activeTab', tabName);
-
-  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-  if (e) e.target.classList.add('active');
-
-  document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-  document.getElementById(tabName + 'Tab').classList.add('active');
-
-  if (tabName === 'reports') loadDuesReport();
-  if (tabName === 'bids') loadBids();
-}
-
-// ==================== THEME TOGGLE ====================
-function initializeTheme() {
-  const savedTheme = localStorage.getItem('theme') || 'light';
-  document.documentElement.setAttribute('data-theme', savedTheme);
-  
-  const header = document.querySelector('header');
-  const toggle = document.createElement('div');
-  toggle.className = 'theme-toggle';
-  toggle.innerHTML = `
-    <span class="${savedTheme === 'light' ? 'active' : ''}" onclick="setTheme('light')">☀️</span>
-    <span class="${savedTheme === 'dark' ? 'active' : ''}" onclick="setTheme('dark')">🌙</span>
-  `;
-  header.appendChild(toggle);
-}
-
-function setTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem('theme', theme);
-  
-  document.querySelectorAll('.theme-toggle span').forEach(span => {
-    span.classList.remove('active');
-    if (span.textContent.includes(theme === 'light' ? '☀️' : '🌙')) {
-      span.classList.add('active');
-    }
-  });
-}
-
-// ==================== DYNAMIC DATE DROPDOWNS ====================
-function initializeDateDropdowns() {
-  const currentYear = new Date().getFullYear();
-  const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-  
-  const monthSelects = ['paymentMonth', 'bidMonth', 'filterMonth', 'reportMonth'];
-  monthSelects.forEach(id => {
-    const select = document.getElementById(id);
-    if (select) {
-      select.innerHTML = '<option value="">Select Month</option>';
-      months.forEach((month, index) => {
-        const option = document.createElement('option');
-        option.value = index + 1;
-        option.textContent = month;
-        select.appendChild(option);
-      });
-    }
-  });
-  
-  const yearSelects = ['paymentYear', 'bidYear', 'filterYear', 'reportYear'];
-  yearSelects.forEach(id => {
-    const select = document.getElementById(id);
-    if (select) {
-      select.innerHTML = '<option value="">Select Year</option>';
-      for (let year = currentYear - 2; year <= currentYear + 3; year++) {
-        const option = document.createElement('option');
-        option.value = year;
-        option.textContent = year;
-        if (year === currentYear) option.selected = true;
-        select.appendChild(option);
-      }
-    }
-  });
-}
-
-function generateMonthYearOptions(group, monthSelectId, yearSelectId) {
-  const monthSelect = document.getElementById(monthSelectId);
-  const yearSelect = document.getElementById(yearSelectId);
-
-  if (!monthSelect || !yearSelect) return;
-
-  monthSelect.innerHTML = '<option value="">Select Month</option>';
-  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  monthNames.forEach((name, i) => {
-    const opt = document.createElement('option');
-    opt.value = i + 1;
-    opt.textContent = name;
-    monthSelect.appendChild(opt);
-  });
-
-  yearSelect.innerHTML = '<option value="">Select Year</option>';
-  if (!group || !group.start_date) {
-    const cy = new Date().getFullYear();
-    for (let y = cy - 2; y <= cy + 3; y++) {
-      const opt = document.createElement('option');
-      opt.value = y;
-      opt.textContent = y;
-      yearSelect.appendChild(opt);
-    }
-    return;
-  }
-
-  const start = new Date(group.start_date);
-  const duration = parseInt(group.duration) || 12;
-  const years = new Set();
-  for (let i = 0; i < duration; i++) {
-    const d = new Date(start);
-    d.setMonth(start.getMonth() + i);
-    years.add(d.getFullYear());
-  }
-  Array.from(years).sort((a,b) => a - b).forEach(y => {
-    const opt = document.createElement('option');
-    opt.value = y;
-    opt.textContent = y;
-    yearSelect.appendChild(opt);
-  });
-}
-
-// ==================== FILTER PRESETS ====================
-function initializeFilterPresets() {
-  if (document.querySelector('.filter-presets')) return;
-  
-  const presets = [
-    { label: 'Today', days: 0 },
-    { label: 'This Week', days: 7 },
-    { label: 'This Month', days: 30 },
-    { label: 'This Year', days: 365 }
-  ];
-  
-  const filterContainer = document.querySelector('.filters');
-  if (filterContainer) {
-    const presetDiv = document.createElement('div');
-    presetDiv.className = 'filter-presets';
-    presets.forEach(preset => {
-      const btn = document.createElement('button');
-      btn.className = 'filter-preset-btn';
-      btn.textContent = preset.label;
-      btn.onclick = () => applyPresetFilter(preset.days);
-      presetDiv.appendChild(btn);
-    });
-    filterContainer.insertBefore(presetDiv, filterContainer.firstChild);
-  }
-}
-
-function applyPresetFilter(days) {
-  const date = new Date();
-  if (days > 0) date.setDate(date.getDate() - days);
-  
-  document.getElementById('filterYear').value = date.getFullYear();
-  if (days <= 30) document.getElementById('filterMonth').value = date.getMonth() + 1;
-  
-  renderPaymentsTable();
-}
-
-// ==================== DASHBOARD ====================
-async function loadDashboard() {
-  try {
-    const [membersRes, groupsRes, paymentsRes, bidsRes] = await Promise.all([
-      fetchJson(API.members),
-      fetchJson(API.groups),
-      fetchJson(API.payments),
-      fetchJson(API.bids)
-    ]);
-    
-    if (membersRes.status === 'success') members = membersRes.data;
-    if (groupsRes.status === 'success') groups = groupsRes.data;
-    if (paymentsRes.status === 'success') payments = paymentsRes.data;
-    if (bidsRes.status === 'success') bids = bidsRes.data;
-    
-    document.getElementById('totalMembers').textContent = members.length;
-    document.getElementById('totalGroups').textContent = groups.length;
-    
-    const totalCollection = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-    document.getElementById('totalCollection').textContent = '₹' + totalCollection.toLocaleString();
-    
-    const pending = calculatePendingDues();
-    document.getElementById('pendingDues').textContent = '₹' + pending.toLocaleString();
-    
-    document.getElementById('totalBids').textContent = bids.length;
-    
-    const completedGroups = groups.filter(g => isGroupCompleted(g)).length;
-    const completionPercent = groups.length > 0 ? (completedGroups / groups.length * 100).toFixed(0) : 0;
-    
-    const groupStat = document.querySelector('.stat-card:nth-child(2) div');
-    if (groupStat) {
-      let progress = groupStat.querySelector('.progress-bar');
-      if (!progress) {
-        progress = document.createElement('div');
-        progress.className = 'progress-bar';
-        groupStat.appendChild(progress);
-      }
-      progress.innerHTML = `<div class="progress-fill" style="width: ${completionPercent}%"></div>`;
-    }
-    
-    updateMonthlySnapshot();
-    dashboardLoaded = true;
-    
-  } catch (err) {
-    console.error('Dashboard error:', err);
-  }
-}
-
-function updateMonthlySnapshot() {
-  const currentDate = new Date();
-  const currentMonth = currentDate.getMonth() + 1;
-  const currentYear = currentDate.getFullYear();
-  
-  const monthlyPayments = payments.filter(p => p.month === currentMonth && p.year === currentYear);
-  const monthlyCollected = monthlyPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-  
-  const monthlyBids = bids.filter(b => b.month === currentMonth && b.year === currentYear);
-  
-  let monthlyExpected = 0;
-  groups.forEach(group => {
-    if (!group.members) return;
-    const memberCount = group.members.split(',').length;
-    monthlyExpected += (group.monthly_amount || 0) * memberCount;
-  });
-  
-  const monthlyPending = Math.max(0, monthlyExpected - monthlyCollected);
-  const monthlyPercent = monthlyExpected > 0 ? ((monthlyCollected / monthlyExpected) * 100).toFixed(1) : 0;
-  
-  document.getElementById('monthlyCollected').textContent = '₹' + monthlyCollected.toLocaleString();
-  document.getElementById('monthlyPending').textContent = '₹' + monthlyPending.toLocaleString();
-  document.getElementById('monthlyBids').textContent = monthlyBids.length;
-  document.getElementById('monthlyPercent').textContent = monthlyPercent + '%';
-}
-
-// ==================== SEARCH & SORT ====================
-function refreshTable(tableType) {
-  switch(tableType) {
-    case 'Members': renderMembersTable(); break;
-    case 'Groups': renderGroupsTable(); break;
-    case 'Payments': renderPaymentsTable(); break;
-    case 'Bids': renderBidsTable(); break;
-  }
-}
-
-function sortData(data, type) {
-  const state = sortState[type];
-  if (!state) return data;
-  
-  return [...data].sort((a, b) => {
-    let valA = a[state.column];
-    let valB = b[state.column];
-    
-    if (state.column === 'amount' || state.column === 'monthly_amount') {
-      valA = Number(valA) || 0;
-      valB = Number(valB) || 0;
-    } else if (state.column === 'created_at' || state.column === 'start_date') {
-      valA = new Date(valA || 0).getTime();
-      valB = new Date(valB || 0).getTime();
-    } else {
-      valA = String(valA || '').toLowerCase();
-      valB = String(valB || '').toLowerCase();
-    }
-    
-    if (valA < valB) return state.direction === 'asc' ? -1 : 1;
-    if (valA > valB) return state.direction === 'asc' ? 1 : -1;
-    return 0;
-  });
-}
-
-function sortTable(type, column) {
-  const state = sortState[type.toLowerCase()];
-  if (state.column === column) {
-    state.direction = state.direction === 'asc' ? 'desc' : 'asc';
-  } else {
-    state.column = column;
-    state.direction = 'asc';
-  }
-  refreshTable(type);
-}
-
-// ==================== UTILITY ====================
-function show(id) { document.getElementById(id).classList.remove('hidden'); }
-function hide(id) { document.getElementById(id).classList.add('hidden'); }
-
-function showForm(id, editData = null) {
-  document.querySelectorAll('.form-container').forEach(form => form.classList.add('hidden'));
-  const balanceInfo = document.getElementById('balanceInfo');
-  if (balanceInfo) balanceInfo.remove();
-  
-  // Update form title based on edit mode
-  const formTitle = document.getElementById(id.replace('Form', 'Title'));
-  if (formTitle) {
-    if (editData) {
-      formTitle.textContent = id.includes('Group') ? 'Update Group' :
-                             id.includes('Member') ? 'Update Member' :
-                             id.includes('Payment') ? 'Update Payment' :
-                             id.includes('Bid') ? 'Update Bid' : 'Update Entry';
-    } else {
-      formTitle.textContent = id.includes('Group') ? 'Create New Group' :
-                             id.includes('Member') ? 'Add New Member' :
-                             id.includes('Payment') ? 'Record New Payment' :
-                             id.includes('Bid') ? 'Add New Bid' : 'Add New Entry';
-    }
-  }
-  
-  if (editData) {
-    editId = editData.id;
-    editType = id.replace('add', '').replace('Form', '').toLowerCase();
-    document.querySelector(`#${id} .btn-primary`).textContent = 'Update';
-  } else {
-    document.getElementById(id).querySelectorAll('input, textarea, select').forEach(field => {
-      if (field.type !== 'button' && field.type !== 'submit') field.value = '';
-    });
-    document.querySelector(`#${id} .btn-primary`).textContent = 'Save';
-    editId = null;
-    editType = null;
-  }
-  
-  show(id);
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-  
-  if (id === 'addPaymentForm') loadPaymentDropdowns();
-  if (id === 'addMemberForm') loadMemberDropdowns();
-  if (id === 'addGroupForm') loadGroupDropdowns();
-  if (id === 'addBidForm') loadBidDropdowns();
-}
-
-function hideForm(id) {
-  hide(id);
-  editId = null;
-  editType = null;
-}
-
-async function fetchJson(url, options = {}) {
-  const res = await fetch(url, {
+async function request(path, options = {}) {
+  const res = await fetch(`${API}${path}`, {
     ...options,
-    headers: { 'Content-Type': 'application/json', ...options.headers }
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  if (!res.ok) throw new Error(`Server error ${res.status}`);
+  const data = await res.json();
+  if (data.status === 'error') throw new Error(data.message || 'Action failed');
+  return data;
 }
 
-// ==================== MODAL & WHATSAPP ====================
-function showModal(title, content) {
-  const modal = document.getElementById('modal');
-  const modalTitle = document.getElementById('modalTitle');
-  const modalBody = document.getElementById('modalBody');
-  modalTitle.textContent = title;
-  modalBody.innerHTML = content;
-  modal.classList.add('active');
+function money(value) {
+  return 'Rs. ' + Math.round(Number(value || 0)).toLocaleString('en-IN');
 }
 
-function hideModal() {
-  document.getElementById('modal').classList.remove('active');
+function numberValue(value) {
+  const n = Math.round(Number(value || 0));
+  return n ? String(n) : '';
 }
 
-function sendWhatsAppReminder(phone, name, amount, group) {
-  const message = encodeURIComponent(
-    `Dear ${name},\nYour BC payment of ₹${amount} for group "${group}" is pending. Please make the payment at the earliest.\n\nThank you,\nAchal Merotra BC`
-  );
-  window.open(`https://wa.me/91${phone}?text=${message}`, '_blank');
-  Alert.show(`WhatsApp message opened for ${name}`, 'info');
+function text(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
 }
 
-// ==================== GROUPS ====================
-async function loadGroups() {
-  try {
-    const json = await fetchJson(API.groups);
-    if (json.status !== 'success') throw new Error(json.message);
-    
-    groups = json.data;
-    renderGroupsTable();
-    updateGroupDropdowns();
-    
-  } catch (err) {
-    Alert.show(err.message, 'error');
-  }
-}
-
-function renderGroupsTable() {
-  const tbody = document.querySelector('#groupsTable tbody');
-  tbody.innerHTML = '';
-  
-  let filteredGroups = [...groups];
-  
-  if (searchTerms.groups) {
-    filteredGroups = filteredGroups.filter(g => 
-      g.name.toLowerCase().includes(searchTerms.groups) ||
-      String(g.id).includes(searchTerms.groups)
-    );
-  }
-  
-  filteredGroups = sortData(filteredGroups, 'groups');
-  
-  filteredGroups.forEach(g => {
-    const memberCount = g.members ? g.members.split(',').length : 0;
-    const endDate = new Date(g.start_date);
-    endDate.setMonth(endDate.getMonth() + (g.duration || 0));
-    
-    const groupPayments = payments.filter(p => p.group_id === g.id);
-    const totalCollected = groupPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-    const expected = (g.monthly_amount || 0) * memberCount * (g.duration || 0);
-    const status = isGroupCompleted(g) ? 'Completed' : (totalCollected >= expected ? 'Fully Collected' : 'Active');
-    
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${g.id}</td>
-      <td>${g.name}</td>
-      <td>₹${g.monthly_amount || 0}</td>
-      <td>${memberCount}/${g.total_members || '?'}</td>
-      <td>${g.duration || 12} months</td>
-      <td>${formatDate(g.start_date)}</td>
-      <td>${formatDate(endDate)}</td>
-      <td>₹${totalCollected.toLocaleString()} / ₹${expected.toLocaleString()}</td>
-      <td><span class="status-badge ${status === 'Completed' ? 'status-success' : status === 'Fully Collected' ? 'status-paid' : 'status-pending'}">${status}</span></td>
-      <td class="action-buttons">
-        <button class="btn-outline btn-sm" onclick="editGroup(${g.id})"><i class="fas fa-edit"></i></button>
-        <button class="btn-danger btn-sm" onclick="confirmDelete('group', ${g.id})"><i class="fas fa-trash"></i></button>
-      </td>
-    `;
-    tbody.appendChild(row);
-  });
-}
-
-function addGroup() {
-  const name = document.getElementById('groupName').value.trim();
-  const monthly = parseFloat(document.getElementById('groupMonthlyAmount').value);
-  const totalMembers = parseInt(document.getElementById('groupTotalMembers').value);
-  const duration = parseInt(document.getElementById('groupDuration').value);
-  const startDate = document.getElementById('groupStartDate').value;
-  const memberSelect = document.getElementById('groupMembers');
-  const selectedMembers = Array.from(memberSelect.selectedOptions).map(opt => opt.value);
-
-  if (!name || isNaN(monthly) || isNaN(totalMembers) || isNaN(duration) || !startDate) {
-    Alert.show('Please fill all required fields', 'error');
-    return;
-  }
-
-  const payload = {
-    name, monthly_amount: monthly, total_members: totalMembers,
-    duration, start_date: startDate, members: selectedMembers.join(',')
+function icon(name) {
+  const paths = {
+    edit: '<path d="M4 13.5V17h3.5L16.8 7.7l-3.5-3.5L4 13.5z"></path><path d="M12.6 4.9l1.5-1.5a1.4 1.4 0 0 1 2 0l.5.5a1.4 1.4 0 0 1 0 2l-1.5 1.5"></path>',
+    trash: '<path d="M3 5h14"></path><path d="M7 5V3h6v2"></path><path d="M6 7l.6 10h6.8L14 7"></path>',
   };
+  return `<svg viewBox="0 0 20 20" aria-hidden="true">${paths[name] || ''}</svg>`;
+}
 
-  const url = editId ? `${API.groups}/${editId}` : API.groups;
-  const method = editId ? 'PUT' : 'POST';
+function toast(message, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = message;
+  el.className = `toast ${type}`;
+  setTimeout(() => el.classList.add('hidden'), 2400);
+}
 
-  fetchJson(url, { method, body: JSON.stringify(payload) })
-    .then(res => {
-      if (res.status === 'success') {
-        Alert.show(editId ? 'Group updated successfully!' : 'Group created successfully!');
-        loadGroups();
-        loadDashboard();
-        hideForm('addGroupForm');
+let confirmTimer = null;
+
+function showConfirm({ title, text: message, onYes, critical = false, waitSeconds = 0, yesText = 'Yes' }) {
+  const modal = document.getElementById('confirmModal');
+  const titleEl = document.getElementById('confirmTitle');
+  const textEl = document.getElementById('confirmText');
+  const criticalEl = document.getElementById('confirmCritical');
+  const yesBtn = document.getElementById('confirmYes');
+
+  clearInterval(confirmTimer);
+  titleEl.textContent = title;
+  textEl.textContent = message;
+  criticalEl.classList.toggle('hidden', !critical);
+  criticalEl.textContent = critical ? 'Critical action. Please wait before confirming.' : '';
+  yesBtn.textContent = yesText;
+  yesBtn.disabled = waitSeconds > 0;
+  yesBtn.classList.toggle('danger', critical);
+  modal.classList.remove('hidden');
+
+  if (waitSeconds > 0) {
+    let remaining = waitSeconds;
+    yesBtn.textContent = `${yesText} (${remaining})`;
+    confirmTimer = setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        clearInterval(confirmTimer);
+        yesBtn.disabled = false;
+        yesBtn.textContent = yesText;
+        criticalEl.textContent = 'Now you can delete, if you are sure.';
       } else {
-        Alert.show(res.message || 'Error occurred', 'error');
+        yesBtn.textContent = `${yesText} (${remaining})`;
       }
-    })
-    .catch(err => Alert.show(err.message, 'error'));
+    }, 1000);
+  }
+
+  yesBtn.onclick = async () => {
+    if (yesBtn.disabled) return;
+    closeConfirm();
+    await onYes();
+  };
 }
 
-function editGroup(id) {
-  const group = groups.find(g => g.id === id);
-  if (!group) return;
-
-  document.getElementById('groupName').value = group.name;
-  document.getElementById('groupMonthlyAmount').value = group.monthly_amount || '';
-  document.getElementById('groupTotalMembers').value = group.total_members || '';
-  document.getElementById('groupDuration').value = group.duration || '';
-  document.getElementById('groupStartDate').value = group.start_date ? group.start_date.split('T')[0] : '';
-
-  const select = document.getElementById('groupMembers');
-  Array.from(select.options).forEach(opt => {
-    opt.selected = group.members?.split(',').includes(opt.value);
-  });
-
-  showForm('addGroupForm', group);
+function closeConfirm() {
+  clearInterval(confirmTimer);
+  document.getElementById('confirmModal').classList.add('hidden');
 }
 
-// ==================== MEMBERS ====================
+function formData(form) {
+  return Object.fromEntries(new FormData(form).entries());
+}
+
+function toggleBcForm() {
+  const form = document.getElementById('bcForm');
+  form.classList.toggle('hidden');
+  if (!form.classList.contains('hidden')) {
+    if (!form.elements.start_date.value) {
+      form.elements.start_date.value = new Date().toISOString().slice(0, 10);
+    }
+    syncBcNameFromDate();
+    form.elements.start_date.focus();
+  }
+}
+
+function resetBcForm() {
+  const form = document.getElementById('bcForm');
+  form.reset();
+  form.elements.duration_months.value = 12;
+  form.classList.add('hidden');
+  state.editBcId = null;
+  document.getElementById('bcSubmitBtn').textContent = 'Create BC';
+}
+
+function syncBcNameFromDate() {
+  const form = document.getElementById('bcForm');
+  const date = form.elements.start_date.value;
+  if (!date) return;
+  const generated = dateLabelFromDate(date);
+  if (!form.elements.name.value || form.elements.name.dataset.auto === '1') {
+    form.elements.name.value = generated;
+    form.elements.name.dataset.auto = '1';
+  }
+  form.elements.name.addEventListener('input', () => {
+    form.elements.name.dataset.auto = '0';
+  }, { once: true });
+}
+
 async function loadMembers() {
   try {
-    const json = await fetchJson(API.members);
-    if (json.status !== 'success') throw new Error(json.message);
-    
-    members = json.data;
-    renderMembersTable();
-    updateMemberDropdowns();
-    
+    const res = await request('/members');
+    state.members = res.data || [];
+    const list = document.getElementById('memberSuggestions');
+    list.innerHTML = state.members.map(m => `
+      <option value="${text(m.name)}">${text([m.phone, m.area].filter(Boolean).join(' - '))}</option>
+      ${m.phone ? `<option value="${text(m.phone)}">${text([m.name, m.area].filter(Boolean).join(' - '))}</option>` : ''}
+    `).join('');
   } catch (err) {
-    Alert.show(err.message, 'error');
+    toast(err.message, 'bad');
   }
 }
 
-function renderMembersTable() {
-  const tbody = document.querySelector('#membersTable tbody');
-  tbody.innerHTML = '';
-  
-  let filteredMembers = [...members];
-  
-  if (searchTerms.members) {
-    filteredMembers = filteredMembers.filter(m => 
-      m.name.toLowerCase().includes(searchTerms.members) ||
-      (m.phone && m.phone.includes(searchTerms.members)) ||
-      String(m.id).includes(searchTerms.members)
-    );
-  }
-  
-  filteredMembers = sortData(filteredMembers, 'members');
-  
-  filteredMembers.forEach(m => {
-    const memberGroups = groups.filter(g => g.members?.split(',').includes(String(m.id)));
-    const groupNames = memberGroups.map(g => g.name).join(', ') || '-';
-    
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${m.id}</td>
-      <td>${m.name}</td>
-      <td>${m.phone || '-'}</td>
-      <td>${m.notes || '-'}</td>
-      <td>${groupNames}</td>
-      <td><span class="status-badge status-info">Active</span></td>
-      <td class="action-buttons">
-        <button class="btn-outline btn-sm" onclick="editMember(${m.id})"><i class="fas fa-edit"></i></button>
-        <button class="btn-danger btn-sm" onclick="confirmDelete('member', ${m.id})"><i class="fas fa-trash"></i></button>
-      </td>
-    `;
-    tbody.appendChild(row);
-  });
-}
-
-function addMember() {
-  const name = document.getElementById('memberName').value.trim();
-  const phone = document.getElementById('memberPhone').value.trim();
-  const notes = document.getElementById('memberNotes').value.trim();
-  const memberSelect = document.getElementById('memberGroups');
-  const selectedGroups = Array.from(memberSelect.selectedOptions).map(opt => opt.value);
-
-  if (!name || !phone) {
-    Alert.show('Name and Phone are required', 'error');
-    return;
-  }
-
-  const payload = { name, phone, notes, groups: selectedGroups.join(',') };
-
-  const url = editId ? `${API.members}/${editId}` : API.members;
-  const method = editId ? 'PUT' : 'POST';
-
-  fetchJson(url, { method, body: JSON.stringify(payload) })
-    .then(res => {
-      if (res.status === 'success') {
-        Alert.show(editId ? 'Member updated successfully!' : 'Member added successfully!');
-        loadMembers();
-        loadDashboard();
-        hideForm('addMemberForm');
-      } else {
-        Alert.show(res.message || 'Error occurred', 'error');
-      }
-    })
-    .catch(err => Alert.show(err.message, 'error'));
-}
-
-function editMember(id) {
-  const member = members.find(m => m.id === id);
-  if (!member) return;
-
-  document.getElementById('memberName').value = member.name;
-  document.getElementById('memberPhone').value = member.phone || '';
-  document.getElementById('memberNotes').value = member.notes || '';
-
-  const select = document.getElementById('memberGroups');
-  Array.from(select.options).forEach(opt => {
-    opt.selected = member.groups?.split(',').includes(opt.value);
-  });
-
-  showForm('addMemberForm', member);
-}
-
-// ==================== PAYMENTS ====================
-async function loadPayments() {
+async function loadBcs() {
   try {
-    const json = await fetchJson(API.payments);
-    if (json.status !== 'success') throw new Error(json.message);
-    payments = json.data;
-    renderPaymentsTable();
+    const q = document.getElementById('globalSearch').value.trim();
+    const res = await request(`/bcs${q ? `?search=${encodeURIComponent(q)}` : ''}`);
+    state.bcs = res.data || [];
+    document.getElementById('bcListHint').textContent = q ? `Search result for "${q}"` : 'All BCs';
+    renderBcs();
+    renderPersonalLedger(q);
   } catch (err) {
-    Alert.show(err.message, 'error');
+    toast(err.message, 'bad');
   }
 }
 
-function renderPaymentsTable() {
-  const tbody = document.querySelector('#paymentsTable tbody');
-  tbody.innerHTML = '';
-
-  let filteredPayments = [...payments];
-
-  const fGroup   = document.getElementById('filterGroup')?.value;
-  const fMember  = document.getElementById('filterMember')?.value;
-  const fMonth   = document.getElementById('filterMonth')?.value;
-  const fYear    = document.getElementById('filterYear')?.value;
-
-  if (fGroup)   filteredPayments = filteredPayments.filter(p => String(p.group_id) === fGroup);
-  if (fMember)  filteredPayments = filteredPayments.filter(p => String(p.member_id) === fMember);
-  if (fMonth)   filteredPayments = filteredPayments.filter(p => String(p.month) === fMonth);
-  if (fYear)    filteredPayments = filteredPayments.filter(p => String(p.year) === fYear);
-
-  if (searchTerms.payments) {
-    filteredPayments = filteredPayments.filter(p => {
-      const group = groups.find(g => g.id == p.group_id);
-      const member = members.find(m => m.id == p.member_id);
-      return (
-        group?.name?.toLowerCase().includes(searchTerms.payments) ||
-        member?.name?.toLowerCase().includes(searchTerms.payments) ||
-        String(p.id).includes(searchTerms.payments)
-      );
-    });
-  }
-
-  filteredPayments = sortData(filteredPayments, 'payments');
-
-  filteredPayments.forEach(p => {
-    const group = groups.find(g => g.id == p.group_id);
-    const member = members.find(m => m.id == p.member_id);
-    
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${p.id}</td>
-      <td>${group?.name || p.group_id}</td>
-      <td>${member?.name || p.member_id}</td>
-      <td>₹${Number(p.amount||0).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
-      <td>${getMonthName(p.month)}</td>
-      <td>${p.year}</td>
-      <td><span class="status-badge status-paid">Paid</span></td>
-      <td>${p.note || '-'}</td>
-      <td>${formatDateTime(p.created_at)}</td>
-      <td class="action-buttons">
-        <button class="btn-outline btn-sm" onclick="editPayment(${p.id})"><i class="fas fa-edit"></i></button>
-        <button class="btn-danger btn-sm" onclick="confirmDelete('payment', ${p.id})"><i class="fas fa-trash"></i></button>
-      </td>
-    `;
-    tbody.appendChild(row);
-  });
-}
-
-function loadPaymentDropdowns() {
-  const groupSelect = document.getElementById('paymentGroupId');
-  if (groupSelect) {
-    groupSelect.innerHTML = '<option value="">Select Group</option>';
-    groups.forEach(g => {
-      const option = document.createElement('option');
-      option.value = g.id;
-      option.textContent = `${g.name} (₹${g.monthly_amount || 0})`;
-      groupSelect.appendChild(option);
-    });
-    
-    groupSelect.removeEventListener('change', onPaymentGroupChange);
-    groupSelect.addEventListener('change', onPaymentGroupChange);
-  }
-  
-  const monthSelect = document.getElementById('paymentMonth');
-  const yearSelect = document.getElementById('paymentYear');
-  
-  if (monthSelect) {
-    monthSelect.removeEventListener('change', validatePaymentMonth);
-    monthSelect.addEventListener('change', validatePaymentMonth);
-  }
-  
-  if (yearSelect) {
-    yearSelect.removeEventListener('change', validatePaymentMonth);
-    yearSelect.addEventListener('change', validatePaymentMonth);
-  }
-}
-
-function onPaymentGroupChange() {
-  loadMembersForPayment();
-  const groupId = document.getElementById('paymentGroupId').value;
-  const group = groups.find(g => g.id == groupId);
-  generateMonthYearOptions(group, 'paymentMonth', 'paymentYear');
-}
-
-function validatePaymentMonth() {
-  const groupId = document.getElementById('paymentGroupId').value;
-  const month = parseInt(document.getElementById('paymentMonth').value);
-  const year = parseInt(document.getElementById('paymentYear').value);
-  
-  if (!groupId || !month || !year) {
-    hide('monthWarning');
-    return;
-  }
-  
-  const group = groups.find(g => g.id == groupId);
-  if (!group || !group.start_date) {
-    hide('monthWarning');
-    return;
-  }
-  
-  const start = new Date(group.start_date);
-  const selected = new Date(year, month - 1);
-  const end = new Date(start);
-  end.setMonth(start.getMonth() + (group.duration || 12));
-  
-  const warning = document.getElementById('monthWarning');
-  if (selected < start || selected > end) {
-    show('monthWarning');
-  } else {
-    hide('monthWarning');
-  }
-}
-
-function loadMembersForPayment() {
-  const groupId = document.getElementById('paymentGroupId').value;
-  const memberSelect = document.getElementById('paymentMemberId');
-  memberSelect.innerHTML = '<option value="">Select Member</option>';
-  
-  if (!groupId) return;
-  
-  const group = groups.find(g => g.id == groupId);
-  if (!group || !group.members) return;
-  
-  const memberIds = group.members.split(',');
-  members.filter(m => memberIds.includes(String(m.id))).forEach(m => {
-    const option = document.createElement('option');
-    option.value = m.id;
-    option.textContent = `${m.name} (${m.phone || 'no phone'})`;
-    memberSelect.appendChild(option);
-  });
-}
-
-async function addPayment() {
-  const groupId = document.getElementById('paymentGroupId').value;
-  const memberId = document.getElementById('paymentMemberId').value;
-  const amount = parseFloat(document.getElementById('paymentAmount').value);
-  const month = parseInt(document.getElementById('paymentMonth').value);
-  const year = parseInt(document.getElementById('paymentYear').value);
-  const note = document.getElementById('paymentNote').value.trim();
-
-  if (!groupId || !memberId || isNaN(amount) || !month || !year) {
-    Alert.show('Please fill all required fields', 'error');
+async function renderPersonalLedger(query) {
+  const panel = document.getElementById('personalLedgerPanel');
+  const bcListPanel = document.getElementById('bcListPanel');
+  const tbody = document.querySelector('#personalLedgerTable tbody');
+  if (!query) {
+    panel.classList.add('hidden');
+    bcListPanel.classList.remove('hidden');
+    tbody.innerHTML = '';
     return;
   }
 
-  const payload = { group_id: groupId, member_id: memberId, amount, month, year, note };
-
-  const url = editId ? `${API.payments}/${editId}` : API.payments;
-  const method = editId ? 'PUT' : 'POST';
-
-  try {
-    const res = await fetchJson(url, { method, body: JSON.stringify(payload) });
-    if (res.status === 'success') {
-      Alert.show(editId ? 'Payment updated successfully!' : 'Payment recorded successfully!');
-      loadPayments();
-      loadDashboard();
-      hideForm('addPaymentForm');
-    } else {
-      Alert.show(res.message || 'Error occurred', 'error');
-    }
-  } catch (err) {
-    Alert.show(err.message, 'error');
-  }
-}
-
-function editPayment(id) {
-  const payment = payments.find(p => p.id === id);
-  if (!payment) return;
-
-  document.getElementById('paymentGroupId').value = payment.group_id;
-  loadMembersForPayment();
-  document.getElementById('paymentMemberId').value = payment.member_id;
-  document.getElementById('paymentAmount').value = payment.amount || '';
-  document.getElementById('paymentMonth').value = payment.month || '';
-  document.getElementById('paymentYear').value = payment.year || '';
-  document.getElementById('paymentNote').value = payment.note || '';
-
-  showForm('addPaymentForm', payment);
-}
-
-// ==================== BIDS ====================
-async function loadBids() {
-  try {
-    const json = await fetchJson(API.bids);
-    if (json.status !== 'success') throw new Error(json.message);
-    
-    bids = json.data;
-    renderBidsTable();
-    
-  } catch (err) {
-    Alert.show(err.message, 'error');
-  }
-}
-
-function renderBidsTable() {
-  const tbody = document.querySelector('#bidsTable tbody');
-  tbody.innerHTML = '';
-  
-  let filteredBids = [...bids];
-  
-  if (searchTerms.bids) {
-    filteredBids = filteredBids.filter(b => {
-      const group = groups.find(g => g.id == b.group_id);
-      const member = members.find(m => m.id == b.member_id);
-      return (
-        group?.name?.toLowerCase().includes(searchTerms.bids) ||
-        member?.name?.toLowerCase().includes(searchTerms.bids) ||
-        String(b.id).includes(searchTerms.bids)
-      );
-    });
-  }
-  
-  filteredBids = sortData(filteredBids, 'bids');
-  
-  filteredBids.forEach(b => {
-    const group = groups.find(g => g.id == b.group_id);
-    const member = members.find(m => m.id == b.member_id);
-    
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${b.id}</td>
-      <td>${group?.name || b.group_id}</td>
-      <td>${member?.name || b.member_id}</td>
-      <td>₹${Number(b.amount||0).toLocaleString('en-IN')}</td>
-      <td>${getMonthName(b.month)}</td>
-      <td>${b.year}</td>
-      <td>${b.bid_number || '-'}</td>
-      <td>${b.notes || '-'}</td>
-      <td>${formatDateTime(b.created_at)}</td>
-      <td class="action-buttons">
-        <button class="btn-outline btn-sm" onclick="editBid(${b.id})"><i class="fas fa-edit"></i></button>
-        <button class="btn-danger btn-sm" onclick="confirmDelete('bid', ${b.id})"><i class="fas fa-trash"></i></button>
-      </td>
-    `;
-    tbody.appendChild(row);
-  });
-
-  // Update summary
-  const totalAmount = bids.reduce((sum, b) => sum + (b.amount || 0), 0);
-  const avg = bids.length ? (totalAmount / bids.length).toFixed(0) : 0;
-  document.getElementById('totalBidsCount').textContent = bids.length;
-  document.getElementById('totalBidAmount').textContent = '₹' + totalAmount.toLocaleString();
-  document.getElementById('averageBid').textContent = '₹' + avg;
-  
-  const currentDate = new Date();
-  const currentMonth = currentDate.getMonth() + 1;
-  const currentYear = currentDate.getFullYear();
-  const monthlyBids = bids.filter(b => b.month === currentMonth && b.year === currentYear);
-  document.getElementById('monthlyBidsCount').textContent = monthlyBids.length;
-}
-
-function loadBidDropdowns() {
-  const groupSelect = document.getElementById('bidGroupId');
-  if (groupSelect) {
-    groupSelect.innerHTML = '<option value="">Select Group</option>';
-    groups.forEach(g => {
-      const option = document.createElement('option');
-      option.value = g.id;
-      option.textContent = `${g.name} (₹${g.monthly_amount || 0})`;
-      groupSelect.appendChild(option);
-    });
-    
-    groupSelect.removeEventListener('change', onBidGroupChange);
-    groupSelect.addEventListener('change', onBidGroupChange);
-  }
-}
-
-function onBidGroupChange() {
-  loadMembersForBid();
-  const groupId = document.getElementById('bidGroupId').value;
-  const group = groups.find(g => g.id == groupId);
-  generateMonthYearOptions(group, 'bidMonth', 'bidYear');
-}
-
-function loadMembersForBid() {
-  const groupId = document.getElementById('bidGroupId').value;
-  const memberSelect = document.getElementById('bidMemberId');
-  memberSelect.innerHTML = '<option value="">Select Member</option>';
-  
-  if (!groupId) return;
-  
-  const group = groups.find(g => g.id == groupId);
-  if (!group || !group.members) return;
-  
-  const memberIds = group.members.split(',');
-  members.filter(m => memberIds.includes(String(m.id))).forEach(m => {
-    const option = document.createElement('option');
-    option.value = m.id;
-    option.textContent = `${m.name} (${m.phone || 'no phone'})`;
-    memberSelect.appendChild(option);
-  });
-}
-
-async function addBid() {
-  const groupId = document.getElementById('bidGroupId').value;
-  const memberId = document.getElementById('bidMemberId').value;
-  const amount = parseFloat(document.getElementById('bidAmount').value);
-  const month = parseInt(document.getElementById('bidMonth').value);
-  const year = parseInt(document.getElementById('bidYear').value);
-  const bidNumber = parseInt(document.getElementById('bidNumber').value) || 1;
-  const notes = document.getElementById('bidNotes').value.trim();
-
-  if (!groupId || !memberId || isNaN(amount) || !month || !year) {
-    Alert.show('Please fill all required fields', 'error');
-    return;
-  }
-
-  const payload = { group_id: groupId, member_id: memberId, amount, month, year, bid_number: bidNumber, notes };
-
-  const url = editId ? `${API.bids}/${editId}` : API.bids;
-  const method = editId ? 'PUT' : 'POST';
-
-  try {
-    const res = await fetchJson(url, { method, body: JSON.stringify(payload) });
-    if (res.status === 'success') {
-      Alert.show(editId ? 'Bid updated successfully!' : 'Bid recorded successfully!');
-      loadBids();
-      loadDashboard();
-      hideForm('addBidForm');
-    } else {
-      Alert.show(res.message || 'Error occurred', 'error');
-    }
-  } catch (err) {
-    Alert.show(err.message, 'error');
-  }
-}
-
-function editBid(id) {
-  const bid = bids.find(b => b.id === id);
-  if (!bid) return;
-
-  document.getElementById('bidGroupId').value = bid.group_id;
-  loadMembersForBid();
-  document.getElementById('bidMemberId').value = bid.member_id;
-  document.getElementById('bidAmount').value = bid.amount || '';
-  document.getElementById('bidMonth').value = bid.month || '';
-  document.getElementById('bidYear').value = bid.year || '';
-  document.getElementById('bidNumber').value = bid.bid_number || 1;
-  document.getElementById('bidNotes').value = bid.notes || '';
-
-  showForm('addBidForm', bid);
-}
-
-// ==================== REPORTS & DUES ====================
-function loadDuesReport() {
-  const groupId = document.getElementById('reportGroup').value;
-  const memberId = document.getElementById('reportMember').value;
-  
-  const group = groups.find(g => g.id == groupId) || null;
-  
-  const month = document.getElementById('reportMonth').value;
-  const year = document.getElementById('reportYear').value;
-  
-  renderDuesReport(groupId, memberId, month, year);
-  
-  if (group) {
-    let summaryPanel = document.querySelector('.filters + .summary-panel');
-    if (!summaryPanel) {
-      summaryPanel = document.createElement('div');
-      summaryPanel.className = 'summary-panel';
-      document.querySelector('.filters').insertAdjacentElement('afterend', summaryPanel);
-    }
-    
-    const memberCount = group.members ? group.members.split(',').length : 0;
-    const currentDate = new Date();
-    const startDate = new Date(group.start_date);
-    const monthsPassed = Math.min(
-      group.duration || 0,
-      (currentDate.getFullYear() - startDate.getFullYear()) * 12 +
-      (currentDate.getMonth() - startDate.getMonth()) + 1
-    );
-    
-    const expectedTotal = (group.monthly_amount || 0) * memberCount * Math.max(0, monthsPassed);
-    const groupPayments = payments.filter(p => p.group_id === group.id);
-    const collectedTotal = groupPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-    const pendingTotal = Math.max(0, expectedTotal - collectedTotal);
-    
-    summaryPanel.innerHTML = `
-      <div class="summary-item"><label>Group</label><span>${group.name}</span></div>
-      <div class="summary-item"><label>Monthly</label><span>₹${group.monthly_amount || 0}</span></div>
-      <div class="summary-item"><label>Members</label><span>${memberCount}</span></div>
-      <div class="summary-item"><label>Duration</label><span>${group.duration || 12} months</span></div>
-      <div class="summary-item"><label>Expected</label><span>₹${expectedTotal.toLocaleString()}</span></div>
-      <div class="summary-item"><label>Collected</label><span>₹${collectedTotal.toLocaleString()}</span></div>
-      <div class="summary-item"><label>Pending</label><span class="${pendingTotal > 0 ? 'pending' : ''}">₹${pendingTotal.toLocaleString()}</span></div>
-    `;
-  }
-}
-
-function renderDuesReport(filterGroup, filterMember, filterMonth, filterYear) {
-  const tbody = document.querySelector('#duesTable tbody');
-  tbody.innerHTML = '';
-  
-  let totalExpected = 0;
-  let totalCollected = 0;
-  let totalBidAmount = 0;
-  const currentDate = new Date();
-  
-  let filteredMembers = [...members];
-  if (filterMember) filteredMembers = filteredMembers.filter(m => String(m.id) === filterMember);
-  
-  filteredMembers.forEach(member => {
-    let memberGroups = groups.filter(g => g.members?.split(',').includes(String(member.id)));
-    if (filterGroup) memberGroups = memberGroups.filter(g => String(g.id) === filterGroup);
-    
-    memberGroups.forEach(group => {
-      const startDate = new Date(group.start_date);
-      const monthlyAmount = group.monthly_amount || 0;
-      const duration = group.duration || 12;
-      
-      let runningExpected = 0;
-      let runningPaid = 0;
-      let monthsToShow = [];
-      
-      for (let i = 0; i < duration; i++) {
-        const date = new Date(startDate);
-        date.setMonth(startDate.getMonth() + i);
-        const m = date.getMonth() + 1;
-        const y = date.getFullYear();
-        
-        let include = true;
-        if (filterMonth && filterYear) {
-          include = (m == filterMonth && y == filterYear);
-        } else if (filterYear) {
-          include = (y == filterYear);
-        } else {
-          include = (date <= currentDate);
-        }
-        
-        if (include) monthsToShow.push({month: m, year: y});
-      }
-      
-      monthsToShow.forEach(({ month, year }) => {
-        const amount = monthlyAmount;
-        runningExpected += amount;
-        totalExpected += amount;
-        
-        const payment = payments.find(p => 
-          String(p.group_id) === String(group.id) && 
-          String(p.member_id) === String(member.id) && 
-          p.month == month && p.year == year
-        );
-        
-        const bid = bids.find(b => 
-          String(b.group_id) === String(group.id) && 
-          String(b.member_id) === String(member.id) && 
-          b.month == month && b.year == year
-        );
-        
-        if (bid) totalBidAmount += bid.amount || 0;
-        if (payment) {
-          runningPaid += payment.amount || 0;
-          totalCollected += payment.amount || 0;
-        }
-        
-        const balance = runningExpected - runningPaid;
-        
-        const status = payment ? 'Paid' : 'Pending';
-        const statusClass = payment ? 'status-paid' : 'status-pending';
-        const dueDate = new Date(year, month - 1, 1);
-        const isOverdue = !payment && dueDate < currentDate;
-        
-        const row = document.createElement('tr');
-        row.className = isOverdue ? 'overdue-row' : '';
-        row.innerHTML = `
-          <td>${member.name}</td>
-          <td>${group.name}</td>
-          <td>${member.phone || '-'}</td>
-          <td>${getMonthName(month)}</td>
-          <td>${year}</td>
-          <td>₹${amount.toLocaleString('en-IN')}</td>
-          <td>${payment ? '₹' + Number(payment.amount).toLocaleString('en-IN', {minimumFractionDigits:2}) : '₹0'}</td>
-          <td class="balance-cell ${balance > 0 ? 'positive' : ''}">₹${balance.toLocaleString('en-IN')}</td>
-          <td><span class="status-badge ${statusClass}">${status}</span></td>
-          <td>${bid ? '₹' + Number(bid.amount).toLocaleString('en-IN') : '-'}</td>
-          <td>
-            ${!payment && member.phone ? 
-              `<button class="whatsapp-btn btn-sm" onclick="sendWhatsAppReminder('${member.phone}', '${member.name.replace(/'/g,"\\'")}', ${amount}, '${group.name.replace(/'/g,"\\'")}')">
-                <i class="fab fa-whatsapp"></i>
-              </button>` : ''}
-          </td>
-        `;
-        tbody.appendChild(row);
-      });
-    });
-  });
-  
-  document.getElementById('totalExpected').textContent = '₹' + totalExpected.toLocaleString('en-IN');
-  document.getElementById('totalCollected').textContent = '₹' + totalCollected.toLocaleString('en-IN');
-  const pending = Math.max(0, totalExpected - totalCollected);
-  document.getElementById('totalPending').textContent = '₹' + pending.toLocaleString('en-IN');
-  const percent = totalExpected > 0 ? ((totalCollected / totalExpected) * 100).toFixed(1) : 0;
-  document.getElementById('collectionPercent').textContent = percent + '%';
-  document.getElementById('reportTotalBids').textContent = '₹' + totalBidAmount.toLocaleString('en-IN');
-}
-
-// ==================== DROPDOWNS & HELPERS ====================
-function loadMemberDropdowns() {
-  const groupSelect = document.getElementById('memberGroups');
-  if (groupSelect) {
-    groupSelect.innerHTML = '';
-    groups.forEach(g => {
-      const option = document.createElement('option');
-      option.value = g.id;
-      option.textContent = `${g.name} (₹${g.monthly_amount || 0})`;
-      groupSelect.appendChild(option);
-    });
-  }
-}
-
-function loadGroupDropdowns() {
-  const memberSelect = document.getElementById('groupMembers');
-  if (memberSelect) {
-    memberSelect.innerHTML = '';
-    members.forEach(m => {
-      const option = document.createElement('option');
-      option.value = m.id;
-      option.textContent = `${m.name} (${m.phone || 'no phone'})`;
-      memberSelect.appendChild(option);
-    });
-  }
-}
-
-function updateMemberDropdowns() {
-  ['filterMember', 'reportMember'].forEach(id => {
-    const select = document.getElementById(id);
-    if (select) {
-      select.innerHTML = '<option value="">All Members</option>';
-      members.forEach(m => {
-        const option = document.createElement('option');
-        option.value = m.id;
-        option.textContent = m.name;
-        select.appendChild(option);
-      });
-    }
-  });
-}
-
-function updateGroupDropdowns() {
-  ['filterGroup', 'reportGroup', 'paymentGroupId', 'bidGroupId'].forEach(id => {
-    const select = document.getElementById(id);
-    if (select) {
-      select.innerHTML = '<option value="">All Groups</option>';
-      groups.forEach(g => {
-        const option = document.createElement('option');
-        option.value = g.id;
-        option.textContent = g.name;
-        select.appendChild(option);
-      });
-    }
-  });
-}
-
-function getMonthName(month) {
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return months[month - 1] || month;
-}
-
-function formatDate(date) {
-  if (!date) return '-';
-  return new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
-
-function formatDateTime(date) {
-  if (!date) return '-';
-  return new Date(date).toLocaleString('en-IN', { 
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit'
-  });
-}
-
-function clearFilters() {
-  ['filterGroup','filterMember','filterMonth','filterYear'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  renderPaymentsTable();
-}
-
-function exportReport() {
+  bcListPanel.classList.add('hidden');
+  const q = query.toLowerCase();
   const rows = [];
-  document.querySelectorAll('#duesTable tr').forEach(tr => {
-    const row = [];
-    tr.querySelectorAll('th, td').forEach(td => row.push(td.textContent.trim()));
-    rows.push(row.join(','));
-  });
-  
-  const csv = rows.join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = 'dues_report.csv';
-  link.click();
-  URL.revokeObjectURL(url);
-  Alert.show('Report exported successfully!', 'success');
-}
-
-function printReport() {
-  window.print();
-}
-
-function isGroupCompleted(group) {
-  if (!group.start_date || !group.duration) return false;
-  const end = new Date(group.start_date);
-  end.setMonth(end.getMonth() + parseInt(group.duration));
-  return new Date() > end;
-}
-
-function calculatePendingDues() {
+  const currentLabel = new Date().toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+  document.getElementById('ledgerDueHead').textContent = `${currentLabel} Due`;
+  document.getElementById('ledgerPaidHead').textContent = `${currentLabel} Paid`;
+  document.getElementById('ledgerBalanceHead').textContent = `${currentLabel} Balance`;
   let totalDue = 0;
-  const now = new Date();
-  
-  groups.forEach(group => {
-    if (!group.members || !group.start_date) return;
-    
-    const start = new Date(group.start_date);
-    const monthsPassed = Math.min(
-      group.duration || 12,
-      (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()) + 1
-    );
-    
-    if (monthsPassed <= 0) return;
-    
-    const memberIds = group.members.split(',');
-    const expectedPerMember = (group.monthly_amount || 0) * monthsPassed;
-    const totalExpected = expectedPerMember * memberIds.length;
-    
-    const groupPayments = payments.filter(p => p.group_id == group.id);
-    const totalPaid = groupPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-    
-    totalDue += Math.max(0, totalExpected - totalPaid);
-  });
-  
-  return totalDue;
-}
-
-function calculateMemberDues(memberId) {
-  let totalDue = 0;
-  const now = new Date();
-  
-  groups.forEach(group => {
-    if (!group.members?.split(',').includes(String(memberId))) return;
-    
-    const start = new Date(group.start_date);
-    const monthsPassed = Math.min(
-      group.duration || 12,
-      (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()) + 1
-    );
-    
-    if (monthsPassed <= 0) return;
-    
-    const expected = (group.monthly_amount || 0) * monthsPassed;
-    
-    const memberPayments = payments.filter(p => 
-      p.group_id == group.id && p.member_id == memberId
-    );
-    const paid = memberPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-    
-    totalDue += Math.max(0, expected - paid);
-  });
-  
-  return totalDue;
-}
-
-function confirmDelete(type, id) {
-  const typeNames = {
-    group: 'Group',
-    member: 'Member',
-    payment: 'Payment',
-    bid: 'Bid'
-  };
-  
-  Alert.confirm(
-    `Are you sure you want to delete this ${type}? This action cannot be undone.`,
-    `Delete ${typeNames[type]}`,
-    () => {
-      const url = `${API[type + 's']}/${id}`;
-      fetchJson(url, { method: 'DELETE' })
-        .then(res => {
-          if (res.status === 'success') {
-            Alert.show(`${typeNames[type]} deleted successfully!`, 'success');
-            if (type === 'group') loadGroups();
-            if (type === 'member') loadMembers();
-            if (type === 'payment') loadPayments();
-            if (type === 'bid') loadBids();
-            loadDashboard();
-          } else {
-            Alert.show(res.message || 'Delete failed', 'error');
-          }
-        })
-        .catch(err => Alert.show(err.message, 'error'));
+  let totalPaid = 0;
+  let totalBalance = 0;
+  let totalReceived = 0;
+  for (const bc of state.bcs) {
+    try {
+      const res = await request(`/bcs/${bc.id}/matrix`);
+      const matrix = res.data;
+      matrix.units.forEach(unit => {
+        const haystack = [unit.member_name, unit.phone, unit.area].join(' ').toLowerCase();
+        if (!haystack.includes(q)) return;
+        const current = currentMonthEntry(matrix, unit.id);
+        const due = Number(current?.due_amount || 0);
+        const paid = Number(current?.paid_amount || 0);
+        const balance = Number(current?.balance || 0);
+        let received = 0;
+        matrix.months.forEach(month => {
+          const entry = month.rows.find(row => Number(row.unit_id) === Number(unit.id));
+          if (entry?.is_receiver) received += Number(entry.amount_received || 0);
+        });
+        totalDue += due;
+        totalPaid += paid;
+        totalBalance += balance;
+        totalReceived += received;
+        rows.push({ bc, unit, due, paid, balance, received });
+      });
+    } catch (err) {
+      // Keep search usable even if one matrix fails.
     }
-  );
+  }
+
+  document.getElementById('personalLedgerHint').textContent = rows.length
+    ? `All matching units for "${query}"`
+    : `No unit found for "${query}"`;
+  tbody.innerHTML = rows.length ? rows.map(row => `
+    <tr>
+      <td>${text(row.unit.member_name || '-')}</td>
+      <td>${text(row.unit.phone || '-')}</td>
+      <td>${text(row.unit.area || '-')}</td>
+      <td>${text(row.bc.name || '-')}</td>
+      <td>${row.unit.unit_no || '-'}</td>
+      <td>${money(row.due)}</td>
+      <td>${money(row.paid)}</td>
+      <td class="${row.balance > 0 ? 'pending' : row.balance < 0 ? 'advance' : 'clear'}">${money(row.balance)}</td>
+      <td>${row.received ? money(row.received) : '-'}</td>
+      <td><button class="link-btn" type="button" title="Open member ledger" onclick="openBc(${row.bc.id}, ${row.unit.member_id || 0}, decodeURIComponent('${encodeURIComponent(row.unit.member_name || '')}'))">${text(row.bc.name || 'Open')}</button></td>
+    </tr>
+  `).join('') + `
+    <tr class="grand-total">
+      <td colspan="5">Total</td>
+      <td>${money(totalDue)}</td>
+      <td>${money(totalPaid)}</td>
+      <td>${money(totalBalance)}</td>
+      <td>${money(totalReceived)}</td>
+      <td></td>
+    </tr>
+  ` : '<tr><td colspan="10" class="empty">No matching member unit found.</td></tr>';
+  panel.classList.remove('hidden');
+}
+
+function currentMonthEntry(matrix, unitId) {
+  const bc = matrix.bc;
+  if (!bc.start_date) return null;
+  const start = new Date(`${bc.start_date}T00:00:00`);
+  const now = new Date();
+  let monthNo = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()) + 1;
+  monthNo = Math.max(1, Math.min(Number(bc.duration_months || 1), monthNo));
+  const month = matrix.months.find(item => Number(item.month_no) === monthNo);
+  return month?.rows.find(row => Number(row.unit_id) === Number(unitId)) || null;
+}
+
+function renderBcs() {
+  const tbody = document.querySelector('#bcTable tbody');
+  if (!state.bcs.length) {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty">No BC found. Press + BC to create one.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = state.bcs.map(bc => `
+    <tr class="clickable" onclick="openBc(${bc.id})">
+      <td><strong>${text(bc.name)}</strong></td>
+      <td>${text(bc.start_date || '-')}</td>
+      <td>${bc.duration_months || 0} months</td>
+      <td>${money(bc.monthly_total)}</td>
+      <td>${money(bc.per_unit_due)}</td>
+      <td>${bc.units_added || 0}/${bc.unit_count || 0}</td>
+      <td>${money(bc.paid_total)}</td>
+      <td>${text(bc.remarks || '-')}</td>
+      <td class="row-actions" onclick="event.stopPropagation()">
+        <button class="icon-btn" type="button" title="Edit BC" onclick="editBc(${bc.id})">${icon('edit')}</button>
+        <button class="icon-btn danger" type="button" title="Delete BC" onclick="deleteBc(${bc.id})">${icon('trash')}</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function createBc(event) {
+  event.preventDefault();
+  const form = event.target;
+  const payload = formData(form);
+  if (!payload.name && payload.start_date) payload.name = payload.start_date;
+  try {
+    const wasEditing = Boolean(state.editBcId);
+    const path = wasEditing ? `/bcs/${state.editBcId}` : '/bcs';
+    const method = wasEditing ? 'PUT' : 'POST';
+    const res = await request(path, { method, body: JSON.stringify(payload) });
+    const openId = state.editBcId || res.data?.id;
+    resetBcForm();
+    await loadBcs();
+    toast(wasEditing ? 'BC updated' : 'BC created');
+    if (openId && !wasEditing) openBc(openId);
+  } catch (err) {
+    toast(err.message, 'bad');
+  }
+}
+
+function editBc(id) {
+  const bc = state.bcs.find(item => Number(item.id) === Number(id));
+  if (!bc) return;
+  showConfirm({
+    title: 'Edit BC',
+    text: `Edit "${bc.name}" details?`,
+    yesText: 'Edit',
+    onYes: () => openBcEditForm(bc),
+  });
+}
+
+function openBcEditForm(bc) {
+  const form = document.getElementById('bcForm');
+  form.classList.remove('hidden');
+  state.editBcId = bc.id;
+  form.elements.name.value = bc.name || '';
+  form.elements.start_date.value = bc.start_date || '';
+  form.elements.duration_months.value = bc.duration_months || 12;
+  form.elements.monthly_total.value = numberValue(bc.monthly_total);
+  form.elements.unit_count.value = bc.unit_count || '';
+  form.elements.remarks.value = bc.remarks || '';
+  document.getElementById('bcSubmitBtn').textContent = 'Update BC';
+  form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+async function deleteBc(id) {
+  const bc = state.bcs.find(item => Number(item.id) === Number(id));
+  if (!bc) return;
+  showConfirm({
+    title: 'Critical Delete',
+    text: `Delete whole BC "${bc.name}"? All matrix entries for this BC will be removed.`,
+    critical: true,
+    waitSeconds: 5,
+    yesText: 'Delete BC',
+    onYes: async () => {
+      try {
+        await request(`/bcs/${id}`, { method: 'DELETE' });
+        if (Number(state.currentBcId) === Number(id)) showHome();
+        await loadBcs();
+        toast('BC deleted');
+      } catch (err) {
+        toast(err.message, 'bad');
+      }
+    },
+  });
+}
+
+async function openBc(id, memberId = 0, memberName = '') {
+  state.currentBcId = id;
+  const hash = new URLSearchParams();
+  hash.set('bc', id);
+  if (memberId) hash.set('member_id', memberId);
+  if (memberName) hash.set('member_name', memberName);
+  window.location.hash = hash.toString();
+  document.getElementById('homeView').classList.add('hidden');
+  document.getElementById('matrixView').classList.remove('hidden');
+  document.getElementById('backBtn').classList.remove('hidden');
+  const url = new URL('matrix.html', window.location.href);
+  url.searchParams.set('bc_id', id);
+  if (memberId) url.searchParams.set('member_id', memberId);
+  if (memberName) url.searchParams.set('member_name', memberName);
+  document.getElementById('matrixFrame').src = url.href;
+}
+
+function showHome() {
+  state.matrix = null;
+  state.currentBcId = null;
+  history.replaceState('', document.title, window.location.pathname + window.location.search);
+  document.getElementById('homeView').classList.remove('hidden');
+  document.getElementById('matrixView').classList.add('hidden');
+  document.getElementById('backBtn').classList.add('hidden');
+  document.getElementById('matrixFrame').src = 'about:blank';
+  loadBcs();
+}
+
+function restoreMatrixFromHash() {
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const bcId = Number(params.get('bc'));
+  if (bcId) openBc(bcId, Number(params.get('member_id') || 0), params.get('member_name') || '');
+}
+
+function handleMatrixMessage(event) {
+  if (!event.data || !event.data.type) return;
+  if (event.data.type === 'close-matrix') showHome();
+  if (event.data.type === 'matrix-updated') loadBcs();
+}
+
+function monthLabelFromDate(dateText, offset) {
+  const date = dateText ? new Date(`${dateText}T00:00:00`) : new Date();
+  date.setMonth(date.getMonth() + Number(offset || 0));
+  return date.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+}
+
+function dateLabelFromDate(dateText) {
+  const date = dateText ? new Date(`${dateText}T00:00:00`) : new Date();
+  return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
 }
