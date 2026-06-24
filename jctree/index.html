@@ -17,7 +17,10 @@
         </div>
 
         <div class="jc-page-filter">
-            <button id="lineTrackerTrigger" type="button">Line Tracker</button>
+            <button id="lineTrackerTrigger" type="button">
+                <span>Route History</span>
+                <span id="routeHistoryPendingBadge" class="route-history-pending-badge" hidden>0</span>
+            </button>
             <button id="jcWindowPickerTrigger" type="button">Select Window</button>
         </div>
     </div>
@@ -29,16 +32,45 @@
     <div class="line-tracker-card">
         <div class="line-tracker-head">
             <div>
-                <h2>Line Tracker</h2>
-                <p>Audit pending and recovered line incidents.</p>
+                <h2>Route UP/Down history</h2>
+                <p id="routeHistorySummary">Loading route history...</p>
             </div>
-            <button id="lineTrackerClose" type="button">Close</button>
+            <div class="route-history-actions">
+                <input id="routeHistorySearch" type="search" placeholder="Search route history" aria-label="Search route history">
+                <select id="routeHistoryWindow" aria-label="Window"></select>
+                <button id="routeHistoryRefresh" type="button">Refresh</button>
+                <button id="lineTrackerClose" type="button">Close</button>
+            </div>
         </div>
-        <iframe
-            id="lineTrackerFrame"
-            title="Line Tracker"
-            data-src="https://virtualbackoffice2.github.io/rack/jctree/linedown/"
-        ></iframe>
+        <div class="route-history">
+            <section class="route-tabs" aria-label="Route UP/Down history views">
+                <button class="route-tab active" type="button" data-route-tab="pending">
+                    <span>Pending</span>
+                    <span class="route-tab-count">0</span>
+                </button>
+                <button class="route-tab" type="button" data-route-tab="history">
+                    <span>History</span>
+                    <span class="route-tab-count">0</span>
+                </button>
+            </section>
+            <section class="route-status-strip">
+                <span id="routeHistoryWindowBadge">Window</span>
+                <span id="routeHistoryUpdatedBadge">Last updated: --</span>
+            </section>
+            <section id="routeHistoryMessage" class="route-message" hidden></section>
+            <section id="routeHistoryRecords" class="route-records" aria-live="polite"></section>
+        </div>
+    </div>
+</div>
+
+<div class="route-confirm-modal" id="routeConfirmModal" aria-hidden="true">
+    <div class="route-confirm-card" role="dialog" aria-modal="true" aria-labelledby="routeConfirmTitle">
+        <h2 id="routeConfirmTitle">Confirm action</h2>
+        <p id="routeConfirmMessage">Please confirm this action.</p>
+        <div class="route-confirm-actions">
+            <button id="routeConfirmCancel" type="button">Cancel</button>
+            <button id="routeConfirmOk" type="button">Confirm</button>
+        </div>
     </div>
 </div>
 
@@ -55,37 +87,5 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="jc-notepad.js"></script>
-<script>
-    (() => {
-        const panel = document.getElementById("lineTrackerPanel");
-        const frame = document.getElementById("lineTrackerFrame");
-        const openBtn = document.getElementById("lineTrackerTrigger");
-        const closeBtn = document.getElementById("lineTrackerClose");
-
-        function openLineTracker() {
-            if (!frame.src) {
-                frame.src = frame.dataset.src;
-            }
-            panel.classList.add("show");
-            panel.setAttribute("aria-hidden", "false");
-        }
-
-        function closeLineTracker() {
-            panel.classList.remove("show");
-            panel.setAttribute("aria-hidden", "true");
-        }
-
-        openBtn.addEventListener("click", openLineTracker);
-        closeBtn.addEventListener("click", closeLineTracker);
-        panel.addEventListener("click", (event) => {
-            if (event.target === panel) closeLineTracker();
-        });
-        document.addEventListener("keydown", (event) => {
-            if (event.key === "Escape" && panel.classList.contains("show")) {
-                closeLineTracker();
-            }
-        });
-    })();
-</script>
 </body>
 </html>

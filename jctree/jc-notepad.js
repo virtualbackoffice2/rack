@@ -47,7 +47,18 @@
         ponUserMap: {},
         ponPicker: null,
         jcMap: null,
-        jcMapMarkers: []
+        jcMapMarkers: [],
+        routePayload: null,
+        routeHistory: {
+            window: "MEROTRA",
+            tab: "pending",
+            rows: [],
+            searchTerm: "",
+            teamMembers: [],
+            teamLoaded: false,
+            lastUpdated: "",
+            loaded: false
+        }
     };
 
     const elements = {};
@@ -165,7 +176,7 @@
                     <button id="jcDeleteBoxBtn" type="button">Delete JC</button>
                     <button id="jcDownloadCsvBtn" type="button">Download CSV</button>
                     <button id="jcShowMapBtn" type="button" title="Show visible JCs on map"><span class="map-btn-icon"></span><span>Map</span></button>
-                    <input id="jcSearchInput" type="search" placeholder="Search JC, OTDR, After JC, Area...">
+                    <input id="jcSearchInput" type="search" placeholder="Search JC, OTDR, After JC, Area, User...">
                 </div>
                 <div class="row" id="jcRow"></div>
                 <div class="jc-note-inner-modal" id="jcJcModal">
@@ -403,6 +414,24 @@
                         </div>
                     </div>
                 </div>
+                <div class="jc-note-inner-modal" id="jcRouteModal">
+                    <div class="modal-card jc-route-card">
+                        <div class="modal-head jc-route-head">
+                            <div>
+                                <h2 id="jcRouteTitle">Route structure review</h2>
+                                <div class="modal-sub" id="jcRouteSub">Selected route JC chain</div>
+                            </div>
+                            <div class="jc-route-actions">
+                                <button class="close-btn" id="jcRouteAddAfterBtn" type="button">Add JC after selected</button>
+                                <button class="close-btn danger-btn" id="jcRouteDeleteBtn" type="button">Delete selected JC</button>
+                                <button class="close-btn" id="jcRouteRefreshBtn" type="button">Refresh</button>
+                                <button class="close-btn" id="jcRouteCloseBtn" type="button">Close</button>
+                            </div>
+                        </div>
+                        <div id="jcRouteSummary" class="jc-route-summary"></div>
+                        <div id="jcRouteMount" class="jc-route-mount"></div>
+                    </div>
+                </div>
             </div>
         `;
 
@@ -501,6 +530,15 @@
         elements.mapJcSub = state.root.querySelector("#jcMapJcSub");
         elements.closeMapJcBtn = state.root.querySelector("#jcCloseMapJcBtn");
         elements.mapJcMount = state.root.querySelector("#jcMapJcMount");
+        elements.routeModal = state.root.querySelector("#jcRouteModal");
+        elements.routeTitle = state.root.querySelector("#jcRouteTitle");
+        elements.routeSub = state.root.querySelector("#jcRouteSub");
+        elements.routeSummary = state.root.querySelector("#jcRouteSummary");
+        elements.routeMount = state.root.querySelector("#jcRouteMount");
+        elements.routeCloseBtn = state.root.querySelector("#jcRouteCloseBtn");
+        elements.routeRefreshBtn = state.root.querySelector("#jcRouteRefreshBtn");
+        elements.routeAddAfterBtn = state.root.querySelector("#jcRouteAddAfterBtn");
+        elements.routeDeleteBtn = state.root.querySelector("#jcRouteDeleteBtn");
         
         elements.addBoxBtn = state.root.querySelector("#jcAddBoxBtn");
         elements.deleteBoxBtn = state.root.querySelector("#jcDeleteBoxBtn");
@@ -576,6 +614,11 @@
 
     function getMacMatchKey(value) {
         return normalizeMacValue(value).slice(0, 11);
+    }
+
+    function displayValue(value) {
+        const text = String(value ?? "").trim();
+        return text || "--";
     }
 
     function escapeHtml(value) {
@@ -884,6 +927,48 @@
         return null;
     }
 
+    function getPartialPonMismatchUsers(coreData) {
+        if (normalizePonMode(coreData && coreData.ponMode) !== "partial") return [];
+        const expectedPon = normalizePonValue(coreData && coreData.oltpon);
+        if (!expectedPon) return [];
+        return String(coreData && coreData.partialpon || "")
+            .split(",")
+            .map((item) => normalizeMacValue(item))
+            .filter(Boolean)
+            .map((macAddress) => {
+                const userInfo = getUserStatusByMac(macAddress);
+                if (!userInfo) return null;
+                const actualPon = normalizePonValue(userInfo.pon_number);
+                if (!actualPon || actualPon === expectedPon) return null;
+                return {
+                    mac_address: userInfo.mac_address || macAddress,
+                    normalized_mac_address: getMacMatchKey(macAddress),
+                    actualPon: userInfo.pon_number || actualPon,
+                    expectedPon: expectedPon,
+                    user: userInfo
+                };
+            })
+            .filter(Boolean);
+    }
+
+    function getJcPartialPonMismatchCount(boxData) {
+        return [...(boxData && boxData.inputWires || []), ...(boxData && boxData.outputWires || [])]
+            .reduce((total, wire) => total + (wire.coreDetails || []).reduce((sum, core) => sum + getPartialPonMismatchUsers(core).length, 0), 0);
+    }
+
+    function getJcPartialPonMismatchCores(boxData) {
+        const result = [];
+        [...(boxData && boxData.inputWires || []), ...(boxData && boxData.outputWires || [])].forEach((wire) => {
+            (wire.coreDetails || []).forEach((core) => {
+                const mismatches = getPartialPonMismatchUsers(core);
+                if (mismatches.length) {
+                    result.push({ core, mismatches });
+                }
+            });
+        });
+        return result;
+    }
+
     function getCoreHealthMeta(coreData) {
         if (normalizePonMode(coreData && coreData.ponMode) === "partial") {
             return getPartialPonStats(coreData);
@@ -1010,6 +1095,10 @@
         return "";
     }
 
+    function getUserSearchText(userdb, netsense) {
+        return Object.values(userdb || {}).concat(Object.values(netsense || {})).join(" ");
+    }
+
     async function fetchWindowPonStats(windowName) {
         const normalizedWindow = String(windowName || "").trim().toUpperCase();
         if (!normalizedWindow) {
@@ -1050,7 +1139,9 @@
                     pon_number: netsense.pon_number || "",
                     window_name: netsense.window_name || "",
                     mac_address: userdb.mac_address || netsense.mac_address || "",
-                    power: netsense.rxPower ?? netsense.txPower ?? ""
+                    normalized_mac_address: normalizedMac,
+                    power: netsense.rxPower ?? netsense.txPower ?? "",
+                    _searchText: getUserSearchText(userdb, netsense)
                 };
             }
             if (serviceStatus !== "active" || !ponValue) return;
@@ -1067,8 +1158,10 @@
                     address: userdb.address || "",
                 power: netsense.rxPower ?? netsense.txPower ?? "",
                 status: netsense.status || "",
+                pon_number: netsense.pon_number || "",
                 mac_address: userdb.mac_address || netsense.mac_address || "",
-                    normalized_mac_address: normalizedMac
+                    normalized_mac_address: normalizedMac,
+                    _searchText: getUserSearchText(userdb, netsense)
                 });
             ponStats[ponValue].activeUsers += 1;
             if (String(netsense.status || "").trim().toUpperCase() === "UP") {
@@ -1112,29 +1205,50 @@
                 previousJc: String(node.previousJc || "").trim(),
                 otdrDistance: String(node.otdrDistance || "").trim(),
                 healthMeta: getJcHealthMeta(node),
+                mismatchCount: getJcPartialPonMismatchCount(node),
                 lat: Number(node.lat),
                 lng: Number(node.lng)
             }))
             .filter((node) => Number.isFinite(node.lat) && Number.isFinite(node.lng));
     }
 
-    function createMapMarkerHtml(node) {
+    function createMapMarkerHtml(node, mode = "dot") {
         const healthMeta = node && node.healthMeta ? node.healthMeta : { level: "gray", label: "Pon 0/0" };
         const titleHtml = node && node.otdrDistance
             ? `${String(node.jcName || "JC")}<br><span class="map-marker-otdr">(${String(node.otdrDistance)})</span>`
             : String(node && node.jcName || "JC");
         const previousHtml = node && node.previousJc ? `After ${String(node.previousJc)}` : "";
+        const mismatchCount = Number(node && node.mismatchCount || 0);
         return `
-            <div class="map-jc-marker">
-                <div class="map-jc-badge">${titleHtml}</div>
-                <div class="map-jc-box">
-                    <div class="map-jc-side left"></div>
-                    <div class="map-jc-side right"></div>
+            <div class="map-jc-marker ${mode === "preview" ? "is-preview" : "is-dot"}">
+                <div class="map-jc-dot map-jc-dot-${healthMeta.level}" title="${String(node && node.jcName || "JC")}"></div>
+                <div class="map-jc-preview">
+                    <div class="map-jc-badge">${titleHtml}</div>
+                    <div class="map-jc-box">
+                        <div class="map-jc-side left"></div>
+                        <div class="map-jc-side right"></div>
+                    </div>
+                    <div class="map-jc-health"><span class="core-led ${healthMeta.level}"></span><span>${healthMeta.label}</span></div>
+                    ${mismatchCount ? `<div class="map-jc-mismatch">! ${mismatchCount}</div>` : ""}
+                    ${previousHtml ? `<div class="map-jc-after">${previousHtml}</div>` : ""}
                 </div>
-                <div class="map-jc-health"><span class="core-led ${healthMeta.level}"></span><span>${healthMeta.label}</span></div>
-                ${previousHtml ? `<div class="map-jc-after">${previousHtml}</div>` : ""}
             </div>
         `;
+    }
+
+    function createMapMarkerIcon(node, mode = "dot") {
+        return window.L.divIcon({
+            className: "jc-map-div-icon",
+            html: createMapMarkerHtml(node, mode),
+            iconSize: mode === "preview" ? [118, 112] : [24, 24],
+            iconAnchor: mode === "preview" ? [59, 82] : [12, 12],
+            popupAnchor: [0, -64]
+        });
+    }
+
+    function setMapMarkerMode(marker, node, mode = "dot") {
+        marker._jcMapMode = mode;
+        marker.setIcon(createMapMarkerIcon(node, mode));
     }
 
     function ensureLeafletMap() {
@@ -1155,6 +1269,563 @@
     function closeMapJcModal() {
         if (elements.mapJcModal) elements.mapJcModal.classList.remove("show");
         if (elements.mapJcMount) elements.mapJcMount.innerHTML = "";
+    }
+
+    function routeHistoryEndpoint(windowName) {
+        return apiUrlFor(windowName, "linetracker");
+    }
+
+    function routeHistoryTimestampEndpoint(windowName) {
+        return apiUrlFor(windowName, "usertag");
+    }
+
+    function routeHistoryIsRecovered(row) {
+        return String(row.status || "").toUpperCase() === "UP" || Boolean(String(row.up_at || "").trim());
+    }
+
+    function routeHistoryIsDone(row) {
+        return String(row.Audit || "").toLowerCase() === "done";
+    }
+
+    function routeHistoryPointCode(row) {
+        return String(row.point_type || "").toLowerCase() === "full" ? "FP" : "PP";
+    }
+
+    function routeHistoryAffectedPon(row) {
+        return `${routeHistoryPointCode(row)} - ${displayValue(row.pon_number || row.point_key)}`;
+    }
+
+    function routeHistoryWireCoreCount(row) {
+        const match = String(row.wiretype || "").match(/\d+/);
+        return match ? Number(match[0]) : 0;
+    }
+
+    function routeHistoryName(row) {
+        return `Route name : JC ${displayValue(row.jcname)} and previous JC ${displayValue(row.jc_previousjc)}`;
+    }
+
+    function routeHistoryPayload(row) {
+        return {
+            windowName: state.routeHistory.window,
+            rowId: row.id,
+            jcName: row.jcname || "",
+            previousJc: row.jc_previousjc || "",
+            ponNumber: row.pon_number || row.point_key || "",
+            affectedPon: routeHistoryAffectedPon(row),
+            affectedUsers: row.total_user_count || "",
+            downAt: row.down_at || "",
+            upAt: row.up_at || ""
+        };
+    }
+
+    function routeHistoryFields(fields) {
+        return fields.map(([label, value]) => `
+            <div class="route-field">
+                <span class="route-label">${escapeHtml(label)}</span>
+                <span class="route-value">${escapeHtml(displayValue(value))}</span>
+            </div>
+        `).join("");
+    }
+
+    function routeHistoryPreviousDetails(row) {
+        const fields = [
+            ["JC name", row.jcname],
+            ["OTDR", row.jc_otdr],
+            ["Wire", row.wire_drum],
+            ["Wire Type", row.wiretype],
+            ["Core", row.corecolorandnumber],
+            ...(routeHistoryWireCoreCount(row) > 12 ? [["Tube", row.tube]] : []),
+            ["Previous JC", row.jc_previousjc]
+        ];
+
+        return `
+            <div class="route-previous-card">
+                <button class="route-previous-toggle" type="button" aria-expanded="false">
+                    <span>${escapeHtml(`JC detail (${displayValue(row.jc_otdr)})`)}</span>
+                    <span class="route-chevron" aria-hidden="true">v</span>
+                </button>
+                <div class="route-previous-content" hidden>
+                    <div class="route-previous-grid">
+                        ${routeHistoryFields(fields)}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function routeHistoryMeta(row) {
+        return `
+            ${routeHistoryFields([
+                ["Affected PON", routeHistoryAffectedPon(row)],
+                ["Affected users", row.total_user_count]
+            ])}
+            ${routeHistoryPreviousDetails(row)}
+            ${routeHistoryFields([
+                ["Down At", row.down_at],
+                ["Up At", row.up_at]
+            ])}
+        `;
+    }
+
+    function routeHistoryAuditPanel(row) {
+        const recovered = routeHistoryIsRecovered(row);
+        const remark = escapeHtml(row.AuditRemark || "");
+        const deleteButton = `<button class="route-delete-btn" type="button" data-route-delete="${row.id}">Delete</button>`;
+
+        if (routeHistoryIsDone(row)) {
+            return `
+                <aside class="route-audit-panel">
+                    <span class="route-pill up">Done</span>
+                    <p class="route-small-note">${escapeHtml(displayValue(row.AuditRemark))}</p>
+                </aside>
+            `;
+        }
+
+        if (!recovered) {
+            return `
+                <aside class="route-audit-panel">
+                    <span class="route-pill waiting">Waiting for UP</span>
+                    <p class="route-small-note">Audit can be completed after this route comes UP.</p>
+                    <div class="route-audit-actions">${deleteButton}</div>
+                </aside>
+            `;
+        }
+
+        return `
+            <aside class="route-audit-panel">
+                <span class="route-pill up">Recovered</span>
+                <select data-route-audit="${row.id}" aria-label="Audit status">
+                    <option value="Pending" ${routeHistoryIsDone(row) ? "" : "selected"}>Pending</option>
+                    <option value="Done" ${routeHistoryIsDone(row) ? "selected" : ""}>Done</option>
+                </select>
+                ${routeHistoryTeamSelect(row.id)}
+                <textarea data-route-remark="${row.id}" placeholder="Audit remark">${remark}</textarea>
+                <div class="route-audit-actions">
+                    <button class="route-save-btn" type="button" data-route-save="${row.id}">Save Audit</button>
+                    ${deleteButton}
+                </div>
+            </aside>
+        `;
+    }
+
+    function routeHistoryTeamSelect(id) {
+        return "";
+    }
+
+    function routeHistoryRecord(row) {
+        const statusClass = routeHistoryIsRecovered(row) ? "up" : "down";
+        const statusText = routeHistoryIsRecovered(row) ? "UP" : "DOWN";
+        return `
+            <article class="route-record">
+                <section>
+                    <div class="route-record-head">
+                        <h2 class="route-record-title">
+                            <button class="route-link" type="button" data-route='${escapeHtml(JSON.stringify(routeHistoryPayload(row)))}'>
+                                ${escapeHtml(routeHistoryName(row))}
+                            </button>
+                        </h2>
+                        <span class="route-pill ${statusClass}">${statusText}</span>
+                    </div>
+                    <div class="route-meta-grid">${routeHistoryMeta(row)}</div>
+                </section>
+                ${routeHistoryAuditPanel(row)}
+            </article>
+        `;
+    }
+
+    function routeHistoryFilteredRows() {
+        const tabRows = state.routeHistory.tab === "history"
+            ? state.routeHistory.rows.filter(routeHistoryIsDone)
+            : state.routeHistory.rows.filter((row) => !routeHistoryIsDone(row));
+        const searchTerm = String(state.routeHistory.searchTerm || "").trim().toLowerCase();
+        if (!searchTerm) return tabRows;
+        return tabRows.filter((row) => routeHistorySearchText(row).includes(searchTerm));
+    }
+
+    function routeHistorySearchText(row) {
+        return [
+            row.id,
+            row.point_type,
+            row.point_key,
+            row.status,
+            row.pon_number,
+            row.partialpon,
+            row.total_user_count,
+            row.down_at,
+            row.up_at,
+            row.jcname,
+            row.jc_otdr,
+            row.jc_previousjc,
+            row.wire_drum,
+            row.wire_otdrdistance,
+            row.wiretype,
+            row.wire_inout,
+            row.corecolorandnumber,
+            row.tube,
+            row.core_power,
+            row.core_remark,
+            row.Audit,
+            row.AuditRemark,
+            routeHistoryAffectedPon(row),
+            routeHistoryName(row)
+        ].map((value) => String(value || "").toLowerCase()).join(" ");
+    }
+
+    function showRouteHistoryMessage(text, isError = false) {
+        if (!elements.routeHistoryMessage) return;
+        elements.routeHistoryMessage.hidden = !text;
+        elements.routeHistoryMessage.textContent = text || "";
+        elements.routeHistoryMessage.style.color = isError ? "#b42318" : "";
+    }
+
+    function setRouteHistoryLoading(isLoading) {
+        if (!elements.routeHistoryRefresh) return;
+        elements.routeHistoryRefresh.disabled = isLoading;
+        elements.routeHistoryRefresh.textContent = isLoading ? "Loading" : "Refresh";
+    }
+
+    function renderRouteHistoryBadges() {
+        const pending = state.routeHistory.rows.filter((row) => !routeHistoryIsDone(row)).length;
+        const history = state.routeHistory.rows.filter(routeHistoryIsDone).length;
+        updateRouteHistoryPendingBadge(pending);
+        if (elements.routeHistorySummary) {
+            elements.routeHistorySummary.textContent = `${pending} pending routes, ${history} routes in history`;
+        }
+        if (elements.routeHistoryWindowBadge) {
+            elements.routeHistoryWindowBadge.textContent = state.routeHistory.window;
+        }
+        if (elements.routeHistoryUpdatedBadge) {
+            elements.routeHistoryUpdatedBadge.textContent = `Last updated: ${state.routeHistory.lastUpdated || "--"}`;
+        }
+        (elements.routeHistoryTabs || []).forEach((tab) => {
+            const count = tab.dataset.routeTab === "history" ? history : pending;
+            const countEl = tab.querySelector(".route-tab-count");
+            if (countEl) countEl.textContent = count;
+        });
+    }
+
+    function updateRouteHistoryPendingBadge(count) {
+        if (!elements.routeHistoryPendingBadge) return;
+        const value = Math.max(0, Number(count) || 0);
+        elements.routeHistoryPendingBadge.textContent = value;
+        elements.routeHistoryPendingBadge.hidden = value === 0;
+    }
+
+    async function refreshRouteHistoryPendingBadge(windowName) {
+        if (!elements.routeHistoryPendingBadge) return;
+        const activeWindow = String(windowName || getActiveWindowName() || state.routeHistory.window || DEFAULT_CLIENT).trim().toUpperCase();
+        if (!ALL_WINDOWS.includes(activeWindow)) return;
+        try {
+            const response = await fetch(routeHistoryEndpoint(activeWindow), { cache: "no-store" });
+            if (!response.ok) throw new Error(`Fetch failed (${response.status})`);
+            const data = await response.json();
+            const rows = Array.isArray(data.items) ? data.items : [];
+            updateRouteHistoryPendingBadge(rows.filter((row) => !routeHistoryIsDone(row)).length);
+        } catch (error) {
+            updateRouteHistoryPendingBadge(0);
+        }
+    }
+
+    function renderRouteHistory() {
+        if (!elements.routeHistoryRecords) return;
+        const rows = routeHistoryFilteredRows();
+        renderRouteHistoryBadges();
+        if (!rows.length) {
+            const emptyText = String(state.routeHistory.searchTerm || "").trim()
+                ? "No route history matches your search."
+                : state.routeHistory.tab === "history"
+                ? "No route UP/Down history yet."
+                : "No pending route down records.";
+            elements.routeHistoryRecords.innerHTML = `<div class="route-empty">${emptyText}</div>`;
+            return;
+        }
+        elements.routeHistoryRecords.innerHTML = rows.map(routeHistoryRecord).join("");
+        bindRouteHistoryRecordEvents();
+    }
+
+    async function loadRouteHistory() {
+        const windowName = state.routeHistory.window || DEFAULT_CLIENT;
+        if (elements.routeHistorySummary) {
+            elements.routeHistorySummary.textContent = "Loading route history...";
+        }
+        setRouteHistoryLoading(true);
+        showRouteHistoryMessage("");
+        try {
+            const [response, timestampResponse] = await Promise.all([
+                fetch(routeHistoryEndpoint(windowName), { cache: "no-store" }),
+                fetch(routeHistoryTimestampEndpoint(windowName), { cache: "no-store" })
+            ]);
+            if (!response.ok) throw new Error(`Fetch failed (${response.status})`);
+            const data = await response.json();
+            const timestampData = timestampResponse.ok ? await timestampResponse.json() : {};
+            state.routeHistory.rows = Array.isArray(data.items) ? data.items : [];
+            state.routeHistory.lastUpdated = timestampData.runtime_timestamp || timestampData.timestamp || "";
+            state.routeHistory.loaded = true;
+            renderRouteHistory();
+        } catch (error) {
+            state.routeHistory.rows = [];
+            state.routeHistory.lastUpdated = "";
+            renderRouteHistory();
+            showRouteHistoryMessage(error.message || "Unable to load route history", true);
+        } finally {
+            setRouteHistoryLoading(false);
+        }
+    }
+
+    async function loadRouteHistoryTeams() {
+        state.routeHistory.teamMembers = [];
+        state.routeHistory.teamLoaded = true;
+    }
+
+    async function saveRouteHistoryAudit(id, audit, remark) {
+        showRouteHistoryMessage("");
+        const response = await fetch(routeHistoryEndpoint(state.routeHistory.window), {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, Audit: audit, AuditRemark: remark })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data.detail || `Update failed (${response.status})`);
+        }
+        return data;
+    }
+
+    async function deleteRouteHistoryRecord(id) {
+        showRouteHistoryMessage("");
+        const response = await fetch(`${routeHistoryEndpoint(state.routeHistory.window)}/${encodeURIComponent(id)}`, {
+            method: "DELETE"
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data.detail || `Delete failed (${response.status})`);
+        }
+        return data;
+    }
+
+    function buildRouteAuditRemark(remark, teamNames) {
+        const text = String(remark || "").trim();
+        const teams = Array.isArray(teamNames)
+            ? teamNames.map((name) => String(name || "").trim()).filter(Boolean)
+            : [];
+        const now = new Date();
+        const pad = (value) => String(value).padStart(2, "0");
+        const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+        const lines = [text ? `${timestamp} - ${text}` : timestamp];
+        if (teams.length) lines.push(`Work done by : ${teams.join(", ")}`);
+        return lines.join("\n");
+    }
+
+    function getSelectedRouteTeams(id) {
+        return Array.from(elements.routeHistoryRecords.querySelectorAll(`[data-route-team-option="${id}"]:checked`))
+            .map((option) => option.value);
+    }
+
+    function updateRouteTeamTrigger(id) {
+        const trigger = elements.routeHistoryRecords.querySelector(`[data-route-team-trigger="${id}"]`);
+        if (!trigger) return;
+        const teams = getSelectedRouteTeams(id);
+        trigger.textContent = teams.length ? teams.join(", ") : "Select team";
+        trigger.title = teams.join(", ");
+    }
+
+    function closeRouteTeamPickers(exceptPicker) {
+        if (!elements.routeHistoryRecords) return;
+        elements.routeHistoryRecords.querySelectorAll(".route-team-picker.open").forEach((picker) => {
+            if (picker !== exceptPicker) picker.classList.remove("open");
+        });
+    }
+
+    function showRouteConfirm(options) {
+        const modal = elements.routeConfirmModal;
+        if (!modal) return Promise.resolve(true);
+
+        return new Promise((resolve) => {
+            const title = elements.routeConfirmTitle;
+            const message = elements.routeConfirmMessage;
+            const ok = elements.routeConfirmOk;
+            const cancel = elements.routeConfirmCancel;
+
+            if (title) title.textContent = options.title || "Confirm action";
+            if (message) message.textContent = options.message || "Please confirm this action.";
+            if (ok) ok.textContent = options.confirmText || "Confirm";
+            modal.classList.toggle("danger", Boolean(options.danger));
+            modal.classList.add("show");
+            modal.setAttribute("aria-hidden", "false");
+
+            const finish = (value) => {
+                modal.classList.remove("show", "danger");
+                modal.setAttribute("aria-hidden", "true");
+                if (ok) ok.removeEventListener("click", onOk);
+                if (cancel) cancel.removeEventListener("click", onCancel);
+                modal.removeEventListener("click", onBackdrop);
+                document.removeEventListener("keydown", onKeyDown);
+                resolve(value);
+            };
+            const onOk = () => finish(true);
+            const onCancel = () => finish(false);
+            const onBackdrop = (event) => {
+                if (event.target === modal) finish(false);
+            };
+            const onKeyDown = (event) => {
+                if (event.key === "Escape") finish(false);
+            };
+
+            if (ok) ok.addEventListener("click", onOk);
+            if (cancel) cancel.addEventListener("click", onCancel);
+            modal.addEventListener("click", onBackdrop);
+            document.addEventListener("keydown", onKeyDown);
+            if (ok) ok.focus();
+        });
+    }
+
+    function bindRouteHistoryRecordEvents() {
+        if (!elements.routeHistoryRecords) return;
+
+        elements.routeHistoryRecords.querySelectorAll("[data-route]").forEach((button) => {
+            button.addEventListener("click", async () => {
+                try {
+                    const payload = JSON.parse(button.dataset.route || "{}");
+                    closeLineTracker();
+                    await openRouteChain(payload);
+                } catch (error) {
+                    showRouteHistoryMessage(error.message || "Unable to open route structure", true);
+                }
+            });
+        });
+
+        elements.routeHistoryRecords.querySelectorAll(".route-previous-card").forEach((card) => {
+            const button = card.querySelector(".route-previous-toggle");
+            const content = card.querySelector(".route-previous-content");
+            if (!button || !content) return;
+            button.addEventListener("click", () => {
+                const expanded = button.getAttribute("aria-expanded") === "true";
+                button.setAttribute("aria-expanded", String(!expanded));
+                card.classList.toggle("open", !expanded);
+
+                if (expanded) {
+                    content.style.maxHeight = `${content.scrollHeight}px`;
+                    requestAnimationFrame(() => {
+                        content.style.maxHeight = "0px";
+                    });
+                    content.addEventListener("transitionend", () => {
+                        content.hidden = true;
+                    }, { once: true });
+                    return;
+                }
+
+                content.hidden = false;
+                content.style.maxHeight = "0px";
+                requestAnimationFrame(() => {
+                    content.style.maxHeight = `${content.scrollHeight}px`;
+                });
+            });
+        });
+
+        elements.routeHistoryRecords.querySelectorAll("[data-route-save]").forEach((button) => {
+            button.addEventListener("click", async () => {
+                const id = Number(button.dataset.routeSave);
+                const textarea = elements.routeHistoryRecords.querySelector(`[data-route-remark="${id}"]`);
+                const select = elements.routeHistoryRecords.querySelector(`[data-route-audit="${id}"]`);
+                const confirmed = await showRouteConfirm({
+                    title: "Save audit?",
+                    message: "This will update the route audit status and remark.",
+                    confirmText: "Save"
+                });
+                if (!confirmed) return;
+                button.disabled = true;
+                button.textContent = "Saving";
+                try {
+                    await saveRouteHistoryAudit(id, select ? select.value : "Done", buildRouteAuditRemark(textarea ? textarea.value : "", getSelectedRouteTeams(id)));
+                    await loadRouteHistory();
+                    showRouteHistoryMessage("Audit updated.");
+                } catch (error) {
+                    showRouteHistoryMessage(error.message || "Unable to update audit", true);
+                } finally {
+                    button.disabled = false;
+                    button.textContent = "Save Audit";
+                }
+            });
+        });
+
+        elements.routeHistoryRecords.querySelectorAll("[data-route-delete]").forEach((button) => {
+            button.addEventListener("click", async () => {
+                const id = Number(button.dataset.routeDelete);
+                const confirmed = await showRouteConfirm({
+                    title: "Delete entry?",
+                    message: "This pending route history entry will be removed.",
+                    confirmText: "Delete",
+                    danger: true
+                });
+                if (!confirmed) return;
+                button.disabled = true;
+                button.textContent = "Deleting";
+                try {
+                    await deleteRouteHistoryRecord(id);
+                    await loadRouteHistory();
+                    showRouteHistoryMessage("Entry deleted.");
+                } catch (error) {
+                    showRouteHistoryMessage(error.message || "Unable to delete entry", true);
+                } finally {
+                    button.disabled = false;
+                    button.textContent = "Delete";
+                }
+            });
+        });
+
+        elements.routeHistoryRecords.querySelectorAll("[data-route-team-trigger]").forEach((button) => {
+            button.addEventListener("click", () => {
+                const picker = button.closest(".route-team-picker");
+                if (!picker) return;
+                const nextOpen = !picker.classList.contains("open");
+                closeRouteTeamPickers(picker);
+                picker.classList.toggle("open", nextOpen);
+            });
+        });
+
+        elements.routeHistoryRecords.querySelectorAll("[data-route-team-option]").forEach((checkbox) => {
+            checkbox.addEventListener("change", () => {
+                updateRouteTeamTrigger(checkbox.dataset.routeTeamOption);
+            });
+        });
+
+        elements.routeHistoryRecords.querySelectorAll("[data-route-team-ok]").forEach((button) => {
+            button.addEventListener("click", () => {
+                const picker = button.closest(".route-team-picker");
+                if (picker) picker.classList.remove("open");
+            });
+        });
+
+        elements.routeHistoryRecords.querySelectorAll("[data-route-team-clear]").forEach((button) => {
+            button.addEventListener("click", () => {
+                const id = button.dataset.routeTeamClear;
+                elements.routeHistoryRecords.querySelectorAll(`[data-route-team-option="${id}"]`).forEach((checkbox) => {
+                    checkbox.checked = false;
+                });
+                updateRouteTeamTrigger(id);
+            });
+        });
+    }
+
+    async function openLineTracker() {
+        const activeWindow = getActiveWindowName() || state.routeHistory.window || DEFAULT_CLIENT;
+        state.routeHistory.window = activeWindow;
+        if (elements.routeHistoryWindow) {
+            elements.routeHistoryWindow.value = activeWindow;
+        }
+        if (elements.lineTrackerPanel) {
+            elements.lineTrackerPanel.classList.add("show");
+            elements.lineTrackerPanel.setAttribute("aria-hidden", "false");
+        }
+        await loadRouteHistoryTeams();
+        await loadRouteHistory();
+    }
+
+    function closeLineTracker() {
+        if (elements.lineTrackerPanel) {
+            elements.lineTrackerPanel.classList.remove("show");
+            elements.lineTrackerPanel.setAttribute("aria-hidden", "true");
+        }
     }
 
     function openMapJcModal(node) {
@@ -1186,6 +1857,116 @@
         }, 0);
     }
 
+    function normalizeRouteName(value) {
+        return String(value || "").trim().toLowerCase();
+    }
+
+    function findJcChainByName(jcName) {
+        const target = normalizeRouteName(jcName);
+        if (!target) return [];
+
+        let found = [];
+        const walk = (node, chain) => {
+            if (!node || found.length) return;
+            const nextChain = [...chain, node];
+            if (normalizeRouteName(node.jcName) === target) {
+                found = nextChain;
+                return;
+            }
+            (node.children || []).forEach((child) => walk(child, nextChain));
+        };
+
+        (state.allRows || []).forEach((root) => walk(root, []));
+        return found;
+    }
+
+    function closeRouteModal() {
+        if (elements.routeModal) elements.routeModal.classList.remove("show");
+        if (elements.routeMount) elements.routeMount.innerHTML = "";
+        state.routePayload = null;
+    }
+
+    function renderRouteSummary(payload, chain) {
+        if (!elements.routeSummary) return;
+        const items = [
+            ["Affected PON", payload.affectedPon || payload.ponNumber || "-"],
+            ["Affected users", payload.affectedUsers || "-"],
+            ["Down At", payload.downAt || "-"],
+            ["Up At", payload.upAt || "-"],
+            ["Chain", `${chain.length} JC${chain.length === 1 ? "" : "s"}`],
+        ];
+        elements.routeSummary.innerHTML = items.map(([label, value]) => `
+            <div class="jc-route-summary-item">
+                <span>${escapeHtml(label)}</span>
+                <strong>${escapeHtml(value)}</strong>
+            </div>
+        `).join("");
+    }
+
+    function renderRouteChain(payload, chain) {
+        if (!elements.routeMount) return;
+        elements.routeMount.innerHTML = "";
+        if (!chain.length) {
+            elements.routeMount.innerHTML = `<div class="jc-route-empty">Route JC chain not found. Refresh tree or check JC name.</div>`;
+            return;
+        }
+
+        const host = document.createElement("div");
+        host.className = "jc-route-chain";
+        chain.forEach((node, index) => {
+            const item = document.createElement("div");
+            item.className = "jc-route-chain-item";
+            item.appendChild(createBox(node));
+            const container = item.querySelector(".container");
+            if (container && index === chain.length - 1) {
+                container.classList.add("route-affected-jc");
+            }
+            host.appendChild(item);
+            if (index < chain.length - 1) {
+                const arrow = document.createElement("div");
+                arrow.className = "jc-route-arrow";
+                arrow.textContent = ">";
+                host.appendChild(arrow);
+            }
+        });
+        elements.routeMount.appendChild(host);
+    }
+
+    async function openRouteChain(payload) {
+        const normalizedPayload = payload || {};
+        const windowName = String(normalizedPayload.windowName || "").trim().toUpperCase();
+        if (!ALL_WINDOWS.includes(windowName)) {
+            showNotice("Route structure", "Window not found for this route.");
+            return;
+        }
+        state.routePayload = normalizedPayload;
+
+        if (!state.context || String(state.context.windowName || "").toUpperCase() !== windowName) {
+            await open({ client: windowName, windowName });
+        } else if (!(state.allRows || []).length) {
+            await loadData();
+        }
+
+        const chain = findJcChainByName(normalizedPayload.jcName);
+        if (elements.routeTitle) elements.routeTitle.textContent = "Route structure review";
+        if (elements.routeSub) {
+            elements.routeSub.textContent = normalizedPayload.jcName
+                ? `${windowName} - ${normalizedPayload.jcName}`
+                : `${windowName} route chain`;
+        }
+        renderRouteSummary(normalizedPayload, chain);
+        renderRouteChain(normalizedPayload, chain);
+        if (elements.routeModal) elements.routeModal.classList.add("show");
+    }
+
+    function openJcAfterSelected() {
+        const previousName = state.selectedBox ? String(state.selectedBox.dataset.jcName || "").trim() : "";
+        openJcModal();
+        if (previousName && elements.jcPreviousJcField) {
+            syncPreviousJcOptions(previousName);
+        }
+    }
+
     function openMapModal() {
         const nodes = getVisibleMapNodes();
         if (!nodes.length) {
@@ -1202,17 +1983,26 @@
         state.jcMapMarkers.forEach((marker) => marker.remove());
         state.jcMapMarkers = nodes.map((node) => {
             const marker = window.L.marker([node.lat, node.lng], {
-                icon: window.L.divIcon({
-                    className: "jc-map-div-icon",
-                    html: createMapMarkerHtml(node),
-                    iconSize: [118, 92],
-                    iconAnchor: [59, 70],
-                    popupAnchor: [0, -64]
-                })
+                icon: createMapMarkerIcon(node, "dot")
             }).addTo(map);
             marker.on("click", () => {
-                openMapJcModal(node);
+                const nextCount = Number(marker._jcMapClickCount || 0) + 1;
+                marker._jcMapClickCount = nextCount;
+                if (nextCount >= 3) {
+                    openMapJcModal(node);
+                    marker._jcMapClickCount = 0;
+                    return;
+                }
+                state.jcMapMarkers.forEach((item) => {
+                    if (item !== marker && item._jcMapMode === "preview") {
+                        item._jcMapClickCount = 0;
+                        setMapMarkerMode(item, item._jcMapNode, "dot");
+                    }
+                });
+                setMapMarkerMode(marker, node, "preview");
             });
+            marker._jcMapNode = node;
+            marker._jcMapClickCount = 0;
             return marker;
         });
 
@@ -1225,7 +2015,6 @@
             map.invalidateSize();
             if (nodes.length === 1) {
                 map.setView([nodes[0].lat, nodes[0].lng], 16);
-                state.jcMapMarkers[0].openPopup();
             } else {
                 map.fitBounds(bounds.pad(0.18));
             }
@@ -1246,6 +2035,22 @@
         ].join(" ");
     }
 
+    function getCoreUserSearchText(core) {
+        return getUsersForCore(core)
+            .map((user) => [
+                user && user.name,
+                user && user.user_id,
+                user && user.mobile,
+                user && user.address,
+                user && user.mac_address,
+                user && user.normalized_mac_address,
+                user && user.power,
+                user && user.status,
+                user && user._searchText
+            ].join(" "))
+            .join(" ");
+    }
+
     function getCoreSearchText(core) {
         return [
             core && core.coreColor,
@@ -1256,7 +2061,8 @@
             core && core.ponMode,
             core && core.partialpon,
             core && core.power,
-            core && core.remark
+            core && core.remark,
+            getCoreUserSearchText(core)
         ].join(" ");
     }
 
@@ -1467,11 +2273,119 @@
         return nodes;
     }
 
+    const MEDANTA_FMS_MAPPING = [
+        {
+            title: "96 CORE - BLUE TUBE",
+            start: 1,
+            groups: [
+                { label: "CORE 1-12", className: "blue", span: 12 },
+                { label: "CORE 13-24", className: "orange", span: 12 }
+            ],
+            routes: [
+                { label: "ATALPUR 12 CORE BIRLA CORE 1-7", span: 7 },
+                { label: "BARGAD WALI JC - 12 CORE EURO DIGITAL - 1-6", span: 6 },
+                { label: "GOMTI DIARY - 12 CORE EURO DIGITAL - CORE 1-5", span: 11 }
+            ],
+            values: [
+                "74.12 P-1", "74.12 P-2", "74.7 P-4", "74.4 P-3", "74.7 P-1", "74.12 P-4",
+                "74.4 P-1", "74.4 P-4", "74.5 P-3", "74.5 P-1", "74.5 P-2", "74.12 P-3",
+                "74.10 P-3", "Free", "Free", "Free", "74.5 P-4", "74.9 P-2",
+                "74.7 P-3", "74.7 P-2", "74.4 P-2", "Free", "Free", "Free"
+            ]
+        },
+        {
+            title: "96 CORE - GREEN/GREY TUBE",
+            start: 25,
+            groups: [
+                { label: "96 CORE - GREEN TUBE - CORE 1-12", className: "green", span: 12 },
+                { label: "96 CORE - GREY TUBE - CORE 37-48", className: "grey", span: 12 }
+            ],
+            routes: [
+                { label: "48 CORE 8 TUBE - BLUE TUBE 1-6 , ORANGE TUBE 1-6", span: 12 },
+                { label: "48 CORE 8 TUBE - GREEN TUBE 1-6", span: 6 },
+                { label: "12 CORE BLACK FIBER (1 TO 6)", span: 6 }
+            ],
+            values: [
+                "74.9 P-3", "74.9 P-4", "74.3 P-4", "74.10 P-4", "74.10 P-2", "74.3 P-1",
+                "Free", "Free", "Free", "Free", "Free", "Free",
+                "Free", "Free", "Free", "Free", "Free", "Free",
+                "Free", "Free", "Free", "Free", "Free", "74.9 P-1"
+            ]
+        }
+    ];
+
+    function createFmsMappingHtml() {
+        return MEDANTA_FMS_MAPPING.map((section) => {
+            const numbers = Array.from({ length: section.values.length }, (_, index) => section.start + index);
+            return `
+                <div class="fms-section">
+                    <div class="fms-section-title">${escapeHtml(section.title)}</div>
+                    <table class="fms-table">
+                        <tbody>
+                            <tr>
+                                ${section.groups.map((group) => `<th class="fms-head ${group.className}" colspan="${group.span}">${escapeHtml(group.label)}</th>`).join("")}
+                            </tr>
+                            <tr>
+                                ${numbers.map((number) => `<th class="fms-core">${number}</th>`).join("")}
+                            </tr>
+                            <tr>
+                                ${section.routes.map((route) => `<td class="fms-route" colspan="${route.span}">${escapeHtml(route.label)}</td>`).join("")}
+                            </tr>
+                            <tr>
+                                ${section.values.map((value) => `<td class="${String(value).toLowerCase() === "free" ? "fms-free" : ""}">${escapeHtml(value)}</td>`).join("")}
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }).join("");
+    }
+
     function createOfficeNode() {
-        const office = document.createElement("div");
-        office.className = "olt";
-        office.textContent = `${ROOT_PREVIOUS_JC}${state.context && state.context.windowName ? ` (${state.context.windowName})` : ""}`;
-        return office;
+        const activeWindow = String(state.context && state.context.windowName || "").trim().toUpperCase();
+        const label = `${ROOT_PREVIOUS_JC}${activeWindow ? ` (${activeWindow})` : ""}`;
+
+        if (activeWindow !== "MEDANTA") {
+            const office = document.createElement("div");
+            office.className = "olt";
+            office.textContent = label;
+            return office;
+        }
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "olt-fms-wrap";
+        wrapper.innerHTML = `
+            <div class="olt" role="button" tabindex="0" aria-expanded="false">
+                <span>${escapeHtml(label)}</span>
+                <small>FMS Mapping</small>
+            </div>
+            <div class="fms-panel" hidden>
+                <div class="fms-panel-head">
+                    <strong>FMS Mapping</strong>
+                    <span>Static reference</span>
+                </div>
+                ${createFmsMappingHtml()}
+            </div>
+        `;
+
+        const trigger = wrapper.querySelector(".olt");
+        const panel = wrapper.querySelector(".fms-panel");
+        const togglePanel = (event) => {
+            event.stopPropagation();
+            const expanded = trigger.getAttribute("aria-expanded") === "true";
+            trigger.setAttribute("aria-expanded", String(!expanded));
+            wrapper.classList.toggle("open", !expanded);
+            panel.hidden = expanded;
+        };
+
+        trigger.addEventListener("click", togglePanel);
+        trigger.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            togglePanel(event);
+        });
+
+        return wrapper;
     }
 
     function applyBranchConnector(branch) {
@@ -1644,35 +2558,153 @@
                     mobile: user.mobile || "",
                     address: user.address || "",
                     mac_address: user.mac_address || "",
+                    normalized_mac_address: user.normalized_mac_address || "",
                     power: user.power ?? "",
-                    status: user.status || ""
+                    status: user.status || "",
+                    pon_number: user.pon_number || "",
+                    _searchText: user._searchText || ""
                 }));
         }
         return (state.ponUserMap[normalizePonValue(coreData && coreData.oltpon)] || []).slice();
     }
 
-    function showCoreUsers(coreData) {
+    function removeMacFromPartialPon(partialpon, normalizedMac) {
+        return String(partialpon || "")
+            .split(",")
+            .map((item) => normalizeMacValue(item))
+            .filter(Boolean)
+            .filter((macAddress) => getMacMatchKey(macAddress) !== normalizedMac)
+            .join(",");
+    }
+
+    async function removePartialPonMismatchUser(coreData, normalizedMac) {
+        if (!coreData || !coreData.cuid || !normalizedMac) return;
+        const confirmed = await askModalConfirm("Remove wrong user", "Remove this user from selected partial PON core?", "Remove");
+        if (!confirmed) return;
+        const nextPartialPon = removeMacFromPartialPon(coreData.partialpon, normalizedMac);
+        try {
+            setBusy(true);
+            await updateCore(coreData.cuid, {
+                corecolorandnumber: coreData.coreColor || coreData.coreColorAndNumber || "",
+                joint: coreData.joint || "",
+                tube: coreData.tube || "",
+                pon_mode: coreData.ponMode || "full",
+                oltpon: coreData.oltpon || "",
+                partialpon: nextPartialPon,
+                power: coreData.power || "",
+                remark: coreData.remark || ""
+            });
+            closeUsersModal();
+            await refreshAndReopenWireModal(
+                state.selectedFiber ? state.selectedFiber.dataset.wireUuid || "" : "",
+                state.selectedFiber ? state.selectedFiber.dataset.side || "" : "",
+                state.selectedFiber ? state.selectedFiber.dataset.juid || "" : ""
+            );
+        } catch (error) {
+            showError(error);
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    function renderMismatchUserCard(item, coreData) {
+        const user = item && item.user ? item.user : {};
+        const normalizedMac = item && item.normalized_mac_address || getMacMatchKey(user.normalized_mac_address || user.mac_address);
+        return `
+            <div class="jc-user-card is-mismatch">
+                <div class="jc-user-row"><span>User Name</span><strong>${escapeHtml(user.name || "-")}</strong></div>
+                <div class="jc-user-row"><span>User ID</span><strong>${escapeHtml(user.user_id || "-")}</strong></div>
+                <div class="jc-user-row"><span>Mobile</span><strong>${escapeHtml(user.mobile || "-")}</strong></div>
+                <div class="jc-user-row"><span>Address</span><strong>${escapeHtml(user.address || "-")}</strong></div>
+                <div class="jc-user-row"><span>MAC Address</span><strong>${escapeHtml(user.mac_address || item.mac_address || "-")}</strong></div>
+                <div class="jc-user-row"><span>Actual PON</span><strong>${escapeHtml(user.pon_number || item.actualPon || "-")}</strong></div>
+                <div class="jc-user-row"><span>Expected PON</span><strong>${escapeHtml(item.expectedPon || "-")}</strong></div>
+                <div class="jc-user-row"><span>Core</span><strong>${escapeHtml(coreData && (coreData.coreColor || coreData.coreColorAndNumber) || "-")}</strong></div>
+                <button type="button" class="jc-user-remove-mismatch" data-mismatch-mac="${escapeHtml(normalizedMac)}">Remove</button>
+            </div>
+        `;
+    }
+
+    function bindMismatchRemoveButtons(coreData) {
+        if (!elements.usersList) return;
+        elements.usersList.querySelectorAll(".jc-user-remove-mismatch").forEach((button) => {
+            button.addEventListener("click", (event) => {
+                event.stopPropagation();
+                removePartialPonMismatchUser(coreData, button.dataset.mismatchMac || "");
+            });
+        });
+    }
+
+    function showCoreUsers(coreData, onlyMismatch = false) {
         const users = getUsersForCore(coreData);
+        const mismatches = getPartialPonMismatchUsers(coreData);
+        const mismatchMap = new Map(mismatches.map((item) => [item.normalized_mac_address, item]));
         if (elements.usersModalTitle) {
             elements.usersModalTitle.textContent = coreData && coreData.oltpon ? getPonOptionLabel(coreData.oltpon, coreData.ponMode || "full") : "Users";
         }
         if (elements.usersModalSub) {
-            elements.usersModalSub.textContent = `${users.length} user${users.length === 1 ? "" : "s"} loaded`;
+            const mismatchCount = mismatchMap.size;
+            elements.usersModalSub.textContent = onlyMismatch
+                ? `${mismatchCount} wrong PON user${mismatchCount === 1 ? "" : "s"}`
+                : `${users.length} user${users.length === 1 ? "" : "s"} loaded${mismatchCount ? ` | ${mismatchCount} wrong PON` : ""}`;
         }
         if (elements.usersList) {
-            if (!users.length) {
+            if (onlyMismatch) {
+                if (!mismatches.length) {
+                    elements.usersList.innerHTML = `<div class="jc-users-empty">No wrong PON users found.</div>`;
+                } else {
+                    elements.usersList.innerHTML = mismatches.map((item) => renderMismatchUserCard(item, coreData)).join("");
+                    bindMismatchRemoveButtons(coreData);
+                }
+            } else if (!users.length) {
                 elements.usersList.innerHTML = `<div class="jc-users-empty">No users found.</div>`;
             } else {
-                elements.usersList.innerHTML = users.map((user) => `
-                    <div class="jc-user-card ${String(user.status || "").trim().toUpperCase() === "DOWN" ? "is-down" : String(user.status || "").trim().toUpperCase() === "UP" ? "is-up" : ""}">
+                elements.usersList.innerHTML = users.map((user) => {
+                    const normalizedMac = getMacMatchKey(user.normalized_mac_address || user.mac_address);
+                    const mismatch = mismatchMap.get(normalizedMac);
+                    return `
+                    <div class="jc-user-card ${mismatch ? "is-mismatch" : String(user.status || "").trim().toUpperCase() === "DOWN" ? "is-down" : String(user.status || "").trim().toUpperCase() === "UP" ? "is-up" : ""}">
                         <div class="jc-user-row"><span>User Name</span><strong>${escapeHtml(user.name || "-")}</strong></div>
                         <div class="jc-user-row"><span>User ID</span><strong>${escapeHtml(user.user_id || "-")}</strong></div>
                         <div class="jc-user-row"><span>Mobile</span><strong>${escapeHtml(user.mobile || "-")}</strong></div>
                         <div class="jc-user-row"><span>Address</span><strong>${escapeHtml(user.address || "-")}</strong></div>
                         <div class="jc-user-row"><span>MAC Address</span><strong>${escapeHtml(user.mac_address || "-")}</strong></div>
+                        <div class="jc-user-row"><span>Actual PON</span><strong>${escapeHtml(user.pon_number || "-")}</strong></div>
                         <div class="jc-user-row"><span>Power</span><strong>${escapeHtml(formatPowerValue(user.power))}</strong></div>
+                        ${mismatch ? `<button type="button" class="jc-user-remove-mismatch" data-mismatch-mac="${escapeHtml(normalizedMac)}">Remove</button>` : ""}
                     </div>
-                `).join("");
+                `;
+                }).join("");
+                bindMismatchRemoveButtons(coreData);
+            }
+        }
+        elements.usersModal?.classList.add("show");
+    }
+
+    function showJcMismatchUsers(boxData) {
+        const items = getJcPartialPonMismatchCores(boxData);
+        const mismatchCount = items.reduce((total, item) => total + item.mismatches.length, 0);
+        if (elements.usersModalTitle) {
+            elements.usersModalTitle.textContent = boxData && boxData.jcName ? `${boxData.jcName} wrong users` : "Wrong PON users";
+        }
+        if (elements.usersModalSub) {
+            elements.usersModalSub.textContent = `${mismatchCount} wrong PON user${mismatchCount === 1 ? "" : "s"}`;
+        }
+        if (elements.usersList) {
+            if (!mismatchCount) {
+                elements.usersList.innerHTML = `<div class="jc-users-empty">No wrong PON users found.</div>`;
+            } else {
+                elements.usersList.innerHTML = items.map((item, index) => item.mismatches.map((mismatch) => renderMismatchUserCard(mismatch, item.core).replace(
+                    "jc-user-remove-mismatch",
+                    `jc-user-remove-mismatch" data-core-index="${index}`
+                )).join("")).join("");
+                elements.usersList.querySelectorAll(".jc-user-remove-mismatch").forEach((button) => {
+                    button.addEventListener("click", (event) => {
+                        event.stopPropagation();
+                        const item = items[Number(button.dataset.coreIndex) || 0];
+                        if (item) removePartialPonMismatchUser(item.core, button.dataset.mismatchMac || "");
+                    });
+                });
             }
         }
         elements.usersModal?.classList.add("show");
@@ -2129,6 +3161,7 @@
             const currentCore = (sortedCoreData && sortedCoreData[i - 1]) || {};
             const hasSavedCore = Boolean(currentCore.cuid);
             const healthMeta = getCoreHealthMeta(currentCore);
+            const mismatchCount = getPartialPonMismatchUsers(currentCore).length;
             const tubeStyle = getCoreVisualStyle(currentCore.tube);
             const card = document.createElement("div");
             card.className = "core-card";
@@ -2146,6 +3179,7 @@
                         ${isOutputSide ? "" : `<span class="core-led ${healthMeta.level}" title="${healthMeta.label}"></span>`}
                         <h4>Live Core ${i}</h4>
                         ${isOutputSide ? "" : `<button type="button" class="core-led-label core-users-trigger">${healthMeta.label}</button>`}
+                        ${mismatchCount ? `<button type="button" class="core-mismatch-badge" title="Wrong PON users">! ${mismatchCount}</button>` : ""}
                     </div>
                     <div class="panel-controls">
                         <button type="button" class="delete-core">${hasSavedCore ? "Delete" : "Clear"}</button>
@@ -2210,6 +3244,13 @@
                 usersTrigger.addEventListener("click", (event) => {
                     event.stopPropagation();
                     showCoreUsers(currentCore);
+                });
+            }
+            const mismatchTrigger = card.querySelector(".core-mismatch-badge");
+            if (mismatchTrigger) {
+                mismatchTrigger.addEventListener("click", (event) => {
+                    event.stopPropagation();
+                    showCoreUsers(currentCore, true);
                 });
             }
             if (ponTrigger && ponField && !hasSavedCore) {
@@ -2540,10 +3581,12 @@
         const mapLink = hasLocation ? `https://www.google.com/maps?q=${boxData.lat},${boxData.lng}` : "";
         const previousLabel = String(boxData.previousJc || ROOT_PREVIOUS_JC).trim() || ROOT_PREVIOUS_JC;
         const jcHealthMeta = getJcHealthMeta(boxData);
+        const mismatchCount = getJcPartialPonMismatchCount(boxData);
         const wrapper = document.createElement("div");
         wrapper.className = "jc-wrapper";
         wrapper.innerHTML = `
             ${hasLocation ? `<a class="jc-badge" href="${mapLink}" target="_blank" rel="noopener noreferrer">${createJcBadgeHtml(boxData)}</a>` : `<div class="jc-badge">${createJcBadgeHtml(boxData)}</div>`}
+            ${mismatchCount ? `<button type="button" class="jc-mismatch-badge" title="Wrong PON users">! ${mismatchCount}</button>` : ""}
             <div class="jc-link"></div>
             <div class="jc-health-label">${createJcHealthLabelHtml(jcHealthMeta)}</div>
             <div class="jc-after-label">${createAfterLabelHtml(previousLabel)}</div>
@@ -2621,6 +3664,14 @@
             editButton.addEventListener("click", (event) => {
                 event.stopPropagation();
                 openEditJcModal(container);
+            });
+        }
+        const jcMismatchButton = wrapper.querySelector(".jc-mismatch-badge");
+        if (jcMismatchButton) {
+            jcMismatchButton.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                showJcMismatchUsers(boxData);
             });
         }
         
@@ -3451,6 +4502,11 @@
         if (elements.windowPickerTrigger) {
             elements.windowPickerTrigger.textContent = normalizedWindow;
         }
+        state.routeHistory.window = normalizedWindow;
+        if (elements.routeHistoryWindow) {
+            elements.routeHistoryWindow.value = normalizedWindow;
+        }
+        refreshRouteHistoryPendingBadge(normalizedWindow);
         closeWindowPicker(true);
         await open({
             client: normalizedWindow,
@@ -3496,6 +4552,51 @@
                 button.addEventListener("click", () => applyWindowSelection(button.dataset.window));
             });
         }
+        if (elements.routeHistoryWindow) {
+            elements.routeHistoryWindow.innerHTML = ALL_WINDOWS.map((name) => `<option value="${name}">${name}</option>`).join("");
+            elements.routeHistoryWindow.value = state.routeHistory.window;
+            elements.routeHistoryWindow.addEventListener("change", () => {
+                state.routeHistory.window = elements.routeHistoryWindow.value;
+                loadRouteHistory().catch((error) => showRouteHistoryMessage(error.message || "Unable to load route history", true));
+            });
+        }
+        if (elements.lineTrackerTrigger) {
+            elements.lineTrackerTrigger.addEventListener("click", () => {
+                openLineTracker().catch((error) => showRouteHistoryMessage(error.message || "Unable to load route history", true));
+            });
+        }
+        if (elements.lineTrackerClose) {
+            elements.lineTrackerClose.addEventListener("click", closeLineTracker);
+        }
+        if (elements.lineTrackerPanel) {
+            elements.lineTrackerPanel.addEventListener("click", (event) => {
+                if (event.target === elements.lineTrackerPanel) closeLineTracker();
+            });
+        }
+        if (elements.routeHistoryRefresh) {
+            elements.routeHistoryRefresh.addEventListener("click", () => {
+                loadRouteHistory().catch((error) => showRouteHistoryMessage(error.message || "Unable to load route history", true));
+            });
+        }
+        if (elements.routeHistorySearch) {
+            elements.routeHistorySearch.addEventListener("input", () => {
+                state.routeHistory.searchTerm = elements.routeHistorySearch.value;
+                renderRouteHistory();
+            });
+        }
+        document.addEventListener("click", (event) => {
+            if (!elements.routeHistoryRecords || !elements.routeHistoryRecords.contains(event.target)) return;
+            if (event.target.closest(".route-team-picker")) return;
+            closeRouteTeamPickers();
+        });
+        (elements.routeHistoryTabs || []).forEach((tab) => {
+            tab.addEventListener("click", () => {
+                (elements.routeHistoryTabs || []).forEach((item) => item.classList.remove("active"));
+                tab.classList.add("active");
+                state.routeHistory.tab = tab.dataset.routeTab;
+                renderRouteHistory();
+            });
+        });
         elements.saveJcBtn.addEventListener("click", saveJc);
         elements.closeModalBtn.addEventListener("click", closeJcModal);
         elements.cancelModalBtn.addEventListener("click", closeJcModal);
@@ -3648,6 +4749,27 @@
                 if (event.target === elements.mapJcModal) closeMapJcModal();
             });
         }
+        if (elements.routeCloseBtn) {
+            elements.routeCloseBtn.addEventListener("click", closeRouteModal);
+        }
+        if (elements.routeModal) {
+            elements.routeModal.addEventListener("click", (event) => {
+                if (event.target === elements.routeModal) closeRouteModal();
+            });
+        }
+        if (elements.routeRefreshBtn) {
+            elements.routeRefreshBtn.addEventListener("click", async () => {
+                if (!state.routePayload) return;
+                await loadData();
+                await openRouteChain(state.routePayload);
+            });
+        }
+        if (elements.routeAddAfterBtn) {
+            elements.routeAddAfterBtn.addEventListener("click", openJcAfterSelected);
+        }
+        if (elements.routeDeleteBtn) {
+            elements.routeDeleteBtn.addEventListener("click", deleteSelectedBox);
+        }
         
         elements.wireTypeSelect.addEventListener("change", () => {
             const coreData = getCurrentCoreDataFromForm();
@@ -3673,6 +4795,11 @@
                 }
             }
         });
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && elements.lineTrackerPanel && elements.lineTrackerPanel.classList.contains("show")) {
+                closeLineTracker();
+            }
+        });
     }
 
     function init() {
@@ -3682,12 +4809,31 @@
         elements.windowPickerTrigger = document.getElementById("jcWindowPickerTrigger");
         elements.windowModal = document.getElementById("jcWindowModal");
         elements.windowOptions = Array.from(document.querySelectorAll(".jc-window-option"));
+        elements.lineTrackerTrigger = document.getElementById("lineTrackerTrigger");
+        elements.lineTrackerPanel = document.getElementById("lineTrackerPanel");
+        elements.lineTrackerClose = document.getElementById("lineTrackerClose");
+        elements.routeHistoryWindow = document.getElementById("routeHistoryWindow");
+        elements.routeHistoryRefresh = document.getElementById("routeHistoryRefresh");
+        elements.routeHistorySummary = document.getElementById("routeHistorySummary");
+        elements.routeHistoryWindowBadge = document.getElementById("routeHistoryWindowBadge");
+        elements.routeHistoryUpdatedBadge = document.getElementById("routeHistoryUpdatedBadge");
+        elements.routeHistoryMessage = document.getElementById("routeHistoryMessage");
+        elements.routeHistoryRecords = document.getElementById("routeHistoryRecords");
+        elements.routeHistorySearch = document.getElementById("routeHistorySearch");
+        elements.routeHistoryTabs = Array.from(document.querySelectorAll("[data-route-tab]"));
+        elements.routeHistoryPendingBadge = document.getElementById("routeHistoryPendingBadge");
+        elements.routeConfirmModal = document.getElementById("routeConfirmModal");
+        elements.routeConfirmTitle = document.getElementById("routeConfirmTitle");
+        elements.routeConfirmMessage = document.getElementById("routeConfirmMessage");
+        elements.routeConfirmOk = document.getElementById("routeConfirmOk");
+        elements.routeConfirmCancel = document.getElementById("routeConfirmCancel");
         if (!elements.mount) return;
         createShell();
         bindEvents();
         syncLiveCoreLimit();
         requestCurrentLocation();
         openWindowPicker();
+        refreshRouteHistoryPendingBadge(state.routeHistory.window);
     }
 
     async function open(context) {
@@ -3743,6 +4889,7 @@
     document.addEventListener("DOMContentLoaded", init);
     window.jcNotepad = {
         open,
+        openRouteChain,
         close,
         isOpen: () => Boolean(state.root)
     };
