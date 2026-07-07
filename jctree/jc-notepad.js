@@ -64,6 +64,17 @@
     const elements = {};
     const ALL_WINDOWS = ["MEROTRA", "SUNNY"];
 
+    function isEmployeeAccess() {
+        return document.body && document.body.dataset.accessMode === "employee";
+    }
+
+    function applyEmployeeVisibility(node) {
+        if (!isEmployeeAccess() || !node) return;
+        node.querySelectorAll("[data-admin-only]").forEach((item) => {
+            item.style.display = "none";
+        });
+    }
+
     function apiUrlFor(client, endpoint) {
         return `${API_BASE_URL}/${encodeURIComponent(client)}/${endpoint}`;
     }
@@ -173,7 +184,7 @@
             <div class="jc-note-root">
                 <div class="controls">
                     <button id="jcAddBoxBtn" type="button">Add JC</button>
-                    <button id="jcDeleteBoxBtn" type="button">Delete JC</button>
+                    <button id="jcDeleteBoxBtn" type="button" data-admin-only>Delete JC</button>
                     <button id="jcDownloadCsvBtn" type="button">Download CSV</button>
                     <button id="jcShowMapBtn" type="button" title="Show visible JCs on map"><span class="map-btn-icon"></span><span>Map</span></button>
                     <input id="jcSearchInput" type="search" placeholder="Search JC, OTDR, After JC, Area, User...">
@@ -270,7 +281,7 @@
                             <div class="core-list" id="jcCoreList"></div>
                         </div>
                         <div class="modal-actions">
-                            <button class="close-btn danger-btn" id="jcDeleteWireBtn">Delete Wire</button>
+                            <button class="close-btn danger-btn" id="jcDeleteWireBtn" data-admin-only>Delete Wire</button>
                             <button class="close-btn" id="jcCancelWireModalBtn">Cancel</button>
                             <button class="save-btn" id="jcSaveWireBtn">Save Wire</button>
                         </div>
@@ -318,7 +329,7 @@
                             </div>
                         </div>
                         <div class="modal-actions">
-                            <button class="close-btn danger-btn" id="jcDeleteCoreBtn">Delete Core</button>
+                            <button class="close-btn danger-btn" id="jcDeleteCoreBtn" data-admin-only>Delete Core</button>
                             <button class="close-btn" id="jcCancelCoreModalBtn">Cancel</button>
                             <button class="save-btn" id="jcSaveCoreBtn">Save Core</button>
                         </div>
@@ -422,8 +433,8 @@
                                 <div class="modal-sub" id="jcRouteSub">Selected route JC chain</div>
                             </div>
                             <div class="jc-route-actions">
-                                <button class="close-btn" id="jcRouteAddAfterBtn" type="button">Add JC after selected</button>
-                                <button class="close-btn danger-btn" id="jcRouteDeleteBtn" type="button">Delete selected JC</button>
+                                <button class="close-btn" id="jcRouteAddAfterBtn" type="button" data-admin-only>Add JC after selected</button>
+                                <button class="close-btn danger-btn" id="jcRouteDeleteBtn" type="button" data-admin-only>Delete selected JC</button>
                                 <button class="close-btn" id="jcRouteRefreshBtn" type="button">Refresh</button>
                                 <button class="close-btn" id="jcRouteCloseBtn" type="button">Close</button>
                             </div>
@@ -436,6 +447,7 @@
         `;
 
         state.root = elements.mount.querySelector(".jc-note-root");
+        applyEmployeeVisibility(state.root);
         elements.row = state.root.querySelector("#jcRow");
         elements.searchInput = state.root.querySelector("#jcSearchInput");
         elements.showMapBtn = state.root.querySelector("#jcShowMapBtn");
@@ -1372,6 +1384,15 @@
         const remark = escapeHtml(row.AuditRemark || "");
         const deleteButton = `<button class="route-delete-btn" type="button" data-route-delete="${row.id}">Delete</button>`;
 
+        if (isEmployeeAccess()) {
+            return `
+                <aside class="route-audit-panel">
+                    <span class="route-pill ${routeHistoryIsDone(row) ? "up" : recovered ? "up" : "waiting"}">${routeHistoryIsDone(row) ? "Done" : recovered ? "Recovered" : "Waiting for UP"}</span>
+                    <p class="route-small-note">${routeHistoryIsDone(row) ? escapeHtml(displayValue(row.AuditRemark)) : "View only"}</p>
+                </aside>
+            `;
+        }
+
         if (routeHistoryIsDone(row)) {
             return `
                 <aside class="route-audit-panel">
@@ -1578,6 +1599,9 @@
     }
 
     async function saveRouteHistoryAudit(id, audit, remark) {
+        if (isEmployeeAccess()) {
+            throw new Error("Route history is view only for employee access.");
+        }
         showRouteHistoryMessage("");
         const response = await fetch(routeHistoryEndpoint(state.routeHistory.window), {
             method: "PUT",
@@ -1592,6 +1616,9 @@
     }
 
     async function deleteRouteHistoryRecord(id) {
+        if (isEmployeeAccess()) {
+            throw new Error("Route history is view only for employee access.");
+        }
         showRouteHistoryMessage("");
         const response = await fetch(`${routeHistoryEndpoint(state.routeHistory.window)}/${encodeURIComponent(id)}`, {
             method: "DELETE"
@@ -2578,6 +2605,10 @@
     }
 
     async function removePartialPonMismatchUser(coreData, normalizedMac) {
+        if (isEmployeeAccess()) {
+            await showNotice("Employee Access", "Remove access is not allowed.");
+            return;
+        }
         if (!coreData || !coreData.cuid || !normalizedMac) return;
         const confirmed = await askModalConfirm("Remove wrong user", "Remove this user from selected partial PON core?", "Remove");
         if (!confirmed) return;
@@ -2620,7 +2651,7 @@
                 <div class="jc-user-row"><span>Actual PON</span><strong>${escapeHtml(user.pon_number || item.actualPon || "-")}</strong></div>
                 <div class="jc-user-row"><span>Expected PON</span><strong>${escapeHtml(item.expectedPon || "-")}</strong></div>
                 <div class="jc-user-row"><span>Core</span><strong>${escapeHtml(coreData && (coreData.coreColor || coreData.coreColorAndNumber) || "-")}</strong></div>
-                <button type="button" class="jc-user-remove-mismatch" data-mismatch-mac="${escapeHtml(normalizedMac)}">Remove</button>
+                ${isEmployeeAccess() ? "" : `<button type="button" class="jc-user-remove-mismatch" data-mismatch-mac="${escapeHtml(normalizedMac)}">Remove</button>`}
             </div>
         `;
     }
@@ -2671,7 +2702,7 @@
                         <div class="jc-user-row"><span>MAC Address</span><strong>${escapeHtml(user.mac_address || "-")}</strong></div>
                         <div class="jc-user-row"><span>Actual PON</span><strong>${escapeHtml(user.pon_number || "-")}</strong></div>
                         <div class="jc-user-row"><span>Power</span><strong>${escapeHtml(formatPowerValue(user.power))}</strong></div>
-                        ${mismatch ? `<button type="button" class="jc-user-remove-mismatch" data-mismatch-mac="${escapeHtml(normalizedMac)}">Remove</button>` : ""}
+                        ${mismatch && !isEmployeeAccess() ? `<button type="button" class="jc-user-remove-mismatch" data-mismatch-mac="${escapeHtml(normalizedMac)}">Remove</button>` : ""}
                     </div>
                 `;
                 }).join("");
@@ -2698,13 +2729,15 @@
                     "jc-user-remove-mismatch",
                     `jc-user-remove-mismatch" data-core-index="${index}`
                 )).join("")).join("");
-                elements.usersList.querySelectorAll(".jc-user-remove-mismatch").forEach((button) => {
-                    button.addEventListener("click", (event) => {
-                        event.stopPropagation();
-                        const item = items[Number(button.dataset.coreIndex) || 0];
-                        if (item) removePartialPonMismatchUser(item.core, button.dataset.mismatchMac || "");
+                if (!isEmployeeAccess()) {
+                    elements.usersList.querySelectorAll(".jc-user-remove-mismatch").forEach((button) => {
+                        button.addEventListener("click", (event) => {
+                            event.stopPropagation();
+                            const item = items[Number(button.dataset.coreIndex) || 0];
+                            if (item) removePartialPonMismatchUser(item.core, button.dataset.mismatchMac || "");
+                        });
                     });
-                });
+                }
             }
         }
         elements.usersModal?.classList.add("show");
@@ -3160,6 +3193,7 @@
         for (let i = 1; i <= count; i++) {
             const currentCore = (sortedCoreData && sortedCoreData[i - 1]) || {};
             const hasSavedCore = Boolean(currentCore.cuid);
+            const canEditSavedCore = hasSavedCore && !isEmployeeAccess();
             const healthMeta = getCoreHealthMeta(currentCore);
             const mismatchCount = getPartialPonMismatchUsers(currentCore).length;
             const tubeStyle = getCoreVisualStyle(currentCore.tube);
@@ -3182,8 +3216,8 @@
                         ${mismatchCount ? `<button type="button" class="core-mismatch-badge" title="Wrong PON users">! ${mismatchCount}</button>` : ""}
                     </div>
                     <div class="panel-controls">
-                        <button type="button" class="delete-core">${hasSavedCore ? "Delete" : "Clear"}</button>
-                        <button type="button" class="edit-core">${hasSavedCore ? "Edit" : "Save"}</button>
+                        <button type="button" class="delete-core" ${hasSavedCore && isEmployeeAccess() ? "hidden" : ""}>${hasSavedCore ? "Delete" : "Clear"}</button>
+                        <button type="button" class="edit-core" ${hasSavedCore && isEmployeeAccess() ? "hidden" : ""}>${hasSavedCore ? "Edit" : "Save"}</button>
                     </div>
                 </div>
                 <div class="core-grid" style="grid-template-columns:${needsTube ? "repeat(5,minmax(0,1fr))" : "repeat(4,minmax(0,1fr))"};">
@@ -3264,6 +3298,7 @@
             card.querySelector(".delete-core").addEventListener("click", async (event) => {
                 event.stopPropagation();
                 const cuid = currentCore.cuid;
+                if (cuid && isEmployeeAccess()) return;
                 if (cuid) {
                     const confirmed = await askConfirm("Delete Core", "Delete this core?");
                     if (confirmed) {
@@ -3302,6 +3337,7 @@
                     await saveInlineCore(card);
                     return;
                 }
+                if (!canEditSavedCore) return;
                 openCoreModal(Object.assign({}, currentCore, { joint: currentCore.joint || "" }), i);
             });
             if (!hasSavedCore) {
@@ -3396,6 +3432,7 @@
 
     function fillWireModal(data, juid, side) {
         const safeData = data || getDefaultWireData();
+        const isSavedWire = Boolean(safeData.wireUuid);
         elements.jcWireJuid.value = juid || "";
         elements.wireTypeSelect.value = safeData.wireType || "12 Core";
         elements.wireDrum.value = safeData.wireDrum || "";
@@ -3407,6 +3444,20 @@
         
         elements.wireModalTitle.textContent = side === "input" ? "Input Wire Details" : "Output Wire Details";
         elements.wireModalSub.textContent = data && data.wireUuid ? "Edit existing wire" : "Create new wire";
+        if (isEmployeeAccess()) {
+            elements.wireTypeSelect.disabled = isSavedWire;
+            elements.wireDrum.disabled = isSavedWire;
+            if (elements.deleteWireBtn) elements.deleteWireBtn.style.display = "none";
+            if (elements.saveWireBtn) {
+                elements.saveWireBtn.style.display = isSavedWire ? "none" : "";
+                elements.saveWireBtn.textContent = "Save Wire";
+            }
+        } else {
+            elements.wireTypeSelect.disabled = false;
+            elements.wireDrum.disabled = false;
+            if (elements.deleteWireBtn) elements.deleteWireBtn.style.display = isSavedWire ? "" : "none";
+            if (elements.saveWireBtn) elements.saveWireBtn.style.display = "";
+        }
     }
 
     function getWireModalData() {
@@ -3478,7 +3529,7 @@
         elements.coreModalSub.textContent = data.cuid ? "Edit existing core" : "Create new core";
         
         if (elements.deleteCoreBtn) {
-            elements.deleteCoreBtn.style.display = data.cuid ? "" : "none";
+            elements.deleteCoreBtn.style.display = data.cuid && !isEmployeeAccess() ? "" : "none";
         }
         
         state.pendingCoreCreation = {
@@ -3590,7 +3641,7 @@
             <div class="jc-link"></div>
             <div class="jc-health-label">${createJcHealthLabelHtml(jcHealthMeta)}</div>
             <div class="jc-after-label">${createAfterLabelHtml(previousLabel)}</div>
-            <button type="button" class="jc-edit-toggle">Edit JC</button>
+            <button type="button" class="jc-edit-toggle" ${isEmployeeAccess() ? "hidden" : ""}>Edit JC</button>
         `;
         const link = wrapper.querySelector(".jc-link");
         const wire = document.createElement("div");
@@ -3660,7 +3711,7 @@
             };
         });
         const editButton = wrapper.querySelector(".jc-edit-toggle");
-        if (editButton) {
+        if (editButton && !isEmployeeAccess()) {
             editButton.addEventListener("click", (event) => {
                 event.stopPropagation();
                 openEditJcModal(container);
@@ -3747,12 +3798,18 @@
     }
 
     async function deleteWire(wuid) {
+        if (isEmployeeAccess()) {
+            throw new Error("Delete access is not allowed.");
+        }
         await requestJson(apiUrlFor(getActiveClient(getActiveWindowName()), `wire/${wuid}`), {
             method: "DELETE"
         });
     }
 
     async function deleteJc(juid) {
+        if (isEmployeeAccess()) {
+            throw new Error("Delete access is not allowed.");
+        }
         const selectedWindow = state.selectedBox ? String(state.selectedBox.dataset.window || "").trim().toUpperCase() : "";
         await requestJson(apiUrlFor(getActiveClient(selectedWindow), `jc/${juid}`), {
             method: "DELETE"
@@ -3797,6 +3854,9 @@
     }
 
     async function deleteCore(cuid) {
+        if (isEmployeeAccess()) {
+            throw new Error("Delete access is not allowed.");
+        }
         await requestJson(apiUrlFor(getActiveClient(getActiveWindowName()), `core/${cuid}`), {
             method: "DELETE"
         });
@@ -4240,6 +4300,10 @@
         const location = getModalLocation();
         const jcData = getJcModalData();
         const isEditMode = state.jcModalMode === "edit" && jcData.juid;
+        if (isEmployeeAccess() && isEditMode) {
+            await showNotice("Employee Access", "Edit access is not allowed.");
+            return false;
+        }
         
         if (!jcName) {
             alert("Enter JC name");
@@ -4283,6 +4347,10 @@
     async function saveNewWire() {
         const wireData = getWireModalData();
         if (!validateWireModalData(wireData)) return false;
+        if (isEmployeeAccess() && wireData.wireUuid) {
+            await showNotice("Employee Access", "Existing wire edit is not allowed.");
+            return false;
+        }
         
         try {
             setBusy(true);
@@ -4323,6 +4391,10 @@
     async function saveNewCore() {
         const coreData = getCoreModalData();
         if (!validateCoreModalData(coreData)) return false;
+        if (isEmployeeAccess() && coreData.cuid) {
+            await showNotice("Employee Access", "Existing core edit is not allowed.");
+            return false;
+        }
         
         try {
             setBusy(true);
@@ -4394,6 +4466,10 @@
     }
 
     async function deleteSelectedBox() {
+        if (isEmployeeAccess()) {
+            await showNotice("Employee Access", "Delete access is not allowed.");
+            return;
+        }
         if (!state.selectedBox) {
             await showNotice("Delete JC", "Select a JC first");
             return;
@@ -4418,6 +4494,10 @@
     }
 
     async function deleteSelectedWire() {
+        if (isEmployeeAccess()) {
+            await showNotice("Employee Access", "Delete access is not allowed.");
+            return;
+        }
         if (!state.selectedFiber) return;
         const wireUuid = state.selectedFiber.dataset.wireUuid || "";
         if (!wireUuid) {
@@ -4461,6 +4541,7 @@
     }
 
     function openEditJcModal(container) {
+        if (isEmployeeAccess()) return;
         if (!container) return;
         state.jcModalMode = "edit";
         state.editingJcId = container.dataset.juid || "";
@@ -4660,6 +4741,10 @@
         }
         if (elements.deleteCoreBtn) {
             elements.deleteCoreBtn.addEventListener("click", async () => {
+                if (isEmployeeAccess()) {
+                    await showNotice("Employee Access", "Delete access is not allowed.");
+                    return;
+                }
                 if (state.pendingCoreCreation && state.pendingCoreCreation.cuid) {
                     const confirmed = await askConfirm("Delete Core", "Delete this core?");
                     if (confirmed) {
