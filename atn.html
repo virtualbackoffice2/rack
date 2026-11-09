@@ -714,6 +714,7 @@
       } catch (err) {
         console.error('Camera error:', err);
         showToast('Camera access denied or unavailable: ' + err.message);
+        sendAttendance();
       }
     };
     function captureAndSend() {
@@ -739,10 +740,6 @@
       sendAttendance();
     }
     async function sendAttendance() {
-      if (!lastDataUrl) {
-        showToast('Please capture selfie first');
-        return;
-      }
       isUploading = true;
       elements.markAttendanceBtn.textContent = '⏳ Uploading...';
       elements.markAttendanceBtn.disabled = true;
