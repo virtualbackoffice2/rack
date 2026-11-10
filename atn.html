@@ -362,7 +362,7 @@
     </div>
     <div class="welcome" id="welcome">Welcome, <span id="userEmail">Not signed in</span></div>
     <div id="gSignInWrapper" style="text-align:center; margin-bottom:20px;">
-      <div class="g_id_signin"
+      <div id="googleSignInButton"
            data-type="standard"
            data-shape="rect"
            data-theme="outline"
@@ -571,7 +571,7 @@
     }
     document.getElementById('signOutBtn').addEventListener('click', signOut);
     function toggleSignIn(showSignIn) {
-      document.querySelector('.g_id_signin').style.display = showSignIn ? 'block' : 'none';
+      document.getElementById('googleSignInButton').style.display = showSignIn ? 'block' : 'none';
       document.getElementById('signOutBtn').style.display = showSignIn ? 'none' : 'block';
     }
     function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
@@ -707,7 +707,6 @@
         elements.markAttendanceBtn.textContent = "Click to mark attendance";
         elements.markAttendanceBtn.onclick = captureAndSend;
       } catch (err) {
-        console.error('Camera error:', err);
         showToast('Camera access denied or unavailable: ' + err.message);
         sendAttendance();
       }
@@ -993,7 +992,7 @@
         scope: 'profile email'
       });
       google.accounts.id.renderButton(
-        document.querySelector('.g_id_signin'),
+        document.getElementById('googleSignInButton'),
         { theme: 'outline', size: 'large', type: 'standard' }
       );
     };
